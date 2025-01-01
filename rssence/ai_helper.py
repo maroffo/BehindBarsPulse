@@ -2,7 +2,7 @@ from google import genai
 from google.genai import types
 
 
-def generate_comment(text) -> str:
+def generate_summary(text) -> str:
     system_prompt = """You are a professional commentator and analyst for a daily newsletter focused on the Italian prison system and justice as a whole. Your readers are well-informed about the ongoing crisis in the prison system, so avoid providing obvious or redundant information. Instead, focus on delivering insightful, engaging commentary that highlights the most relevant and thought-provoking themes of the day.
         Your commentary should:
         - Be written in Italian and structured as an engaging introduction to the newsletter.
@@ -49,7 +49,7 @@ def generate_with_llm(system_prompt, text, response_mime_type) -> str:
         location="us-central1"
     )
     model = "gemini-2.0-flash-exp"
-    # model = "gemini-1.5-flash-002"
+    model = "gemini-1.5-flash-002"
     contents = [
         types.Content(
             role="user",

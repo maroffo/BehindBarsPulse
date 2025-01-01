@@ -1,24 +1,28 @@
-from rssence.ai_helper import generate_comment
-from rssence.feeds import fetch_feed
+from rssence.ai_helper import generate_summary
+import rssence.feeds
 
-if __name__ == "__main__":
-    # feed_url = "https://www.ilpost.it/feed"
-    feed_url = "https://ristretti.org/index.php?format=feed&type=rss"
-    articles = fetch_feed(feed_url)
+import logging
 
+log = logging.getLogger(__name__)
+
+
+def fetch_feed_content(feed_url: str, number_of_items: int = 10) -> list:
+    return rssence.feeds.fetch_feed_content(feed_url, number_of_items)
+
+
+def enrich_content(feed_content: list[dict]) -> list[dict]:
+    return rssence.feeds.enrich_content(feed_content)
+
+
+def get_feed_summary(articles: list) -> str:
     feed_content = ""
     for article in articles:
-        print(f"Titolo: {article['title']}")
-        print(f"Link: {article['link']}")
-        print(f"Autore: {article['author']}")
-        print(f"Fonte: {article['source']}")
-        print(f"Riassunto:\n{article['summary']}\n")
-        feed_content += f"Titolo: {article['title']}\n"
-        feed_content += f"Link: {article['link']}\n"
-        feed_content += f"Autore: {article['author']}\n"
-        feed_content += f"Fonte: {article['source']}\n"
-        feed_content += f"\n{article['content']}\n\n"
+        feed_content += f"Titolo: {article.get('title')}\n"
+        feed_content += f"Link: {article.get('link')}\n"
+        feed_content += f"Autore: {article.get('content')}\n"
+        feed_content += f"Fonte: {article.get('source')}\n"
+        feed_content += f"\n{article.get('content')}\n\n"
         feed_content += "---------------------------\n"
-    newsletter_content = generate_comment(feed_content)
-    print()
-    print(newsletter_content)
+
+    newsletter_content = generate_summary(feed_content)
+    return newsletter_content
