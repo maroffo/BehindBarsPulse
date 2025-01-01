@@ -1,5 +1,8 @@
 import json
+from time import sleep
 from typing import Optional
+
+from dateutil.utils import today
 
 import feedparser
 import requests
@@ -8,25 +11,35 @@ from bs4 import BeautifulSoup
 
 from .ai_helper import extract_infos
 
+import logging
 
-def fetch_feed_content(feed_url: str, number_of_items: int = 10) -> list:
+log = logging.getLogger(__name__)
+
+
+def fetch_feed_content(feed_url: str, number_of_items: int = 10) -> Optional[list]:
     """
     Downloads and parses an RSS feed.
     """
+
+    logging.debug(f"Fetching feed from {feed_url}")
+
     feed = feedparser.parse(feed_url,
                             agent=("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
                                    "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.3 "
-                                   "Safari/605.1.15"))
+                                   "Safari/605.1.15"),
+                            modified=today().strftime('%a, %d %b %Y %H:%M:%S GMT'))
 
     if feed.bozo:  # Verifica errori nel parsing
-        print(f"Error parsing feed: {feed.bozo_exception}")
+        log.error(f"Error parsing feed: {feed.bozo_exception}")
         return None
 
     articles = []
 
     for entry in feed.entries[:number_of_items]:
+        log.debug(f"Fetching article content from {entry.link}")
         content = fetch_article_content(entry.link)
         if content:
+            log.debug(f"Fetched article {entry.title}")
             articles.append({
                 "title": entry.title,
                 "link": entry.link,
@@ -36,11 +49,13 @@ def fetch_feed_content(feed_url: str, number_of_items: int = 10) -> list:
 
 
 def summarize_and_extract_infos(content) -> dict:
+    log.debug(f"Extracting infos from '{content[:15]}...'")
     infos = json.loads(extract_infos(content))
     return infos
 
 
 def enrich_content(feed_content: list[dict]) -> list[dict]:
+    log.debug(f"Enriching content of '{len(feed_content)}' articles'")
     new_feed_content = []
     for article in feed_content:
         extra_info = summarize_and_extract_infos(article["content"])

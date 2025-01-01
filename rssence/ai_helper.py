@@ -1,9 +1,13 @@
+from os import system
+from time import sleep
+
 from google import genai
 from google.genai import types
 
 
-def generate_summary(text) -> str:
-    system_prompt = """You are a professional commentator and analyst for a daily newsletter focused on the Italian prison system and justice as a whole. Your readers are well-informed about the ongoing crisis in the prison system, so avoid providing obvious or redundant information. Instead, focus on delivering insightful, engaging commentary that highlights the most relevant and thought-provoking themes of the day.
+def generate_opening_message(text) -> str:
+    system_prompt = """You are a professional commentator and analyst for a daily newsletter focused on the Italian prison system and justice as a whole. 
+    Your readers are well-informed about the ongoing crisis in the prison system, so avoid providing obvious or redundant information. Instead, focus on delivering insightful, engaging commentary that highlights the most relevant and thought-provoking themes of the day.
         Your commentary should:
         - Be written in Italian and structured as an engaging introduction to the newsletter.
         - Synthesize the key themes and notable events from the day's articles, going beyond the surface to offer fresh perspectives or raise important questions.
@@ -12,6 +16,22 @@ def generate_summary(text) -> str:
         - Use a reflective, neutral, and professional tone, while sparking curiosity for the articles summarized in the newsletter.
         - End the commentary with an invitation to explore the rest of the newsletter, such as: 'Continua a leggere per scoprire i dettagli degli articoli più significativi di oggi nella seconda parte della newsletter.'"""
     return generate_with_llm(system_prompt, text, "text/plain")
+
+
+def generate_closing_message(text: str) -> str:
+    system_prompt = """You are a professional commentator for a newsletter dedicated to the Italian prison system and justice. 
+    Your task is to generate a thoughtful and engaging closing message to conclude the newsletter.
+        You will be provided with:
+            1.	The opening comment of the newsletter.
+            2.	The content of the day’s articles.
+        Your closing message must:
+            1.	Reference the themes or ideas mentioned in the opening comment without directly repeating them.
+            2.	Summarize the key takeaways or overarching themes of the day’s articles in 1-2 sentences.
+            3.	Offer a brief reflection or encourage readers to consider an important question or idea related to the justice system.
+            4.	Conclude with a warm and professional goodbye, inviting the reader to return for the next edition.
+            5.	Be written in Italian, using a clear, professional, and reflective tone.    
+        Important: Only return the final message text as output, with no introductory phrases, explanations, or comments from the model."""
+    return generate_with_llm(system_prompt, text, "text/plain") 
 
 
 def extract_infos(text) -> str:
@@ -49,7 +69,8 @@ def generate_with_llm(system_prompt, text, response_mime_type) -> str:
         location="us-central1"
     )
     model = "gemini-2.0-flash-exp"
-    model = "gemini-1.5-flash-002"
+    sleep(30)
+    # model = "gemini-1.5-flash-002"
     contents = [
         types.Content(
             role="user",

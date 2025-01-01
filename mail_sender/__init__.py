@@ -1,3 +1,4 @@
+import logging
 import smtplib
 
 from dateutil.utils import today
@@ -7,6 +8,8 @@ from email.message import EmailMessage
 
 from core import config
 
+log = logging.getLogger(__name__)
+
 behind_bars_template = "behind_bars_template.html"
 
 
@@ -15,6 +18,7 @@ def send_behind_bars_email(context):
     today_str = today().strftime('%d.%m.%Y')
     context['today_str'] = today_str
     context['subject'] = f"🔍⚖️⛓️[BehindBars] Notizie dal mondo della giustizia e delle carceri italiane - {today_str}"
+    log.debug(f"Sending email '{context['subject']}'")
     send_email(context)
 
 

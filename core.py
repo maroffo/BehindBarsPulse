@@ -3,8 +3,8 @@ from dotenv import dotenv_values
 import logging
 
 logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] [%(filename)s:%(funcName)s:%(lineno)d] %(message)s"
+    level=logging.DEBUG,
+    format="%(asctime)s %(levelname)-5.5s [%(name) 25.25s:%(lineno)-4.4d] %(message)s"
 )
 
 log = logging.getLogger(__name__)

@@ -1,4 +1,4 @@
-from rssence.ai_helper import generate_summary
+from rssence.ai_helper import generate_opening_message, generate_closing_message
 import rssence.feeds
 
 import logging
@@ -14,7 +14,22 @@ def enrich_content(feed_content: list[dict]) -> list[dict]:
     return rssence.feeds.enrich_content(feed_content)
 
 
-def get_feed_summary(articles: list) -> str:
+def get_newsletter_opening(articles: list) -> str:
+    log.debug("Generate newsletter opening message")
+    feed_content = aggregate_articles_content(articles)
+    newsletter_opening = generate_opening_message(feed_content)
+    return newsletter_opening
+
+
+def get_newsletter_closing(newsletter_opening: str, articles: list) -> str:
+    log.debug("Generate newsletter closing message")
+    feed_content = aggregate_articles_content(articles)
+    newsletter_content = newsletter_opening + '\n\n' + feed_content
+    newsletter_closing = generate_closing_message(newsletter_content)
+    return newsletter_closing
+
+
+def aggregate_articles_content(articles):
     feed_content = ""
     for article in articles:
         feed_content += f"Titolo: {article.get('title')}\n"
@@ -23,6 +38,4 @@ def get_feed_summary(articles: list) -> str:
         feed_content += f"Fonte: {article.get('source')}\n"
         feed_content += f"\n{article.get('content')}\n\n"
         feed_content += "---------------------------\n"
-
-    newsletter_content = generate_summary(feed_content)
-    return newsletter_content
+    return feed_content
