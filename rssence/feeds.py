@@ -16,35 +16,38 @@ import logging
 log = logging.getLogger(__name__)
 
 
-def fetch_feed_content(feed_url: str, number_of_items: int = 10) -> Optional[list]:
+def fetch_feed_content(feed_url: str, number_of_items: int = 10) -> Optional[dict]:
     """
     Downloads and parses an RSS feed.
     """
 
     logging.debug(f"Fetching feed from {feed_url}")
 
+    today_midnight = today().strftime('%a, %d %b %Y %H:%M:%S GMT')
+    # today_midnight = "Wed, 01 Jan 2025 00:00:00 GMT"
+
     feed = feedparser.parse(feed_url,
                             agent=("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
                                    "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.3 "
                                    "Safari/605.1.15"),
-                            modified=today().strftime('%a, %d %b %Y %H:%M:%S GMT'))
+                            modified=today_midnight)
 
     if feed.bozo:  # Verifica errori nel parsing
         log.error(f"Error parsing feed: {feed.bozo_exception}")
         return None
 
-    articles = []
+    articles = {}
 
     for entry in feed.entries[:number_of_items]:
         log.debug(f"Fetching article content from {entry.link}")
         content = fetch_article_content(entry.link)
         if content:
             log.debug(f"Fetched article {entry.title}")
-            articles.append({
+            articles[entry.link] = {
                 "title": entry.title,
                 "link": entry.link,
                 "content": content,
-            })
+            }
     return articles
 
 
@@ -54,15 +57,16 @@ def summarize_and_extract_infos(content) -> dict:
     return infos
 
 
-def enrich_content(feed_content: list[dict]) -> list[dict]:
+def enrich_content(feed_content: dict) -> dict:
     log.debug(f"Enriching content of '{len(feed_content)}' articles'")
-    new_feed_content = []
-    for article in feed_content:
+    new_feed_content = {}
+    for content in feed_content:
+        article = feed_content[content]
         extra_info = summarize_and_extract_infos(article["content"])
         article['author'] = extra_info[0]['author']
         article['source'] = extra_info[0]['source']
         article['summary'] = extra_info[0]['summary']
-        new_feed_content.append(article)
+        new_feed_content[content] = article
     return new_feed_content
 
 
