@@ -9,6 +9,71 @@ import logging
 log = logging.getLogger(__name__)
 
 
+class AIService(object):
+    model_name: str
+    sleep_between_api_calls: int
+    response_mime_type: str
+    system_prompt: str
+
+    def __init__(self, system_prompt: str = "you are a helpful assistant",
+                 model_name: str = "gemini-1.5-flash-002",
+                 sleep_between_api_calls: int = 0,
+                 response_mime_type: str = "text/plain"):
+        self.system_prompt = system_prompt
+        self.model_name = model_name
+        self.sleep_between_api_calls = sleep_between_api_calls
+        self.response_mime_type = response_mime_type
+
+    def generate_response(self, prompt: str) -> str:
+        result = ""
+        text1_1 = types.Part.from_text(f"\"{prompt}\"")
+        client = genai.Client(
+            vertexai=True,
+            project="iungo-ai",
+            location="us-central1"
+        )
+        model = self.model_name
+        contents = [
+            types.Content(
+                role="user",
+                parts=[
+                    text1_1
+                ]
+            ),
+        ]
+        generate_content_config = types.GenerateContentConfig(
+            temperature=1,
+            top_p=0.95,
+            max_output_tokens=8192,
+            response_modalities=["TEXT"],
+            safety_settings=[types.SafetySetting(
+                category="HARM_CATEGORY_HATE_SPEECH",
+                threshold="OFF"
+            ), types.SafetySetting(
+                category="HARM_CATEGORY_DANGEROUS_CONTENT",
+                threshold="OFF"
+            ), types.SafetySetting(
+                category="HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                threshold="OFF"
+            ), types.SafetySetting(
+                category="HARM_CATEGORY_HARASSMENT",
+                threshold="OFF"
+            )],
+            response_mime_type=self.response_mime_type,
+            system_instruction=[types.Part.from_text(self.system_prompt)],
+        )
+        for chunk in client.models.generate_content_stream(
+                model=model,
+                contents=contents,
+                config=generate_content_config,
+        ):
+            result += chunk.text
+
+        if self.sleep_between_api_calls > 0:
+            sleep(self.sleep_between_api_calls)
+        return result
+
+
 def generate_press_review(text) -> str:
     system_prompt = """You are an assistant specializing in analyzing and organizing articles for a newsletter about the Italian prison system and justice. 
         Your task is to classify, aggregate, rank, and summarize a list of articles provided as JSON objects.
@@ -76,7 +141,11 @@ def generate_press_review(text) -> str:
         	•	Articles within each category are sorted by their importance, with the highest-ranking articles listed first.
         	•	Comments are in Italian, insightful, and directly reflect the content of the articles without referencing the categorization process.
         	•	The output is concise, structured, and suitable for automated processing."""
-    return generate_with_llm(system_prompt, text, "application/json")
+    llm_service = AIService(system_prompt=system_prompt,
+                            model_name="gemini-2.0-flash-exp",
+                            sleep_between_api_calls=30,
+                            response_mime_type="application/json")
+    return llm_service.generate_response(text)
 
 
 def generate_newsletter_content(text) -> str:
@@ -113,37 +182,12 @@ def generate_newsletter_content(text) -> str:
          
          Ensure the title and subtitle are informative, engaging, and relevant to the content provided
          *Important*: Only return the JSON object as output, with no introductory phrases, explanations, or comments from the model."""
-    return generate_with_llm(system_prompt, text, "application/json")
 
-
-def generate_opening_message(text) -> str:
-    system_prompt = """You are a professional commentator and analyst for a daily newsletter focused on the Italian prison system and justice as a whole. 
-    Your readers are well-informed about the ongoing crisis in the prison system, so avoid providing obvious or redundant information. Instead, focus on delivering insightful, engaging commentary that highlights the most relevant and thought-provoking themes of the day.
-        Your commentary should:
-        - Be written in Italian and structured as an engaging introduction to the newsletter.
-        - Synthesize the key themes and notable events from the day's articles, going beyond the surface to offer fresh perspectives or raise important questions.
-        - Connect topics related to the prison system with broader issues in the justice system, such as judicial reforms, human rights, or legislative developments.
-        - Be concise (10-12 sentences), avoiding unnecessary details or overly general statements.
-        - Use a reflective, neutral, and professional tone, while sparking curiosity for the articles summarized in the newsletter.
-        - End the commentary with an invitation to explore the rest of the newsletter, such as: 'Continua a leggere per scoprire i dettagli degli articoli più significativi di oggi nella seconda parte della newsletter.'"""
-    return generate_with_llm(system_prompt, text, "text/plain")
-
-
-def generate_closing_message(text: str) -> str:
-    system_prompt = """You are a professional commentator for a newsletter dedicated to the Italian prison system and justice. 
-    Your task is to generate a thoughtful and engaging closing message to conclude the newsletter.
-        You will be provided with:
-            1.	The opening comment of the newsletter.
-            2.	The content of the day’s articles.
-        Your closing message must:
-            1.	Reference the themes or ideas mentioned in the opening comment without directly repeating them.
-            2.	Summarize the key takeaways or overarching themes of the day’s articles in 1-2 sentences.
-            3.	Offer a brief reflection or encourage readers to consider an important question or idea related to the justice system.
-            4.	Conclude with a warm and professional goodbye, inviting the reader to return for the next edition.
-            5.	Be written in Italian, using a clear, professional, and reflective tone.    
-        Important: Only return the final message text as output, with no introductory phrases, explanations, or comments from the model."""
-    return generate_with_llm(system_prompt, text, "text/plain") 
-
+    llm_service = AIService(system_prompt=system_prompt,
+                            model_name="gemini-2.0-flash-exp",
+                            sleep_between_api_calls=30,
+                            response_mime_type="application/json")
+    return llm_service.generate_response(text)
 
 def extract_infos(text) -> str:
     json_schema = {}
@@ -168,54 +212,8 @@ def extract_infos(text) -> str:
         "summary": "Article summary",
       }]"""
 
-    return generate_with_llm(system_prompt, text, "application/json")
-
-
-def generate_with_llm(system_prompt, text, response_mime_type) -> str:
-    result = ""
-    text1_1 = types.Part.from_text(f"\"{text}\"")
-    client = genai.Client(
-        vertexai=True,
-        project="iungo-ai",
-        location="us-central1"
-    )
-    model = "gemini-2.0-flash-exp"
-    sleep(30)
-    # model = "gemini-1.5-flash-002"
-    contents = [
-        types.Content(
-            role="user",
-            parts=[
-                text1_1
-            ]
-        ),
-    ]
-    generate_content_config = types.GenerateContentConfig(
-        temperature=1,
-        top_p=0.95,
-        max_output_tokens=8192,
-        response_modalities=["TEXT"],
-        safety_settings=[types.SafetySetting(
-            category="HARM_CATEGORY_HATE_SPEECH",
-            threshold="OFF"
-        ), types.SafetySetting(
-            category="HARM_CATEGORY_DANGEROUS_CONTENT",
-            threshold="OFF"
-        ), types.SafetySetting(
-            category="HARM_CATEGORY_SEXUALLY_EXPLICIT",
-            threshold="OFF"
-        ), types.SafetySetting(
-            category="HARM_CATEGORY_HARASSMENT",
-            threshold="OFF"
-        )],
-        response_mime_type=response_mime_type,
-        # response_schema=json_schema,
-        system_instruction=[types.Part.from_text(system_prompt)],
-    )
-    for chunk in client.models.generate_content_stream(
-            model=model,
-            contents=contents,
-            config=generate_content_config,
-    ):
-        result += chunk.text
-    return result
+    llm_service = AIService(system_prompt=system_prompt,
+                            model_name="gemini-1.5-flash-002",
+                            sleep_between_api_calls=0,
+                            response_mime_type="application/json")
+    return llm_service.generate_response(text)

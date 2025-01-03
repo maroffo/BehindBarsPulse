@@ -17,8 +17,8 @@ def send_behind_bars_email(context):
     context['template'] = behind_bars_template
     today_str = today().strftime('%d.%m.%Y')
     context['today_str'] = today_str
-    context['subject'] = f"🔍⚖️⛓️[BehindBars] Notizie dal mondo della giustizia e delle carceri italiane - {today_str}"
-    log.debug(f"Sending email '{context['subject']}'")
+    context['subject'] = f"⚖️⛓️BehindBars - Notizie dal mondo della giustizia e delle carceri italiane - {today_str}"
+    log.info(f"Sending email '{context['subject']}'")
     send_email(context)
 
 
@@ -36,7 +36,7 @@ def send_email(context):
     message = EmailMessage()
 
     message["Subject"] = context.get('subject')
-    message["From"] = "iungo <iungo@iungomail.com>"
+    message["From"] = "Behind Bars Pulse <behindbars@iungomail.com>"
 
     html = content
     save_email_body(content)

@@ -39,10 +39,10 @@ def fetch_feed_content(feed_url: str, number_of_items: int = 10) -> Optional[dic
     articles = {}
 
     for entry in feed.entries[:number_of_items]:
-        log.debug(f"Fetching article content from {entry.link}")
+        log.info(f"Fetching article content from {entry.link}")
         content = fetch_article_content(entry.link)
         if content:
-            log.debug(f"Fetched article {entry.title}")
+            log.info(f"Fetched article {entry.title}")
             articles[entry.link] = {
                 "title": entry.title,
                 "link": entry.link,
@@ -52,13 +52,13 @@ def fetch_feed_content(feed_url: str, number_of_items: int = 10) -> Optional[dic
 
 
 def summarize_and_extract_infos(content) -> dict:
-    log.debug(f"Extracting infos from '{content[:15]}...'")
+    log.info(f"Extracting infos from '{content[:15]}...'")
     infos = json.loads(extract_infos(content))
     return infos
 
 
 def enrich_content(feed_content: dict) -> dict:
-    log.debug(f"Enriching content of '{len(feed_content)}' articles'")
+    log.info(f"Enriching content of '{len(feed_content)}' articles'")
     new_feed_content = {}
     for content in feed_content:
         article = feed_content[content]

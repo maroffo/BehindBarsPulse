@@ -1,8 +1,7 @@
 import json
 from typing import Optional
 
-from rssence.ai_helper import generate_opening_message, generate_closing_message, generate_newsletter_content, \
-    generate_press_review
+from rssence.ai_helper import generate_newsletter_content, generate_press_review
 import rssence.feeds
 
 import logging
@@ -19,7 +18,7 @@ def enrich_content(feed_content: dict) -> dict:
 
 
 def get_press_review(feed_articles: dict) -> list:
-    log.debug("Generate newsletter content")
+    log.info("Generate newsletter content")
     temporary_review = json.loads(generate_press_review(feed_articles))
     press_review = []
     for item in temporary_review:
@@ -39,25 +38,10 @@ def get_press_review(feed_articles: dict) -> list:
 
 
 def get_newsletter_content(articles: dict) -> dict:
-    log.debug("Generate newsletter content")
+    log.info("Generate newsletter content")
     feed_content = aggregate_articles_content(articles)
     newsletter_content = generate_newsletter_content(feed_content)
     return json.loads(newsletter_content)
-
-
-def get_newsletter_opening(articles: list) -> str:
-    log.debug("Generate newsletter opening message")
-    feed_content = aggregate_articles_content(articles)
-    newsletter_opening = generate_opening_message(feed_content)
-    return newsletter_opening
-
-
-def get_newsletter_closing(newsletter_opening: str, articles: list) -> str:
-    log.debug("Generate newsletter closing message")
-    feed_content = aggregate_articles_content(articles)
-    newsletter_content = newsletter_opening + '\n\n' + feed_content
-    newsletter_closing = generate_closing_message(newsletter_content)
-    return newsletter_closing
 
 
 def articles_to_json(articles) -> str:
