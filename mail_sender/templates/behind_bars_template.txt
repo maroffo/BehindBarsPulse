@@ -1,0 +1,31 @@
+{{newsletter_title}}
+{{newsletter_subtitle}}
+
+{{newsletter_opening}}
+
+La rassegna stampa di oggi
+{% for topic in press_review %}
+
+{{topic.category}}
+{{topic.comment}}
+{% for article in topic.articles %}
+{{article.title}} - {{article.link}}
+di {{article.author}} - {{article.source}}
+{% if article.summary %}
+{{article.summary}}
+{% endif %}
+{% endfor %}
+{% endfor %}
+
+{{newsletter_closing}}
+
+
+Questa newsletter è parte del progetto
+BehindBarsPulse (https://github.com/maroffo/BehindBarsPulse), un'iniziativa personale creata per sensibilizzare sull'attuale situazione del sistema carcerario e della giustizia in Italia, sfruttando le potenzialità dell'intelligenza artificiale. Ogni giorno, gli articoli vengono raccolti da fonti affidabili e accuratamente selezionate. Il contenuto della newsletter è generato in modo semi-automatico utilizzando modelli di linguaggio avanzati (LLM) come Gemini, con l'obiettivo di riassumere e commentare le notizie più rilevanti.
+Nonostante l'utilizzo di tecnologie avanzate, l'elaborazione dei testi avviene sotto la supervisione umana per garantire qualità, accuratezza e rispetto delle sensibilità.
+
+Nota Bene: I riassunti e i commenti riflettono i temi e le opinioni presenti negli articoli selezionati e non necessariamente quelle dell'autore della newsletter.
+Questo progetto è in continua evoluzione e ogni suggerimento o feedback è ben accetto.
+Grazie per seguire BehindBarsPulse e per il tuo interesse nel contribuire a un sistema di giustizia più equo e umano.
+
+Designed and Developed with ❤️ during the 🎄 holidays in Geremeas, Sardinia.

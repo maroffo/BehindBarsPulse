@@ -27,10 +27,7 @@ def get_press_review(feed_articles: dict) -> list:
         for article in item['articles']:
             article['author'] = feed_articles.get(article['link']).get('author', '')
             article['source'] = feed_articles.get(article['link']).get('source', '')
-            if article['importance'] == 'Alta':
-                article['summary'] = feed_articles.get(article['link']).get('summary', '')
-            else:
-                article['summary'] = None
+            article['summary'] = feed_articles.get(article['link']).get('summary', '')
             articles.append(article)
         topic['articles'] = articles
         press_review.append(topic)

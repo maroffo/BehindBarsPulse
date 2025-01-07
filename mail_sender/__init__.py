@@ -1,7 +1,7 @@
 import logging
 import smtplib
 
-from dateutil.utils import today
+from bs4.dammit import html_meta
 from jinja2 import Environment, FileSystemLoader
 
 from email.message import EmailMessage
@@ -10,27 +10,26 @@ from core import config
 
 log = logging.getLogger(__name__)
 
-behind_bars_template = "behind_bars_template.html"
+behind_bars_html_template = "behind_bars_template.html"
+behind_bars_txt_template = "behind_bars_template.txt"
 
 
 def send_behind_bars_email(context):
-    context['template'] = behind_bars_template
-    today_str = today().strftime('%d.%m.%Y')
-    context['today_str'] = today_str
-    context['subject'] = f"⚖️⛓️BehindBars - Notizie dal mondo della giustizia e delle carceri italiane - {today_str}"
+    context['html_template'] = behind_bars_html_template
+    context['txt_template'] = behind_bars_txt_template
     log.info(f"Sending email '{context['subject']}'")
     send_email(context)
 
 
-def save_email_body(content):
+def save_email_html_body(content):
     with open("newsletter.html", "w") as text_file:
         text_file.write(content)
 
 
 def send_email(context):
     environment = Environment(loader=FileSystemLoader("./mail_sender/templates/"))
-    template = environment.get_template(context.get('template'))
-    content = template.render(**context)
+    html_template = environment.get_template(context.get('html_template'))
+    txt_template = environment.get_template(context.get('txt_template'))
 
     notification_address_list = context.get('notification_address_list')
     message = EmailMessage()
@@ -38,13 +37,11 @@ def send_email(context):
     message["Subject"] = context.get('subject')
     message["From"] = "Behind Bars Pulse <behindbars@iungomail.com>"
 
-    html = content
-    save_email_body(content)
+    html = html_template.render(**context)
+    save_email_html_body(html)
 
-    # text = """
-    # Designed and Developed with ❤️ in Bologna
-    # """
-    #  message.set_content(text)
+    text = txt_template.render(**context)
+    message.set_content(text)
 
     message.add_alternative(html, subtype='html')
     message.add_header('Return-Path', 'bounces@iungomail.com')
