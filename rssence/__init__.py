@@ -1,7 +1,7 @@
 import json
 from typing import Optional
 
-from rssence.ai_helper import generate_newsletter_content, generate_press_review
+from rssence.ai_helper import generate_newsletter_content, generate_press_review, review_newsletter_content
 import rssence.feeds
 
 import logging
@@ -18,7 +18,7 @@ def enrich_content(feed_content: dict) -> dict:
 
 
 def get_press_review(feed_articles: dict) -> list:
-    log.info("Generate newsletter content")
+    log.info("Generate press review")
     temporary_review = json.loads(generate_press_review(feed_articles))
     press_review = []
     for item in temporary_review:
@@ -34,10 +34,11 @@ def get_press_review(feed_articles: dict) -> list:
     return press_review
 
 
-def get_newsletter_content(articles: dict) -> dict:
+def get_newsletter_content(articles: dict, previous_issues: list) -> dict:
     log.info("Generate newsletter content")
     feed_content = aggregate_articles_content(articles)
-    newsletter_content = generate_newsletter_content(feed_content)
+    newsletter_content = review_newsletter_content(generate_newsletter_content(feed_content, previous_issues),
+                                                   previous_issues)
     return json.loads(newsletter_content)
 
 

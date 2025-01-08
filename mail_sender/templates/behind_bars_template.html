@@ -121,7 +121,7 @@
                 <p>{{newsletter_opening}}</p>
                 <hr>
                 <div>
-                    <h1>La rassegna stampa di oggi</h1>
+                    <h1>La rassegna stampa di oggi {{today_str}}</h1>
                     {% for topic in press_review %}
                     <div><h2>{{topic.category}}</h2>
                         <p>{{topic.comment}}</p>

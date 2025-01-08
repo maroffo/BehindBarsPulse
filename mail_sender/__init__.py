@@ -2,6 +2,7 @@ import logging
 import smtplib
 
 from bs4.dammit import html_meta
+from dateutil.utils import today
 from jinja2 import Environment, FileSystemLoader
 
 from email.message import EmailMessage
@@ -21,8 +22,17 @@ def send_behind_bars_email(context):
     send_email(context)
 
 
-def save_email_html_body(content):
-    with open("newsletter.html", "w") as text_file:
+def archive_newsletter_html(content: str):
+    archive_newsletter_content(content, 'html')
+
+
+def archive_newsletter_txt(content: str):
+    archive_newsletter_content(content, 'txt')
+
+
+def archive_newsletter_content(content: str, file_extension: str):
+    filename = f"{today().strftime('%Y%m%d')}_issue.{file_extension}"
+    with open(f"previous_issues/{filename}", "w") as text_file:
         text_file.write(content)
 
 
@@ -36,15 +46,15 @@ def send_email(context):
 
     message["Subject"] = context.get('subject')
     message["From"] = "Behind Bars Pulse <behindbars@iungomail.com>"
-
-    html = html_template.render(**context)
-    save_email_html_body(html)
+    message.add_header('Return-Path', 'bounces@iungomail.com')
 
     text = txt_template.render(**context)
+    archive_newsletter_txt(text)
     message.set_content(text)
 
+    html = html_template.render(**context)
+    archive_newsletter_html(html)
     message.add_alternative(html, subtype='html')
-    message.add_header('Return-Path', 'bounces@iungomail.com')
 
     host = "email-smtp.eu-west-1.amazonaws.com"
     port = 587

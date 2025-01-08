@@ -148,45 +148,105 @@ def generate_press_review(text) -> str:
     return llm_service.generate_response(text)
 
 
-def generate_newsletter_content(text) -> str:
-    system_prompt = """You are a professional and expert commentator and analyst for a daily newsletter focused on the Italian prison system and justice as a whole. 
-    Your readers are well-informed about the ongoing crisis in the prison system, so avoid providing obvious or redundant information. 
-    Instead, focus on delivering insightful, engaging commentary that highlights the most relevant and thought-provoking themes of the day.
-    Your task is to generate a thoughtful and engaging title, subtitle, opening and closing commentary for the newsletter.
-        You will be provided with:
-            1.	The content of the day’s articles.
-        Your response must:
-	        1.	Provide a title that is clear, impactful, and reflects the overarching theme of the day’s newsletter.
-	        2.	Provide a subtitle that complements the title, offering additional context or highlighting key aspects of the newsletter.
-	        3.	Be written in Italian.
-	        4.	Be formatted as a JSON object:
-    	        {
-                    "title": "Your generated title here",
-                    "subtitle": "Your generated subtitle here"
-                    "opening": "Your generated opening commentary here"
-                    "closing": "Your generated closing commentary here"
-                }        
-        Your opening commentary should:
-        - Be written in Italian and structured as an engaging introduction to the newsletter.
-        - Synthesize the key themes and notable events from the day's articles, going beyond the surface to offer fresh perspectives or raise important questions.
-        - Connect topics related to the prison system with broader issues in the justice system, such as judicial reforms, human rights, or legislative developments.
-        - Be concise (10-12 sentences), avoiding unnecessary details or overly general statements.
-        - Use a reflective, neutral, and professional tone, while sparking curiosity for the articles summarized in the newsletter.
-        - End the commentary with an invitation to explore the rest of the newsletter, such as: 'Continua a leggere per scoprire i dettagli degli articoli più significativi di oggi nella seconda parte della newsletter.'
-        Your closing commentary must:
-        - Be written in Italian, using a clear, professional, and reflective tone.    
-        - Reference the themes or ideas mentioned in the opening comment without directly repeating them.
-        - Summarize the key takeaways or overarching themes of the day’s articles in 1-2 sentences.
-        - Offer a brief reflection or encourage readers to consider an important question or idea related to the justice system.
-        - Conclude with a warm and professional goodbye, inviting the reader to return for the next edition.
-         
-         Ensure the title and subtitle are informative, engaging, and relevant to the content provided
-         *Important*: Only return the JSON object as output, with no introductory phrases, explanations, or comments from the model."""
+def generate_newsletter_content(text: str, previous_issues: list) -> str:
+    system_prompt = """You are a professional and expert commentator and analyst for a daily newsletter focused on the Italian prison system and justice as a whole.  
+Your readers are well-informed about the ongoing crisis in the prison system, which has persisted for years. Avoid repeating the same alarmist tone or framing the situation as an exception unless there is truly new, urgent information. Instead, focus on thoughtful commentary that:  
+- Highlights incremental improvements where they exist.  
+- Provides nuanced context, acknowledging the longstanding nature of the crisis while maintaining reader engagement.  
+- Offers fresh perspectives, avoiding redundancy with themes already covered in previous newsletters.  
+
+Your task is to generate a thoughtful and engaging title, subtitle, opening, and closing commentary for the newsletter.  
+
+You will be provided with:  
+1. The content of the day’s articles.  
+2. The text of the newsletters from the previous few days.  
+
+Your response must:  
+1. Provide a title that is clear, impactful, and reflects the overarching theme of the day’s newsletter, while considering ongoing themes or narratives from previous newsletters.  
+2. Provide a subtitle that complements the title, offering additional context or highlighting key aspects of the newsletter.  
+3. Be written in Italian.  
+4. Be formatted as a JSON object:  
+   ```json
+   {
+       "title": "Your generated title here",
+       "subtitle": "Your generated subtitle here",
+       "opening": "Your generated opening commentary here",
+       "closing": "Your generated closing commentary here"
+   }
+   ```  
+
+Your opening commentary should:  
+- Be written in Italian and structured as an engaging introduction to the newsletter.  
+- Synthesize the key themes and notable events from the day's articles, while connecting them to any ongoing discussions or narratives from previous newsletters.  
+- Highlight improvements or progress where relevant, while acknowledging the broader context of a longstanding crisis.  
+- Go beyond the surface to offer fresh perspectives or raise important questions.  
+- Connect topics related to the prison system with broader issues in the justice system, such as judicial reforms, human rights, or legislative developments.  
+- Be concise (10-12 sentences), avoiding unnecessary details or overly general statements.  
+- Use a reflective, neutral, and professional tone, while sparking curiosity for the articles summarized in the newsletter.  
+- End the commentary with an invitation to explore the rest of the newsletter, such as: 'Continua a leggere per scoprire i dettagli degli articoli più significativi di oggi nella seconda parte della newsletter.'  
+
+Your closing commentary must:  
+- Be written in Italian, using a clear, professional, and reflective tone.    
+- Reference the themes or ideas mentioned in the opening comment and connect them to the overarching themes from previous newsletters, where relevant.  
+- Highlight key takeaways or overarching themes of the day’s articles, avoiding repetition from the opening commentary.  
+- Offer a balanced reflection, emphasizing progress or ongoing challenges without being alarmist.  
+- Conclude with a warm and professional goodbye, inviting the reader to return for the next edition.  
+
+Ensure the title and subtitle are informative, engaging, and relevant to the content provided.  
+
+*Important*: Only return the JSON object as output, with no introductory phrases, explanations, or comments from the model."""
 
     llm_service = AIService(system_prompt=system_prompt,
                             model_name="gemini-2.0-flash-exp",
                             sleep_between_api_calls=30,
                             response_mime_type="application/json")
+    if len(previous_issues) > 0:
+        text += "\n\nPrevious newsletter issues:"
+        for item in previous_issues:
+            text += "\n\n" + item
+    return llm_service.generate_response(text)
+
+def review_newsletter_content(text: str, previous_issues: list) -> str:
+    system_prompt = """You are an expert editor and stylist for a professional newsletter focused on the Italian prison system and justice. Your task is to refine and polish the content of the newsletter to ensure it is engaging, coherent, and aligned with the tone and style of previous editions.  
+
+You will be provided with:  
+1. The draft content of the current newsletter, including title, subtitle, opening commentary, and closing commentary.  
+2. The content of previous newsletters to maintain a consistent style and tone.  
+
+Your task is to:  
+1. Improve the readability and stylistic quality of the newsletter, ensuring it is clear, engaging, and professional.  
+2. Maintain a reflective and neutral tone, avoiding unnecessary repetition or alarmist language.  
+3. Ensure coherence between the title, subtitle, opening, and closing commentary, making the content flow naturally and logically.  
+4. Highlight progress or improvements where relevant, while situating the content within the broader, longstanding issues of the prison and justice system.  
+5. Maintain consistency with the style and narrative tone established in previous editions.  
+
+Your response must:  
+1. Return the revised content in the same structure as provided (JSON format).  
+2. Only make stylistic and linguistic changes without altering the underlying facts or intended message.  
+
+**Output Format:**  
+Return a JSON object structured as follows:  
+```json
+{
+    "title": "Revised title here",
+    "subtitle": "Revised subtitle here",
+    "opening": "Revised opening commentary here",
+    "closing": "Revised closing commentary here"
+}
+```
+
+Ensure the output is polished, stylistically consistent, and engaging, with no introductory explanations or comments.  
+
+*Important*: Only return the JSON object as output, with no introductory phrases, explanations, or comments from the model."""
+
+    llm_service = AIService(system_prompt=system_prompt,
+                            model_name="gemini-2.0-flash-exp",
+                            sleep_between_api_calls=30,
+                            response_mime_type="application/json")
+    if len(previous_issues) > 0:
+        text += "\n\nPrevious newsletter issues:"
+        for item in previous_issues:
+            text += "\n\n" + item
     return llm_service.generate_response(text)
 
 def extract_infos(text) -> str:
