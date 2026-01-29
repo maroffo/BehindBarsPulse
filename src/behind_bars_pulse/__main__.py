@@ -37,6 +37,23 @@ def configure_logging() -> None:
         )
 
 
+def _handle_gcp_auth_error(e: Exception, log: structlog.BoundLogger) -> bool:
+    """Check if exception is a GCP auth error and log friendly message.
+
+    Returns True if it was an auth error, False otherwise.
+    """
+    error_str = str(e)
+    if "Reauthentication is needed" in error_str or "RefreshError" in type(e).__name__:
+        log.error(
+            "gcp_auth_required",
+            hint="Run: gcloud auth application-default login",
+        )
+        print("\n⚠️  Google Cloud authentication required.")
+        print("   Run: gcloud auth application-default login\n")
+        return True
+    return False
+
+
 def cmd_collect(args: argparse.Namespace) -> int:
     """Run daily article collection.
 
@@ -56,7 +73,9 @@ def cmd_collect(args: argparse.Namespace) -> int:
         log.info("cmd_collect_complete", articles=len(enriched))
         return 0
 
-    except Exception:
+    except Exception as e:
+        if _handle_gcp_auth_error(e, log):
+            return 1
         log.exception("cmd_collect_failed")
         return 1
 
@@ -90,7 +109,9 @@ def cmd_generate(args: argparse.Namespace) -> int:
         log.info("cmd_generate_complete")
         return 0
 
-    except Exception:
+    except Exception as e:
+        if _handle_gcp_auth_error(e, log):
+            return 1
         log.exception("cmd_generate_failed")
         return 1
 
@@ -131,7 +152,9 @@ def cmd_weekly(args: argparse.Namespace) -> int:
     except ValueError as e:
         log.error("weekly_generation_failed", error=str(e))
         return 1
-    except Exception:
+    except Exception as e:
+        if _handle_gcp_auth_error(e, log):
+            return 1
         log.exception("cmd_weekly_failed")
         return 1
 
