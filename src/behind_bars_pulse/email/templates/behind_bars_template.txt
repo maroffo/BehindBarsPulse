@@ -4,22 +4,49 @@ Subtitle: {{newsletter_subtitle}}
 Opening Comment: {{newsletter_opening}}
 Closing Comment: {{newsletter_closing}}
 
-Items:
+═══════════════════════════════════════════════════════════════════════════════
+
+BEHINDBARS
+Giustizia e Sistema Carcerario
+{{today_str}}
+
+═══════════════════════════════════════════════════════════════════════════════
+
+{{newsletter_title}}
+{{newsletter_subtitle}}
+
+───────────────────────────────────────────────────────────────────────────────
+
+{{newsletter_opening}}
+
+═══════════════════════════════════════════════════════════════════════════════
+
+RASSEGNA STAMPA
+
 {% for topic in press_review %}
-Topic: {{topic.category}}
-{{topic.comment}}
-{% for article in topic.articles %}
-{{loop.index}}. {{article.title}} - {{article.link}}
-di {{article.author}} - {{article.source}}
-{{article.summary}}{% endfor %}{% endfor %}
+┌─ {{topic.category | upper}} ─────────────────────────────────────────────────
+│
+{% if topic.comment %}│  {{topic.comment}}
+│
+{% endif %}{% for article in topic.articles %}│  • {{article.title}}
+│    {{article.link}}
+│    {% if article.author %}di {{article.author}}{% endif %}{% if article.author and article.source %} · {% endif %}{% if article.source %}{{article.source}}{% endif %}
 
----
+{% if article.summary %}│    {{article.summary}}
+{% endif %}
+{% endfor %}└──────────────────────────────────────────────────────────────────────────────
 
-Questa newsletter è parte del progetto BehindBarsPulse (https://github.com/maroffo/BehindBarsPulse), un'iniziativa personale creata per sensibilizzare sull'attuale situazione del sistema carcerario e della giustizia in Italia, sfruttando le potenzialità dell'intelligenza artificiale. Ogni giorno, gli articoli vengono raccolti da fonti affidabili e accuratamente selezionate. Il contenuto della newsletter è generato in modo semi-automatico utilizzando modelli di linguaggio avanzati (LLM) come Gemini, con l'obiettivo di riassumere e commentare le notizie più rilevanti.
-Nonostante l'utilizzo di tecnologie avanzate, l'elaborazione dei testi avviene sotto la supervisione umana per garantire qualità, accuratezza e rispetto delle sensibilità.
+{% endfor %}
+═══════════════════════════════════════════════════════════════════════════════
 
-Nota Bene: I riassunti e i commenti riflettono i temi e le opinioni presenti negli articoli selezionati e non necessariamente quelle dell'autore della newsletter.
-Questo progetto è in continua evoluzione e ogni suggerimento o feedback è ben accetto.
-Grazie per seguire BehindBarsPulse e per il tuo interesse nel contribuire a un sistema di giustizia più equo e umano.
+{{newsletter_closing}}
 
-Designed and Developed with ❤️ during the 🎄 holidays in Geremeas, Sardinia.
+───────────────────────────────────────────────────────────────────────────────
+
+BehindBarsPulse - https://github.com/maroffo/BehindBarsPulse
+Un progetto che utilizza l'IA per raccogliere notizie sul sistema carcerario italiano.
+
+I contenuti sono generati con modelli linguistici avanzati e supervisionati.
+I riassunti riflettono i temi degli articoli, non le opinioni dell'autore.
+
+Creato con cura in Sardegna
