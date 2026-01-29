@@ -2,6 +2,7 @@
 # ABOUTME: Provides subcommands: collect, generate, weekly, status.
 
 import argparse
+import logging
 import sys
 from datetime import date
 
@@ -14,6 +15,8 @@ def configure_logging() -> None:
     """Configure structlog for console or JSON output."""
     settings = get_settings()
 
+    log_level = getattr(logging, settings.log_level.upper(), logging.INFO)
+
     if settings.log_format == "json":
         structlog.configure(
             processors=[
@@ -21,9 +24,7 @@ def configure_logging() -> None:
                 structlog.processors.add_log_level,
                 structlog.processors.JSONRenderer(),
             ],
-            wrapper_class=structlog.make_filtering_bound_logger(
-                getattr(structlog, settings.log_level, structlog.INFO)
-            ),
+            wrapper_class=structlog.make_filtering_bound_logger(log_level),
         )
     else:
         structlog.configure(
@@ -32,9 +33,7 @@ def configure_logging() -> None:
                 structlog.processors.add_log_level,
                 structlog.dev.ConsoleRenderer(colors=True),
             ],
-            wrapper_class=structlog.make_filtering_bound_logger(
-                getattr(structlog, settings.log_level, structlog.INFO)
-            ),
+            wrapper_class=structlog.make_filtering_bound_logger(log_level),
         )
 
 
