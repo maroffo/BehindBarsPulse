@@ -121,14 +121,18 @@ class EmailSender:
 
         log.info("newsletter_sent", recipient_count=len(recipients))
 
-    def _archive_newsletter(self, content: str, extension: str) -> None:
+    def _archive_newsletter(self, content: str, extension: str, suffix: str = "") -> Path:
         """Archive newsletter content to file.
 
         Args:
             content: Newsletter content to archive.
             extension: File extension (txt or html).
+            suffix: Optional suffix before extension (e.g., "_preview").
+
+        Returns:
+            Path to the archived file.
         """
-        filename = f"{date.today().strftime('%Y%m%d')}_issue.{extension}"
+        filename = f"{date.today().strftime('%Y%m%d')}_issue{suffix}.{extension}"
         archive_dir = Path(self.settings.previous_issues_dir)
         archive_dir.mkdir(parents=True, exist_ok=True)
 
@@ -136,3 +140,34 @@ class EmailSender:
         file_path.write_text(content, encoding="utf-8")
 
         log.info("newsletter_archived", file=str(file_path))
+        return file_path
+
+    def save_preview(self, context: NewsletterContext) -> Path:
+        """Save newsletter preview without sending.
+
+        Renders templates and saves to previous_issues/ with _preview suffix.
+
+        Args:
+            context: Complete newsletter context for rendering.
+
+        Returns:
+            Path to the saved HTML preview file.
+        """
+        log.info("saving_preview", subject=context.subject)
+
+        # Render templates
+        template_context = context.model_dump()
+        template_context["html_template"] = HTML_TEMPLATE
+        template_context["txt_template"] = TXT_TEMPLATE
+
+        html_template = self.jinja_env.get_template(HTML_TEMPLATE)
+        txt_template = self.jinja_env.get_template(TXT_TEMPLATE)
+
+        html_content = html_template.render(**template_context)
+        txt_content = txt_template.render(**template_context)
+
+        # Save with _preview suffix
+        self._archive_newsletter(txt_content, "txt", "_preview")
+        html_path = self._archive_newsletter(html_content, "html", "_preview")
+
+        return html_path

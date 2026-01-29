@@ -104,7 +104,10 @@ def cmd_generate(args: argparse.Namespace) -> int:
                 sender.send(context)
                 log.info("newsletter_sent")
             else:
-                log.info("dry_run_complete", title=newsletter_content.title)
+                # Save preview to previous_issues/
+                sender = EmailSender()
+                preview_path = sender.save_preview(context)
+                log.info("dry_run_complete", title=newsletter_content.title, preview=str(preview_path))
 
         log.info("cmd_generate_complete")
         return 0

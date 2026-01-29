@@ -1,0 +1,321 @@
+{
+  "ongoing_storylines": [
+    {
+      "id": "a606f8db-c17b-4ae2-8024-481cfc41b8b0",
+      "topic": "Emergenza suicidi e sovraffollamento carcerario 2026",
+      "status": "active",
+      "first_seen": "2026-01-29",
+      "last_update": "2026-01-29",
+      "summary": "L'inizio del 2026 conferma una crisi umanitaria sistemica nel sistema penitenziario italiano, con una scia di suicidi che ha colpito gli istituti di Asti, Cremona e Sollicciano (Firenze). Con oltre 64.000 detenuti a fronte di 46.000 posti, il dibattito si sposta sulla necessità di provvedimenti di clemenza e sull'insufficienza dei rimedi risarcitori previsti per le condizioni degradanti.",
+      "keywords": [
+        "suicidi",
+        "sovraffollamento",
+        "clemenza",
+        "Sollicciano",
+        "rimedi risarcitori"
+      ],
+      "related_articles": [
+        "https://ristretti.org/carceri-stop-alla-catastrofe-umanitaria",
+        "https://ristretti.org/firenze-a-sollicciano-il-primo-suicidio-del-2026-detenuto-di-29-anni-si-e-tolto-la-vita",
+        "https://ristretti.org/prato-sovraffollamento-e-risarcimento-ai-detenuti-un-incontro-organizzato-dalla-camera-penale"
+      ],
+      "mention_count": 1,
+      "impact_score": 0.9,
+      "weekly_highlight": false
+    },
+    {
+      "id": "6eddb929-80a9-4b3a-a2a4-a5d0408c21ba",
+      "topic": "Chiusura Alta Sicurezza a Padova e crisi del Modello Due Palazzi",
+      "status": "active",
+      "first_seen": "2026-01-29",
+      "last_update": "2026-01-29",
+      "summary": "La decisione di chiudere la sezione di Alta Sicurezza 1 del carcere Due Palazzi di Padova per far posto a trasferimenti forzati ha innescato una crisi profonda, culminata nel suicidio di un detenuto di 74 anni. L'opposizione (Pd) e le associazioni denunciano la distruzione di percorsi rieducativi decennali e parlano di violenza istituzionale.",
+      "keywords": [
+        "Padova",
+        "Due Palazzi",
+        "Alta Sicurezza",
+        "trasferimenti",
+        "Ristretti Orizzonti"
+      ],
+      "related_articles": [
+        "https://ristretti.org/padova-detenuto-suicida-in-carcere-alla-vigilia-della-protesta-contro-la-chiusura-del-settore-as",
+        "https://ristretti.org/padova-dramma-al-due-palazzi-detenuto-74enne-si-toglie-la-vita",
+        "https://ristretti.org/serracchiani-e-zan-pd-suicidio-in-carcere-a-padova-e-tragedia-annunciata-governo-ha-gravi-responsabilita"
+      ],
+      "mention_count": 1,
+      "impact_score": 0.8,
+      "weekly_highlight": false
+    },
+    {
+      "id": "1063472d-a641-4f82-8eee-10078ba6727b",
+      "topic": "Referendum separazione delle carriere e scontro procedurale",
+      "status": "active",
+      "first_seen": "2026-01-29",
+      "last_update": "2026-01-29",
+      "summary": "Il Comitato dei 15 ha depositato oltre 500.000 firme in Cassazione per il referendum oppositivo alla separazione delle carriere. Resta però il rebus legale davanti al Tar del Lazio per lo spostamento della data del voto, fissata dal governo per marzo, in un clima di forte tensione tra magistratura e politica.",
+      "keywords": [
+        "separazione carriere",
+        "referendum",
+        "Cassazione",
+        "Tar Lazio",
+        "giustizia"
+      ],
+      "related_articles": [
+        "https://ristretti.org/arrivano-in-cassazione-le-firme-dei-volenterosi-e-resta-il-rebus-tar"
+      ],
+      "mention_count": 1,
+      "impact_score": 0.8,
+      "weekly_highlight": false
+    },
+    {
+      "id": "0748596c-f600-46f5-bd1f-ece16a60ecd3",
+      "topic": "Riforma dell'imputabilità penale minorile a 13 anni",
+      "status": "active",
+      "first_seen": "2026-01-29",
+      "last_update": "2026-01-29",
+      "summary": "Forza Italia ha presentato una proposta di legge per abbassare l'età dell'imputabilità penale da 14 a 13 anni. La norma, presentata come necessaria per contrastare le baby gang e lo sfruttamento dei minori da parte delle mafie, solleva critiche per il rischio di criminalizzazione del disagio sociale invece di investire in percorsi educativi.",
+      "keywords": [
+        "minori",
+        "imputabilità",
+        "Forza Italia",
+        "baby gang",
+        "decreto Caivano"
+      ],
+      "related_articles": [
+        "https://ristretti.org/ragazzini-a-processo-gia-a-13-anni-cosi-il-disagio-sociale-diventa-un-reato"
+      ],
+      "mention_count": 1,
+      "impact_score": 0.7,
+      "weekly_highlight": false
+    },
+    {
+      "id": "fa03616f-e2bc-4614-8d5c-7a34ff156ce2",
+      "topic": "Collasso della sanità penitenziaria e tutela dei detenuti fragili",
+      "status": "active",
+      "first_seen": "2026-01-29",
+      "last_update": "2026-01-29",
+      "summary": "Una serie di casi critici evidenzia il fallimento della sanità in carcere: dalla morte per leucemia diagnosticata tardivamente a Secondigliano, alla detenzione di un invalido senza fissa dimora a Rebibbia, fino alla carenza di medici a Cagliari-Uta in vista dell'arrivo del regime 41bis. Si denuncia l'incompatibilità carceraria per anziani e malati gravi.",
+      "keywords": [
+        "sanità penitenziaria",
+        "diritto alla salute",
+        "Giosuè Chindamo",
+        "Cagliari-Uta",
+        "Rebibbia"
+      ],
+      "related_articles": [
+        "https://ristretti.org/napoli-in-cella-senza-cure-ne-pieta-agonia-e-morte-di-giosue",
+        "https://ristretti.org/roma-giorgio-anziano-e-invalido-in-cella-a-rebibbia-per-poche-monete",
+        "https://ristretti.org/cagliari-la-denuncia-di-sdr-con-41bis-a-uta-impossibile-garantire-cure-a-detenuti"
+      ],
+      "mention_count": 1,
+      "impact_score": 0.7,
+      "weekly_highlight": false
+    },
+    {
+      "id": "2b78f3c8-bd61-4adb-8997-cea201aba80f",
+      "topic": "Inchiesta sull'uccisione di Abderrahim Mansouri a Milano",
+      "status": "active",
+      "first_seen": "2026-01-29",
+      "last_update": "2026-01-29",
+      "summary": "Un poliziotto è indagato per omicidio volontario dopo aver ucciso il 28enne Abderrahim Mansouri durante un'operazione antidroga a Milano. La difesa invoca la legittima difesa per una pistola a salve, mentre la famiglia della vittima contesta la dinamica dei fatti, riaprendo il dibattito sull'uso delle armi e la necessità di body cam.",
+      "keywords": [
+        "Milano",
+        "polizia",
+        "omicidio volontario",
+        "legittima difesa",
+        "body cam"
+      ],
+      "related_articles": [
+        "https://ristretti.org/morte-a-milano-lagente-non-doveva-essere-nel-boschetto"
+      ],
+      "mention_count": 1,
+      "impact_score": 0.5,
+      "weekly_highlight": false
+    },
+    {
+      "id": "60922db8-7fce-4abe-8bec-f2d08fa55c28",
+      "topic": "Ritardi nel piano edilizia carceraria: il caso Verziano",
+      "status": "active",
+      "first_seen": "2026-01-29",
+      "last_update": "2026-01-29",
+      "summary": "L'avvio dei rilievi volumetrici per l'ampliamento del carcere di Verziano (Brescia) conferma uno slittamento dei tempi di consegna almeno al 2030. Il ritardo evidenzia le difficoltà strutturali del Ministero della Giustizia nel rispettare il piano carceri per superare il sovraffollamento cronico.",
+      "keywords": [
+        "edilizia carceraria",
+        "Verziano",
+        "Brescia",
+        "piano carceri",
+        "Ministero Giustizia"
+      ],
+      "related_articles": [
+        "https://ristretti.org/brescia-a-verziano-si-prendono-le-misure-per-lampliamento-del-carcere-i-tempi-si-allungano-al-2030"
+      ],
+      "mention_count": 1,
+      "impact_score": 0.4,
+      "weekly_highlight": false
+    }
+  ],
+  "key_characters": [
+    {
+      "name": "Carlo Nordio",
+      "role": "Minister of Justice",
+      "aliases": [
+        "Guardasigilli"
+      ],
+      "positions": [
+        {
+          "date": "2026-01-29",
+          "stance": "Criticized for indifference toward prison suicides and system collapse; his administration is also facing scrutiny over delays in prison expansion projects (Verziano) and the controversial closure of High Security sectors.",
+          "source_url": "https://ristretti.org/carceri-stop-alla-catastrofe-umanitaria"
+        }
+      ]
+    },
+    {
+      "name": "Stefano Carmine De Michele",
+      "role": "Head of the Department of Prison Administration (DAP)",
+      "aliases": [
+        "Capo del Dap"
+      ],
+      "positions": [
+        {
+          "date": "2026-01-29",
+          "stance": "Target of urgent requests for meetings by prison associations regarding the sudden closure of the High Security (AS) sector at the Padova Due Palazzi prison.",
+          "source_url": "https://ristretti.org/padova-detenuto-suicida-in-carcere-alla-vigilia-della-protesta-contro-la-chiusura-del-settore-as"
+        }
+      ]
+    },
+    {
+      "name": "Stefano Anastasia",
+      "role": "Regional Guarantor for Prisoners' Rights",
+      "aliases": [
+        "Garante dei detenuti"
+      ],
+      "positions": [
+        {
+          "date": "2026-01-29",
+          "stance": "Warns of a 'humanitarian catastrophe' and system collapse, denouncing the government's indifference to the high rate of prison suicides.",
+          "source_url": "https://ristretti.org/carceri-stop-alla-catastrofe-umanitaria"
+        }
+      ]
+    },
+    {
+      "name": "Marta Fascina",
+      "role": "Member of the Chamber of Deputies (Forza Italia)",
+      "aliases": [],
+      "positions": [
+        {
+          "date": "2026-01-29",
+          "stance": "First signatory of a bill to lower the age of criminal responsibility from 14 to 13, framing it as an 'imprescindibile' (essential) intervention against youth crime.",
+          "source_url": "https://ristretti.org/ragazzini-a-processo-gia-a-13-anni-cosi-il-disagio-sociale-diventa-un-reato"
+        }
+      ]
+    },
+    {
+      "name": "Debora Serracchiani",
+      "role": "Justice Lead for the Democratic Party (PD)",
+      "aliases": [],
+      "positions": [
+        {
+          "date": "2026-01-29",
+          "stance": "Describes recent prison suicides as 'institutional violence' and blames the government for canceling the rehabilitative function of sentences through abrupt prisoner transfers.",
+          "source_url": "https://ristretti.org/serracchiani-e-zan-pd-suicidio-in-carcere-a-padova-e-tragedia-annunciata-governo-ha-gravi-responsabilita"
+        }
+      ]
+    },
+    {
+      "name": "Alessandro Zan",
+      "role": "Rights Lead for the Democratic Party (PD)",
+      "aliases": [],
+      "positions": [
+        {
+          "date": "2026-01-29",
+          "stance": "Co-denounces the government for 'grave responsibilities' regarding prison suicides and the degradation of treatment standards in penitentiaries.",
+          "source_url": "https://ristretti.org/serracchiani-e-zan-pd-suicidio-in-carcere-a-padova-e-tragedia-annunciata-governo-ha-gravi-responsabilita"
+        }
+      ]
+    },
+    {
+      "name": "Carlo Guglielmi",
+      "role": "Lawyer and Spokesperson for the 'Comitato dei 15'",
+      "aliases": [],
+      "positions": [
+        {
+          "date": "2026-01-29",
+          "stance": "Leading the legal effort and signature collection for the 'oppositive' referendum against the separation of magistrates' careers.",
+          "source_url": "https://ristretti.org/arrivano-in-cassazione-le-firme-dei-volenterosi-e-resta-il-rebus-tar"
+        }
+      ]
+    },
+    {
+      "name": "Maria Grazia Caligaris",
+      "role": "President of Socialismo Diritti Riforme (Sdr)",
+      "aliases": [],
+      "positions": [
+        {
+          "date": "2026-01-29",
+          "stance": "Denounces the lack of healthcare in the Cagliari-Uta prison and warns that the arrival of 41-bis inmates will make the situation unsustainable.",
+          "source_url": "https://ristretti.org/cagliari-la-denuncia-di-sdr-con-41bis-a-uta-impossibile-garantire-cure-a-detenuti"
+        }
+      ]
+    },
+    {
+      "name": "Sergio D’Elia",
+      "role": "Secretary of Nessuno tocchi Caino",
+      "aliases": [],
+      "positions": [
+        {
+          "date": "2026-01-29",
+          "stance": "Advocates for 'acts of human mercy' for sick and elderly prisoners, criticizing the system for letting inmates die in isolation without proper medical care.",
+          "source_url": "https://ristretti.org/napoli-in-cella-senza-cure-ne-pieta-agonia-e-morte-di-giosue"
+        }
+      ]
+    },
+    {
+      "name": "Rossella Favero",
+      "role": "Coordinator of the Padova Due Palazzi prison associations",
+      "aliases": [],
+      "positions": [
+        {
+          "date": "2026-01-29",
+          "stance": "Leading protests against the closure of the Alta Sicurezza 1 section in Padova, arguing it destroys decades of rehabilitative progress.",
+          "source_url": "https://ristretti.org/padova-dramma-al-due-palazzi-detenuto-74enne-si-toglie-la-vita"
+        }
+      ]
+    }
+  ],
+  "editorial_tone": "Riflessivo e professionale, attento ai progressi ma consapevole delle sfide sistemiche",
+  "pending_followups": [
+    {
+      "id": "323a1314-f573-4e44-a2aa-46a55fe98be6",
+      "event": "Incontro della Camera penale di Prato sul sovraffollamento carcerario e i rimedi risarcitori",
+      "expected_date": "2026-01-30",
+      "story_id": null,
+      "created_at": "2026-01-29",
+      "resolved": false
+    },
+    {
+      "id": "955c3245-432a-4ffc-bde7-c84451c5777f",
+      "event": "Prosecuzione dell'udienza per direttissima relativa al caso del detenuto suicida a Sollicciano",
+      "expected_date": "2026-02-19",
+      "story_id": null,
+      "created_at": "2026-01-29",
+      "resolved": false
+    },
+    {
+      "id": "3eda0c28-fc4e-4e86-bdc5-a219a47fe166",
+      "event": "Celebrazione del referendum sulla separazione delle carriere",
+      "expected_date": "2026-03-22",
+      "story_id": null,
+      "created_at": "2026-01-29",
+      "resolved": false
+    },
+    {
+      "id": "71557756-ae1f-491e-af13-9c549f40a660",
+      "event": "Completamento previsto dei lavori di ampliamento del carcere di Verziano (Brescia)",
+      "expected_date": "2030-01-01",
+      "story_id": null,
+      "created_at": "2026-01-29",
+      "resolved": false
+    }
+  ],
+  "last_updated": "2026-01-29T10:03:24.312494"
+}
