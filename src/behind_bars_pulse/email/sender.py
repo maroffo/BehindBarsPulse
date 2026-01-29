@@ -82,6 +82,11 @@ class EmailSender:
 
     def _send_smtp(self, message: EmailMessage, recipients: list[str]) -> None:
         """Send email via SMTP."""
+        if not self.settings.ses_usr or not self.settings.ses_pwd:
+            raise ValueError(
+                "SES credentials not configured. Set ses_usr and ses_pwd in .env file."
+            )
+
         log.debug(
             "connecting_smtp",
             host=self.settings.smtp_host,

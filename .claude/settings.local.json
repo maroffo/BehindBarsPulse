@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Skill(python)",
+      "Bash(python3:*)",
+      "Bash(command -v:*)",
+      "Bash(uv sync:*)",
+      "Bash(uv run ruff check:*)",
+      "Bash(uv run pytest:*)",
+      "Bash(uv run ruff format:*)",
+      "Bash(uvx ty check:*)",
+      "Bash(tree:*)",
+      "Bash(uv run python:*)",
+      "Skill(gemini-review)",
+      "Bash(git add:*)",
+      "Bash(uv add:*)",
+      "Bash(git reset:*)",
+      "Bash(git commit:*)"
+    ]
+  }
+}

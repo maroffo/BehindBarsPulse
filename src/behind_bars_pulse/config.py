@@ -36,11 +36,11 @@ class Settings(BaseSettings):
         "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.3 Safari/605.1.15"
     )
 
-    # Email / SES
+    # Email / SES (optional - only required for send commands)
     smtp_host: str = "email-smtp.eu-west-1.amazonaws.com"
     smtp_port: int = 587
-    ses_usr: SecretStr
-    ses_pwd: SecretStr
+    ses_usr: SecretStr | None = None
+    ses_pwd: SecretStr | None = None
     sender_email: str = "behindbars@iungomail.com"
     sender_name: str = "Behind Bars Pulse"
     bounce_email: str = "bounces@iungomail.com"
@@ -68,6 +68,6 @@ def get_settings() -> Settings:
     """Get cached settings instance.
 
     Settings are loaded from environment variables and .env file.
-    Required fields (ses_usr, ses_pwd) must be set in the environment.
+    SES credentials (ses_usr, ses_pwd) are optional - only required for email sending.
     """
-    return Settings()  # type: ignore[call-arg]
+    return Settings()

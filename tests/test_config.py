@@ -3,8 +3,7 @@
 
 from pathlib import Path
 
-import pytest
-from pydantic import SecretStr, ValidationError
+from pydantic import SecretStr
 
 from behind_bars_pulse.config import Settings
 
@@ -31,10 +30,11 @@ class TestSettings:
         assert mock_settings.feed_timeout == 5
         assert mock_settings.smtp_port == 1025
 
-    def test_settings_missing_required_raises(self) -> None:
-        """Settings should raise ValidationError when required fields missing."""
-        with pytest.raises(ValidationError):
-            Settings()
+    def test_settings_ses_credentials_optional(self) -> None:
+        """Settings should allow missing SES credentials for non-email commands."""
+        settings = Settings()
+        assert settings.ses_usr is None
+        assert settings.ses_pwd is None
 
     def test_settings_secret_values_hidden(self, mock_settings: Settings) -> None:
         """Secret values should not be exposed in string representation."""
