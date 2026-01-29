@@ -20,8 +20,8 @@ class Settings(BaseSettings):
     # AI / Vertex AI
     gcp_project: str = "iungo-ai"
     gcp_location: str = "us-central1"
-    gemini_model: str = "gemini-2.0-flash-exp"
-    gemini_fallback_model: str = "gemini-1.5-flash-002"
+    gemini_model: str = "gemini-3-flash-preview"
+    gemini_fallback_model: str = "gemini-3-flash-preview"
     ai_sleep_between_calls: int = 30
     ai_temperature: float = 1.0
     ai_top_p: float = 0.95

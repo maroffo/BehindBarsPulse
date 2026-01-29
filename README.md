@@ -15,7 +15,7 @@
 |-----------|------------|
 | Language | Python 3.13 |
 | Package Manager | [uv](https://docs.astral.sh/uv/) |
-| AI/LLM | Google Gemini 2.0 Flash (Vertex AI) |
+| AI/LLM | Google Gemini 3 (Vertex AI) |
 | Data Validation | Pydantic v2 |
 | Email Delivery | AWS SES (SMTP) |
 | Logging | structlog |

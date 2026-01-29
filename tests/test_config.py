@@ -21,7 +21,7 @@ class TestSettings:
 
         assert settings.gcp_project == "iungo-ai"
         assert settings.gcp_location == "us-central1"
-        assert settings.gemini_model == "gemini-2.0-flash-exp"
+        assert settings.gemini_model == "gemini-3-flash-preview"
         assert settings.ses_usr.get_secret_value() == "test-user"
 
     def test_settings_default_values(self, mock_settings: Settings) -> None:
