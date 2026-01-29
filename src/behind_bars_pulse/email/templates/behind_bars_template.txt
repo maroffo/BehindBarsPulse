@@ -1,21 +1,19 @@
 {{subject}}
-{{newsletter_title}}
-{{newsletter_subtitle}}
+Title: {{newsletter_title}}
+Subtitle: {{newsletter_subtitle}}
+Opening Comment: {{newsletter_opening}}
+Closing Comment: {{newsletter_closing}}
 
-{{newsletter_opening}}
-
-La rassegna stampa di oggi {{today_str}}
+Items:
 {% for topic in press_review %}
-
-{{topic.category}}
+Topic: {{topic.category}}
 {{topic.comment}}
 {% for article in topic.articles %}
 {{loop.index}}. {{article.title}} - {{article.link}}
 di {{article.author}} - {{article.source}}
 {{article.summary}}{% endfor %}{% endfor %}
 
-{{newsletter_closing}}
-
+---
 
 Questa newsletter è parte del progetto BehindBarsPulse (https://github.com/maroffo/BehindBarsPulse), un'iniziativa personale creata per sensibilizzare sull'attuale situazione del sistema carcerario e della giustizia in Italia, sfruttando le potenzialità dell'intelligenza artificiale. Ogni giorno, gli articoli vengono raccolti da fonti affidabili e accuratamente selezionate. Il contenuto della newsletter è generato in modo semi-automatico utilizzando modelli di linguaggio avanzati (LLM) come Gemini, con l'obiettivo di riassumere e commentare le notizie più rilevanti.
 Nonostante l'utilizzo di tecnologie avanzate, l'elaborazione dei testi avviene sotto la supervisione umana per garantire qualità, accuratezza e rispetto delle sensibilità.

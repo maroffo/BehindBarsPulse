@@ -1,47 +1,170 @@
 # BehindBarsPulse
 
-**BehindBarsPulse** is a personal project that combines my interest in experimenting with LLM-based agents (primarily using OpenAI and Gemini models) and the need to raise awareness about the dire state of the Italian prison system.
+**BehindBarsPulse** is an automated Italian-language newsletter about the Italian prison system and justice reform. It combines RSS feed processing with LLM-based content generation to produce daily and weekly newsletters with narrative continuity.
 
-This project aims to create a daily automated newsletter that collects and synthesizes news from the websites [Ristretti Orizzonti](https://ristretti.org/) and [Antigone](https://www.antigone.it/), making information more accessible and impactful.
+## Features
 
-## Project Goals
-
-1. **Experimentation with LLM Agents:**
-   - Use state-of-the-art large language models (OpenAI, Gemini) to automate tasks such as web scraping, content summarization, and newsletter generation.
-
-2. **Awareness and Advocacy:**
-   - Highlight the challenges and issues faced by the Italian prison system.
-   - Provide a consistent, well-curated source of information for those interested in justice reform and human rights.
+- **Daily Newsletter Generation**: Collects articles from [Ristretti Orizzonti](https://ristretti.org/), enriches them with AI-generated summaries, and produces a curated newsletter
+- **Narrative Memory System**: Tracks ongoing stories, key characters, and follow-up events across issues, creating continuity and context
+- **Weekly Digest**: Synthesizes the week's coverage into a cohesive summary highlighting major narrative arcs
+- **AI-Powered Content**: Uses Google Gemini (via Vertex AI) for article summarization, categorization, and editorial commentary
 
 ## Technology Stack
 
-- **Programming Language:** Python
-- **AI Models:** OpenAI and Gemini
-- **Cloud Services:** AWS (using credits) for hosting, email distribution, and other cloud services
+| Component | Technology |
+|-----------|------------|
+| Language | Python 3.13 |
+| Package Manager | [uv](https://docs.astral.sh/uv/) |
+| AI/LLM | Google Gemini 2.0 Flash (Vertex AI) |
+| Data Validation | Pydantic v2 |
+| Email Delivery | AWS SES (SMTP) |
+| Logging | structlog |
+| Testing | pytest |
 
-*Note: The technology stack is still being defined and will evolve as the project progresses.*
+## Installation
 
-## Current Features
+```bash
+# Clone the repository
+git clone https://github.com/maroffo/BehindBarsPulse.git
+cd BehindBarsPulse
 
-- **Data Collection:** Extracting content from Ristretti Orizzonti and Antigone websites.
-- **Content Summarization:** Using LLMs to generate concise, readable summaries of daily news.
-- **Newsletter Automation:** Preparing and formatting the newsletter for daily distribution.
+# Install dependencies
+uv sync
 
-## Future Plans
+# Configure environment
+cp .env.example .env
+# Edit .env with your credentials
+```
 
-- Enhance automation workflows using AWS Lambda and other serverless technologies.
-- Implement personalization options for newsletter subscribers.
-- Add multi-language support to reach a broader audience.
-- Open the project for community contributions.
+### Required Environment Variables
 
-## How to Contribute
+```bash
+# Google Cloud (Vertex AI)
+GOOGLE_APPLICATION_CREDENTIALS=/path/to/credentials.json
 
-This project is in its early stages, and I will update the README as it evolves. Contributions and ideas are welcome in the future phases. For now, feel free to explore and provide feedback via GitHub Issues.
+# AWS SES
+ses_usr=your-ses-username
+ses_pwd=your-ses-password
+```
+
+## Usage
+
+BehindBarsPulse provides four CLI commands:
+
+```bash
+# Collect and enrich articles (run daily, e.g., 6:00 AM)
+uv run python -m behind_bars_pulse collect
+
+# Generate and send daily newsletter
+uv run python -m behind_bars_pulse generate
+uv run python -m behind_bars_pulse generate --dry-run  # Preview without sending
+
+# Generate and send weekly digest (run weekly, e.g., Sunday 8:00 AM)
+uv run python -m behind_bars_pulse weekly
+uv run python -m behind_bars_pulse weekly --dry-run
+
+# View narrative context status
+uv run python -m behind_bars_pulse status
+```
+
+### Typical Workflow
+
+1. **Daily collection** (cron: every morning)
+   - Fetches RSS feed
+   - Enriches articles with AI summaries
+   - Extracts and updates narrative context (stories, characters, follow-ups)
+   - Saves to `data/collected_articles/`
+
+2. **Daily generation** (cron: after collection)
+   - Loads collected articles
+   - Uses narrative context for continuity
+   - Generates newsletter with AI commentary
+   - Sends via email, archives to `previous_issues/`
+
+3. **Weekly digest** (cron: Sunday)
+   - Loads past 7 days of archived newsletters
+   - Synthesizes major narrative arcs
+   - Highlights upcoming events and trends
+
+## Architecture
+
+```
+RSS Feed → Fetch → Enrich (AI) → Extract Stories/Characters
+                                        ↓
+                              Narrative Context (JSON)
+                                        ↓
+Generate Content (AI) → Review (AI) → Render (Jinja2) → Archive → Send (SES)
+```
+
+### Project Structure
+
+```
+BehindBarsPulse/
+├── src/behind_bars_pulse/
+│   ├── __main__.py          # CLI entry point
+│   ├── config.py            # Pydantic Settings
+│   ├── models.py            # Core data models
+│   ├── collector.py         # Daily article collection
+│   ├── ai/
+│   │   ├── service.py       # Gemini AI service
+│   │   └── prompts.py       # System prompts
+│   ├── narrative/
+│   │   ├── models.py        # StoryThread, KeyCharacter, FollowUp
+│   │   ├── storage.py       # JSON persistence
+│   │   └── matching.py      # Story matching logic
+│   ├── newsletter/
+│   │   ├── generator.py     # Daily newsletter pipeline
+│   │   └── weekly.py        # Weekly digest generator
+│   ├── feeds/
+│   │   └── fetcher.py       # RSS fetching
+│   └── email/
+│       ├── sender.py        # SMTP/SES delivery
+│       └── templates/       # Jinja2 templates
+├── data/                    # Runtime data
+│   ├── narrative_context.json
+│   └── collected_articles/
+├── previous_issues/         # Archived newsletters
+└── tests/
+```
+
+## Narrative Memory System
+
+The narrative memory system tracks:
+
+- **Story Threads**: Ongoing narratives (e.g., "Decreto Carceri" legislative process) with impact scores and mention counts
+- **Key Characters**: Important figures with their roles and evolving positions
+- **Follow-ups**: Upcoming events and deadlines to monitor
+
+This enables the newsletter to:
+- Reference previous coverage: *"Come abbiamo seguito nelle ultime settimane..."*
+- Track story evolution: *"Il Ministro Nordio, che la settimana scorsa aveva dichiarato X, oggi..."*
+- Alert readers to upcoming events: *"Ricordiamo che domani è previsto..."*
+
+## Development
+
+```bash
+# Run tests
+uv run pytest
+
+# Code quality checks
+uv run ruff check src/ tests/
+uv run ruff format .
+uvx ty check src/
+
+# Full validation
+uv run ruff check . && uv run ruff format --check . && uvx ty check src/ && uv run pytest
+```
+
+## Project Goals
+
+1. **AI Experimentation**: Explore LLM capabilities for automated journalism and content curation
+2. **Awareness**: Highlight challenges in the Italian prison system and justice reform
+3. **Narrative Continuity**: Demonstrate how AI can maintain editorial memory across publications
 
 ## License
 
-This project is currently for personal use. Licensing details will be added as the project develops.
+This project is for personal use. Licensing details will be added as the project develops.
 
 ---
 
-*BehindBarsPulse is inspired by a commitment to technology and social justice. Together, we can make a difference.*
+*BehindBarsPulse is inspired by a commitment to technology and social justice. Developed with care in Geremeas, Sardinia.*
