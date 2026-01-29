@@ -166,8 +166,26 @@ class AIService:
             return match.group(1).strip()
         return text.strip()
 
+    def _fix_json_trailing_commas(self, text: str) -> str:
+        """Remove trailing commas from JSON (common LLM error).
+
+        Args:
+            text: JSON text that may have trailing commas.
+
+        Returns:
+            JSON text with trailing commas removed.
+        """
+        # Remove trailing commas before } or ]
+        text = re.sub(r",\s*}", "}", text)
+        text = re.sub(r",\s*]", "]", text)
+        return text
+
     def _parse_json_response(self, response: str) -> Any:
-        """Parse JSON from LLM response, handling markdown fences.
+        """Parse JSON from LLM response, handling common issues.
+
+        Handles:
+        - Markdown code fences (```json ... ```)
+        - Trailing commas (common LLM error)
 
         Args:
             response: Raw LLM response text.
@@ -176,9 +194,10 @@ class AIService:
             Parsed JSON data.
 
         Raises:
-            json.JSONDecodeError: If response is not valid JSON.
+            json.JSONDecodeError: If response is not valid JSON after fixes.
         """
         cleaned = self._strip_markdown_fences(response)
+        cleaned = self._fix_json_trailing_commas(cleaned)
         return json.loads(cleaned)
 
     def generate_press_review(

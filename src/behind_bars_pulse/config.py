@@ -18,8 +18,8 @@ class Settings(BaseSettings):
     )
 
     # AI / Vertex AI
-    gcp_project: str = "iungo-ai"
-    gcp_location: str = "us-central1"
+    gcp_project: str = "wishew-gemini-test"
+    gcp_location: str = "global"
     gemini_model: str = "gemini-3-flash-preview"
     gemini_fallback_model: str = "gemini-3-flash-preview"
     ai_sleep_between_calls: int = 30

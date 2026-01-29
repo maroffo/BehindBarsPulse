@@ -26,7 +26,7 @@ def integration_settings(tmp_path: Path) -> Settings:
     """Create settings for integration testing."""
     return Settings(
         gcp_project="test-project",
-        gcp_location="us-central1",
+        gcp_location="global",
         gemini_model="gemini-test",
         gemini_fallback_model="gemini-fallback",
         ai_sleep_between_calls=0,

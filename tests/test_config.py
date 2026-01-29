@@ -19,8 +19,8 @@ class TestSettings:
             previous_issues_dir=tmp_path,
         )
 
-        assert settings.gcp_project == "iungo-ai"
-        assert settings.gcp_location == "us-central1"
+        assert settings.gcp_project == "wishew-gemini-test"
+        assert settings.gcp_location == "global"
         assert settings.gemini_model == "gemini-3-flash-preview"
         assert settings.ses_usr.get_secret_value() == "test-user"
 
