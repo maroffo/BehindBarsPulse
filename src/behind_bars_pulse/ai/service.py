@@ -184,6 +184,7 @@ class AIService:
         """Parse JSON from LLM response, handling common issues.
 
         Handles:
+        - Empty responses
         - Markdown code fences (```json ... ```)
         - Trailing commas (common LLM error)
 
@@ -194,11 +195,26 @@ class AIService:
             Parsed JSON data.
 
         Raises:
+            ValueError: If response is empty.
             json.JSONDecodeError: If response is not valid JSON after fixes.
         """
+        if not response or not response.strip():
+            log.error("empty_llm_response")
+            raise ValueError("LLM returned empty response")
+
         cleaned = self._strip_markdown_fences(response)
         cleaned = self._fix_json_trailing_commas(cleaned)
-        return json.loads(cleaned)
+
+        try:
+            return json.loads(cleaned)
+        except json.JSONDecodeError as e:
+            # Log the problematic response for debugging
+            log.error(
+                "json_parse_failed",
+                error=str(e),
+                response_preview=cleaned[:500] if len(cleaned) > 500 else cleaned,
+            )
+            raise
 
     def generate_press_review(
         self,
@@ -385,20 +401,39 @@ class AIService:
         log.info("enriching_articles", count=len(articles))
 
         enriched: dict[str, EnrichedArticle] = {}
+        failed_count = 0
 
         for url, article in articles.items():
             log.info("enriching_article", title=article.title[:30])
 
-            info = self.extract_article_info(article.content)
+            try:
+                info = self.extract_article_info(article.content)
+                author = info.author
+                source = info.source
+                summary = info.summary
+            except (ValueError, json.JSONDecodeError) as e:
+                # If enrichment fails, use defaults and continue
+                log.warning(
+                    "article_enrichment_failed",
+                    title=article.title[:30],
+                    error=str(e),
+                )
+                author = "Sconosciuto"
+                source = "Ristretti Orizzonti"
+                summary = ""
+                failed_count += 1
 
             enriched[url] = EnrichedArticle(
                 title=article.title,
                 link=article.link,
                 content=article.content,
-                author=info.author,
-                source=info.source,
-                summary=info.summary,
+                author=author,
+                source=source,
+                summary=summary,
             )
+
+        if failed_count > 0:
+            log.warning("enrichment_completed_with_failures", failed=failed_count, total=len(articles))
 
         return enriched
 
