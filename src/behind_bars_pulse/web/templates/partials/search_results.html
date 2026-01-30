@@ -1,8 +1,8 @@
 {% if results %}
 <div class="search-results">
-    <p class="results-count">{{ results | length }} risultat{% if results | length == 1 %}o{% else %}i{% endif %} trovat{% if results | length == 1 %}o{% else %}i{% endif %}</p>
+    <p class="results-count">{{ total }} risultat{% if total == 1 %}o{% else %}i{% endif %} trovat{% if total == 1 %}o{% else %}i{% endif %}</p>
 
-    <div class="results-list">
+    <div class="results-list" id="results-list">
         {% for result in results %}
         <article class="result-card">
             <div class="result-header">
@@ -30,6 +30,19 @@
         </article>
         {% endfor %}
     </div>
+
+    {% if has_more %}
+    <div id="load-more-container">
+        <button class="load-more-btn"
+                hx-get="/search/results?q={{ query | urlencode }}&offset={{ next_offset }}"
+                hx-target="#load-more-container"
+                hx-swap="outerHTML"
+                hx-indicator="#load-more-spinner">
+            Carica altri risultati
+        </button>
+        <span id="load-more-spinner" class="htmx-indicator">Caricamento...</span>
+    </div>
+    {% endif %}
 </div>
 {% elif query %}
 <div class="no-results">

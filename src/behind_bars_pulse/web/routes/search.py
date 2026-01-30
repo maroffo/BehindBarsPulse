@@ -1,5 +1,5 @@
 # ABOUTME: Search routes with semantic search using embeddings.
-# ABOUTME: Provides HTMX-powered search with vector similarity.
+# ABOUTME: Provides HTMX-powered search with vector similarity and pagination.
 
 from dataclasses import dataclass
 
@@ -12,6 +12,8 @@ from behind_bars_pulse.web.dependencies import ArticleRepo, NewsletterSvc, Templ
 
 router = APIRouter(prefix="/search")
 logger = structlog.get_logger()
+
+PAGE_SIZE = 25
 
 
 @dataclass
@@ -46,9 +48,12 @@ async def search_results(
     article_repo: ArticleRepo,
     newsletter_svc: NewsletterSvc,
     q: str = Query("", min_length=0),
+    offset: int = Query(0, ge=0),
 ):
     """Perform semantic search and return results partial (HTMX)."""
     results: list[SearchResult] = []
+    total = 0
+    has_more = False
 
     if q.strip():
         try:
@@ -56,26 +61,42 @@ async def search_results(
             query_embedding = await newsletter_svc.generate_embedding(q)
 
             # Search by embedding similarity (≥60% or min 10 results)
-            similar = await article_repo.search_by_embedding(
+            similar, total = await article_repo.search_by_embedding(
                 embedding=query_embedding,
                 threshold=0.6,
                 min_results=10,
+                limit=PAGE_SIZE,
+                offset=offset,
             )
 
             results = [
                 SearchResult(article=article, similarity=score) for article, score in similar
             ]
-            logger.info("search_completed", query=q, results_count=len(results))
+            has_more = (offset + len(results)) < total
+            logger.info(
+                "search_completed",
+                query=q,
+                results_count=len(results),
+                total=total,
+                offset=offset,
+            )
 
         except Exception as e:
             logger.error("search_failed", query=q, error=str(e))
             # Return empty results on error
 
+    # Choose template based on whether this is initial load or "load more"
+    template = "partials/search_results.html" if offset == 0 else "partials/search_more.html"
+
     return templates.TemplateResponse(
         request=request,
-        name="partials/search_results.html",
+        name=template,
         context={
             "query": q,
             "results": results,
+            "total": total,
+            "offset": offset,
+            "has_more": has_more,
+            "next_offset": offset + PAGE_SIZE,
         },
     )

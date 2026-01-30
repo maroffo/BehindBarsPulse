@@ -133,43 +133,60 @@ class ArticleRepository:
         embedding: list[float],
         threshold: float = 0.6,
         min_results: int = 10,
-    ) -> Sequence[tuple[Article, float]]:
+        limit: int = 25,
+        offset: int = 0,
+    ) -> tuple[Sequence[tuple[Article, float]], int]:
         """Search articles by embedding similarity (cosine distance).
 
         Returns all results above threshold, but guarantees min_results.
         If threshold returns fewer than min_results, top min_results are returned.
+        Supports pagination with limit/offset.
 
         Args:
             embedding: Query embedding vector
             threshold: Minimum similarity threshold (0-1, higher = more similar)
-            min_results: Minimum number of results to return
+            min_results: Minimum number of results to return (ignores threshold if needed)
+            limit: Maximum results per page
+            offset: Number of results to skip
 
         Returns:
-            List of (Article, similarity_score) tuples sorted by similarity desc
+            Tuple of (results list, total count)
         """
         distance = Article.embedding.cosine_distance(embedding)
         similarity = (1 - distance).label("similarity")
 
-        # First try with threshold
-        result = await self.session.execute(
-            select(Article, similarity)
+        # Count total results above threshold
+        count_result = await self.session.execute(
+            select(func.count(Article.id))
             .where(Article.embedding.isnot(None))
             .where((1 - distance) >= threshold)
-            .order_by(distance)
         )
-        results = [(row.Article, row.similarity) for row in result.all()]
+        total_above_threshold = count_result.scalar_one()
 
-        # If not enough results, get top min_results regardless of threshold
-        if len(results) < min_results:
+        # If enough results above threshold, use threshold query with pagination
+        if total_above_threshold >= min_results:
             result = await self.session.execute(
                 select(Article, similarity)
                 .where(Article.embedding.isnot(None))
+                .where((1 - distance) >= threshold)
                 .order_by(distance)
-                .limit(min_results)
+                .limit(limit)
+                .offset(offset)
             )
             results = [(row.Article, row.similarity) for row in result.all()]
+            return results, total_above_threshold
 
-        return results
+        # Not enough above threshold - return exactly min_results (no pagination)
+        result = await self.session.execute(
+            select(Article, similarity)
+            .where(Article.embedding.isnot(None))
+            .order_by(distance)
+            .limit(min_results)
+            .offset(offset)
+        )
+        results = [(row.Article, row.similarity) for row in result.all()]
+        # No pagination for fallback - just return min_results
+        return results, min(min_results, len(results) + offset)
 
     async def count(self, category: str | None = None) -> int:
         """Count total articles, optionally filtered by category."""

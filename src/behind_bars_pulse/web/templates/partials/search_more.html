@@ -1,0 +1,39 @@
+{% for result in results %}
+<article class="result-card">
+    <div class="result-header">
+        {% if result.article.category %}
+        <span class="article-category">{{ result.article.category }}</span>
+        {% endif %}
+        <span class="similarity-score" title="Rilevanza: {{ (result.similarity * 100) | round(1) }}%">
+            {{ (result.similarity * 100) | round | int }}% correlato
+        </span>
+    </div>
+    <h2 class="result-title">
+        <a href="/article/{{ result.article.id }}">{{ result.article.title }}</a>
+    </h2>
+    <p class="article-meta">
+        {% if result.article.author %}<span class="author">{{ result.article.author }}</span>{% endif %}
+        {% if result.article.author and result.article.source %} · {% endif %}
+        {% if result.article.source %}<span class="source">{{ result.article.source }}</span>{% endif %}
+        {% if result.article.published_date %}
+        · <time>{{ result.article.published_date.strftime('%d/%m/%Y') }}</time>
+        {% endif %}
+    </p>
+    {% if result.article.summary %}
+    <p class="result-summary">{{ result.article.summary }}</p>
+    {% endif %}
+</article>
+{% endfor %}
+
+{% if has_more %}
+<div id="load-more-container">
+    <button class="load-more-btn"
+            hx-get="/search/results?q={{ query | urlencode }}&offset={{ next_offset }}"
+            hx-target="#load-more-container"
+            hx-swap="outerHTML"
+            hx-indicator="#load-more-spinner">
+        Carica altri risultati
+    </button>
+    <span id="load-more-spinner" class="htmx-indicator">Caricamento...</span>
+</div>
+{% endif %}
