@@ -1,0 +1,18 @@
+# ABOUTME: Example Terraform variables for prod environment.
+# ABOUTME: Copy to terraform.tfvars and fill in actual values.
+
+project_id = "your-gcp-project-id"
+region     = "us-central1"
+
+# Generate a strong password: openssl rand -base64 32
+db_password = "CHANGE_ME_GENERATE_STRONG_PASSWORD"
+
+# AWS SES credentials
+ses_username = "your-ses-smtp-username"
+ses_password = "your-ses-smtp-password"
+
+# Container image (required for prod)
+container_image = "gcr.io/your-project/behindbars:latest"
+
+# Custom domain (optional, requires DNS setup)
+custom_domain = "behindbars.org"

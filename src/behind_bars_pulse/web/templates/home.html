@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block title %}BehindBars - {{ newsletter.title if newsletter else "Newsletter sul Sistema Carcerario" }}{% endblock %}
+
+{% block content %}
+{% if newsletter %}
+<article class="newsletter">
+    <header class="newsletter-header">
+        <time class="newsletter-date" datetime="{{ newsletter.issue_date }}">
+            {{ newsletter.issue_date.strftime('%d %B %Y') }}
+        </time>
+        <h1 class="newsletter-title">{{ newsletter.title }}</h1>
+        <p class="newsletter-subtitle">{{ newsletter.subtitle }}</p>
+    </header>
+
+    <section class="newsletter-opening editorial">
+        {{ newsletter.opening | replace('\n\n', '</p><p>') | replace('\n', '<br>') | sanitize }}
+    </section>
+
+    <hr class="divider-strong">
+
+    {% if newsletter.press_review %}
+    <section class="press-review">
+        <h2 class="section-title">Rassegna Stampa</h2>
+
+        {% for category in newsletter.press_review %}
+        <div class="category">
+            <h3 class="category-title">{{ category.category }}</h3>
+            {% if category.comment %}
+            <p class="category-comment">{{ category.comment }}</p>
+            {% endif %}
+
+            <div class="articles">
+                {% for article in category.articles %}
+                <article class="article-card">
+                    <h4 class="article-title">
+                        <a href="{{ article.link }}" target="_blank" rel="noopener">{{ article.title }}</a>
+                    </h4>
+                    <p class="article-meta">
+                        {% if article.author %}<span class="author">{{ article.author }}</span>{% endif %}
+                        {% if article.author and article.source %} · {% endif %}
+                        {% if article.source %}<span class="source">{{ article.source }}</span>{% endif %}
+                    </p>
+                    {% if article.summary %}
+                    <p class="article-summary">{{ article.summary }}</p>
+                    {% endif %}
+                </article>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+    </section>
+    {% endif %}
+
+    <section class="newsletter-closing">
+        <div class="closing-box">
+            {{ newsletter.closing | replace('\n\n', '</p><p>') | replace('\n', '<br>') | sanitize }}
+        </div>
+    </section>
+</article>
+
+{% else %}
+<div class="empty-state">
+    <h1>Nessuna newsletter disponibile</h1>
+    <p>La newsletter di oggi non è ancora stata pubblicata.</p>
+    <a href="/archive" class="btn">Consulta l'archivio</a>
+</div>
+{% endif %}
+{% endblock %}

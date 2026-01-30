@@ -23,6 +23,15 @@ dependencies = [
     "python-dateutil>=2.9.0",
     "structlog>=25.0.0",
     "tenacity>=9.1.2",
+    # Database
+    "sqlalchemy[asyncio]>=2.0.0",
+    "asyncpg>=0.30.0",
+    "alembic>=1.14.0",
+    "pgvector>=0.3.0",
+    # Web
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.34.0",
+    "bleach>=6.0.0",
 ]
 
 [dependency-groups]

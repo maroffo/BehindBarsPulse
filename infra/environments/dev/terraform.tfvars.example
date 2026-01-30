@@ -1,0 +1,12 @@
+# ABOUTME: Example Terraform variables for dev environment.
+# ABOUTME: Copy to terraform.tfvars and fill in actual values.
+
+project_id = "your-gcp-project-id"
+region     = "us-central1"
+
+# Generate a strong password: openssl rand -base64 32
+db_password = "CHANGE_ME_GENERATE_STRONG_PASSWORD"
+
+# Container image (leave empty for first apply, set after image is built)
+# container_image = "gcr.io/your-project/behindbars:latest"
+container_image = ""

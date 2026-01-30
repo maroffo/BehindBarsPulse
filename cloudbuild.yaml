@@ -1,0 +1,64 @@
+# ABOUTME: Cloud Build configuration for CI/CD pipeline.
+# ABOUTME: Builds Docker image, runs tests, and deploys to Cloud Run.
+
+substitutions:
+  _REGION: us-central1
+  _SERVICE_NAME: behindbars
+  _ENV: dev
+
+steps:
+  # Run tests
+  - name: 'python:3.13-slim'
+    id: 'test'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        pip install uv
+        uv sync --frozen
+        uv run pytest tests/ -v --tb=short
+
+  # Build Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'build'
+    args:
+      - 'build'
+      - '-t'
+      - 'gcr.io/${PROJECT_ID}/${_SERVICE_NAME}:${SHORT_SHA}'
+      - '-t'
+      - 'gcr.io/${PROJECT_ID}/${_SERVICE_NAME}:latest'
+      - '.'
+
+  # Push to Container Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'push'
+    args:
+      - 'push'
+      - '--all-tags'
+      - 'gcr.io/${PROJECT_ID}/${_SERVICE_NAME}'
+
+  # Deploy to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'deploy'
+    entrypoint: 'gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - '${_SERVICE_NAME}-${_ENV}'
+      - '--image'
+      - 'gcr.io/${PROJECT_ID}/${_SERVICE_NAME}:${SHORT_SHA}'
+      - '--region'
+      - '${_REGION}'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+
+images:
+  - 'gcr.io/${PROJECT_ID}/${_SERVICE_NAME}:${SHORT_SHA}'
+  - 'gcr.io/${PROJECT_ID}/${_SERVICE_NAME}:latest'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+  machineType: 'E2_HIGHCPU_8'
+
+timeout: '1200s'

@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}{{ article.title }} - BehindBars{% endblock %}
+
+{% block content %}
+<article class="article-single">
+    <nav class="breadcrumb">
+        <a href="/articles">← Tutti gli articoli</a>
+    </nav>
+
+    <header class="article-header">
+        <div class="article-meta-top">
+            {% if article.category %}
+            <span class="article-category">{{ article.category }}</span>
+            {% endif %}
+            {% if article.importance %}
+            <span class="article-importance importance-{{ article.importance | lower }}">
+                {{ article.importance }}
+            </span>
+            {% endif %}
+        </div>
+
+        <h1 class="article-title">{{ article.title }}</h1>
+
+        <div class="article-meta">
+            {% if article.author %}<span class="author">{{ article.author }}</span>{% endif %}
+            {% if article.author and article.source %} · {% endif %}
+            {% if article.source %}<span class="source">{{ article.source }}</span>{% endif %}
+            {% if article.published_date %}
+            · <time datetime="{{ article.published_date }}">{{ article.published_date.strftime('%d %B %Y') }}</time>
+            {% endif %}
+        </div>
+    </header>
+
+    {% if article.summary %}
+    <section class="article-summary-box">
+        <h2>Riassunto</h2>
+        <p>{{ article.summary }}</p>
+    </section>
+    {% endif %}
+
+    <section class="article-content">
+        {{ article.content | replace('\n\n', '</p><p>') | replace('\n', '<br>') | sanitize }}
+    </section>
+
+    <footer class="article-footer">
+        <a href="{{ article.link }}" class="btn btn-primary" target="_blank" rel="noopener">
+            Leggi l'articolo originale →
+        </a>
+        {% if article.wayback_url %}
+        <a href="{{ article.wayback_url }}" class="btn btn-outline" target="_blank" rel="noopener">
+            Versione archiviata
+        </a>
+        {% endif %}
+    </footer>
+
+    {% if related_articles %}
+    <section class="related-articles">
+        <h2>Articoli correlati</h2>
+        <div class="related-grid">
+            {% for related in related_articles %}
+            <a href="/article/{{ related.id }}" class="related-card">
+                <h3>{{ related.title }}</h3>
+                <span class="related-meta">{{ related.source or 'Fonte sconosciuta' }}</span>
+            </a>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+</article>
+{% endblock %}

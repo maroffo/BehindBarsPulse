@@ -16,8 +16,11 @@
 | Language | Python 3.13 |
 | Package Manager | [uv](https://docs.astral.sh/uv/) |
 | AI/LLM | Google Gemini 3 (Vertex AI) |
+| Database | PostgreSQL 16 + pgvector |
+| Web Framework | FastAPI + Jinja2 |
 | Data Validation | Pydantic v2 |
 | Email Delivery | AWS SES (SMTP) |
+| Infrastructure | Terraform (GCP Cloud Run + Cloud SQL) |
 | Logging | structlog |
 | Testing | pytest |
 
@@ -46,6 +49,32 @@ GOOGLE_APPLICATION_CREDENTIALS=/path/to/credentials.json
 ses_usr=your-ses-username
 ses_pwd=your-ses-password
 ```
+
+## Local Development with Docker
+
+The easiest way to run the full stack locally:
+
+```bash
+# Start database
+docker compose up -d db
+
+# Run migrations
+docker compose --profile migrate up migrate
+
+# Start web app (builds image)
+docker compose up -d --build
+
+# View logs
+docker compose logs -f web
+
+# Stop everything
+docker compose down
+
+# Reset database
+docker compose down -v
+```
+
+The web app will be available at http://localhost:8000
 
 ## Usage
 
@@ -108,6 +137,19 @@ BehindBarsPulse/
 │   ├── ai/
 │   │   ├── service.py       # Gemini AI service
 │   │   └── prompts.py       # System prompts
+│   ├── db/                  # Database layer
+│   │   ├── models.py        # SQLAlchemy ORM models
+│   │   ├── session.py       # Async session management
+│   │   ├── repository.py    # Data access layer
+│   │   └── migrations/      # Alembic migrations
+│   ├── web/                 # Web frontend
+│   │   ├── app.py           # FastAPI application
+│   │   ├── routes/          # API routes
+│   │   ├── templates/       # Jinja2 templates
+│   │   └── static/          # CSS/JS assets
+│   ├── services/            # Business logic
+│   │   ├── newsletter_service.py  # DB persistence + embeddings
+│   │   └── wayback_service.py     # Wayback Machine archival
 │   ├── narrative/
 │   │   ├── models.py        # StoryThread, KeyCharacter, FollowUp
 │   │   ├── storage.py       # JSON persistence
@@ -120,12 +162,35 @@ BehindBarsPulse/
 │   └── email/
 │       ├── sender.py        # SMTP/SES delivery
 │       └── templates/       # Jinja2 templates
+├── infra/                   # Terraform IaC
+│   ├── modules/             # Reusable modules
+│   │   ├── cloud_run/       # Cloud Run service
+│   │   ├── cloud_sql/       # PostgreSQL + pgvector
+│   │   ├── networking/      # VPC + connectors
+│   │   ├── secrets/         # Secret Manager
+│   │   └── storage/         # GCS buckets
+│   └── environments/        # dev/prod configs
 ├── data/                    # Runtime data
 │   ├── narrative_context.json
 │   └── collected_articles/
 ├── previous_issues/         # Archived newsletters
+├── docker-compose.yml       # Local development
+├── Dockerfile               # Container image
 └── tests/
 ```
+
+## Web Frontend
+
+The web frontend at `behindbars.org` provides:
+
+- **Home**: Latest newsletter with full content
+- **Archive**: Browse all past newsletters by date
+- **Articles**: Searchable article database with semantic search (pgvector)
+- **Search**: HTMX-powered instant search across all content
+
+### Semantic Search
+
+Articles are embedded using Vertex AI's `text-multilingual-embedding-002` model (768 dimensions, optimized for Italian). Search queries find semantically similar articles, not just keyword matches.
 
 ## Narrative Memory System
 

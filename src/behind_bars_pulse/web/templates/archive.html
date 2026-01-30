@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}Archivio Newsletter - BehindBars{% endblock %}
+
+{% block content %}
+<section class="archive">
+    <header class="page-header">
+        <h1 class="page-title">Archivio Newsletter</h1>
+        <p class="page-subtitle">Tutte le edizioni di BehindBars</p>
+    </header>
+
+    {% if newsletters %}
+    <div class="newsletter-list">
+        {% for newsletter in newsletters %}
+        <article class="newsletter-preview">
+            <time class="preview-date" datetime="{{ newsletter.issue_date }}">
+                {{ newsletter.issue_date.strftime('%d %B %Y') }}
+            </time>
+            <h2 class="preview-title">
+                <a href="/archive/{{ newsletter.issue_date.strftime('%Y-%m-%d') }}">{{ newsletter.title }}</a>
+            </h2>
+            <p class="preview-subtitle">{{ newsletter.subtitle }}</p>
+        </article>
+        {% endfor %}
+    </div>
+
+    {% if has_more %}
+    <nav class="pagination">
+        <a href="/archive?page={{ page + 1 }}" class="btn btn-outline">Carica altre newsletter</a>
+    </nav>
+    {% endif %}
+
+    {% else %}
+    <div class="empty-state">
+        <p>Nessuna newsletter nell'archivio.</p>
+    </div>
+    {% endif %}
+</section>
+{% endblock %}

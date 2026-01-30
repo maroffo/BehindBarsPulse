@@ -30,7 +30,8 @@ class Settings(BaseSettings):
     # Feeds
     feed_url: str = "https://ristretti.org/index.php?format=feed&type=rss"
     feed_timeout: int = 10
-    max_articles: int = 100
+    max_articles: int = 100  # Collect all, AI selects best for newsletter
+    max_newsletter_articles: int = 12  # Max articles in final newsletter
     feed_user_agent: str = (
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
         "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.3 Safari/605.1.15"
@@ -45,6 +46,27 @@ class Settings(BaseSettings):
     sender_name: str = "Behind Bars Pulse"
     bounce_email: str = "bounces@iungomail.com"
     default_recipient: str = "maroffo@gmail.com"
+
+    # Database (optional - only required for web and DB persistence)
+    db_host: str = "localhost"
+    db_port: int = 5432
+    db_name: str = "behindbars"
+    db_user: str = "behindbars"
+    db_password: SecretStr | None = None
+    db_pool_size: int = 5
+    db_pool_max_overflow: int = 10
+
+    @property
+    def database_url(self) -> str:
+        """Build async PostgreSQL connection URL."""
+        password = self.db_password.get_secret_value() if self.db_password else ""
+        return f"postgresql+asyncpg://{self.db_user}:{password}@{self.db_host}:{self.db_port}/{self.db_name}"
+
+    @property
+    def database_url_sync(self) -> str:
+        """Build sync PostgreSQL connection URL (for Alembic)."""
+        password = self.db_password.get_secret_value() if self.db_password else ""
+        return f"postgresql://{self.db_user}:{password}@{self.db_host}:{self.db_port}/{self.db_name}"
 
     # Paths
     previous_issues_dir: Path = Path("previous_issues")

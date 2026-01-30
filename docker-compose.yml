@@ -1,0 +1,67 @@
+# ABOUTME: Docker Compose configuration for local development and testing.
+# ABOUTME: Includes PostgreSQL with pgvector and the FastAPI web application.
+
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: behindbars-db
+    environment:
+      POSTGRES_USER: behindbars
+      POSTGRES_PASSWORD: behindbars_local
+      POSTGRES_DB: behindbars
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U behindbars -d behindbars"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: behindbars-web
+    ports:
+      - "8000:8000"
+    environment:
+      # Database
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: behindbars
+      DB_USER: behindbars
+      DB_PASSWORD: behindbars_local
+      # GCP (optional - only needed for AI features)
+      GCP_PROJECT: ${GCP_PROJECT:-iungo-ai}
+      GCP_LOCATION: ${GCP_LOCATION:-us-central1}
+      GOOGLE_APPLICATION_CREDENTIALS: /app/credentials/gcp-key.json
+    volumes:
+      # Mount GCP credentials for local AI features (optional)
+      - ${GOOGLE_APPLICATION_CREDENTIALS:-./credentials}:/app/credentials:ro
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # Optional: Run migrations
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: behindbars-migrate
+    entrypoint: ["alembic", "upgrade", "head"]
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: behindbars
+      DB_USER: behindbars
+      DB_PASSWORD: behindbars_local
+    depends_on:
+      db:
+        condition: service_healthy
+    profiles:
+      - migrate
+
+volumes:
+  pgdata:

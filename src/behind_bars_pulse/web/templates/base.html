@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}BehindBars{% endblock %}</title>
+    <meta name="description" content="{% block description %}Newsletter quotidiana sul sistema carcerario italiano{% endblock %}">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="/static/js/htmx.min.js" defer></script>
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <header class="site-header">
+        <div class="container">
+            <nav class="nav">
+                <a href="/" class="logo">
+                    <span class="logo-text">BehindBars</span>
+                    <span class="logo-subtitle">Giustizia e Sistema Carcerario</span>
+                </a>
+                <ul class="nav-links">
+                    <li><a href="/" {% if request.url.path == "/" %}class="active"{% endif %}>Oggi</a></li>
+                    <li><a href="/archive" {% if request.url.path.startswith("/archive") %}class="active"{% endif %}>Archivio</a></li>
+                    <li><a href="/articles" {% if request.url.path.startswith("/articles") or request.url.path.startswith("/article") %}class="active"{% endif %}>Articoli</a></li>
+                    <li><a href="/search" {% if request.url.path.startswith("/search") %}class="active"{% endif %}>Cerca</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main class="main">
+        <div class="container">
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-about">
+                    <h3>BehindBarsPulse</h3>
+                    <p>
+                        Un progetto personale che utilizza l'intelligenza artificiale per raccogliere
+                        e sintetizzare notizie sul sistema carcerario e la giustizia in Italia.
+                    </p>
+                    <p class="footer-note">
+                        I contenuti sono generati con l'ausilio di modelli linguistici avanzati e supervisionati.
+                    </p>
+                </div>
+                <div class="footer-links">
+                    <h4>Link utili</h4>
+                    <ul>
+                        <li><a href="https://github.com/maroffo/BehindBarsPulse">GitHub</a></li>
+                        <li><a href="/archive">Archivio Newsletter</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>Creato con cura in Sardegna</p>
+            </div>
+        </div>
+    </footer>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

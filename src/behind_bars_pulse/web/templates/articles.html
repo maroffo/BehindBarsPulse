@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}Tutti gli Articoli - BehindBars{% endblock %}
+
+{% block content %}
+<section class="articles-page">
+    <header class="page-header">
+        <h1 class="page-title">Articoli</h1>
+        <p class="page-subtitle">Tutti gli articoli raccolti e analizzati</p>
+    </header>
+
+    {% if categories %}
+    <nav class="category-filter">
+        <a href="/articles" class="filter-btn {% if not current_category %}active{% endif %}">Tutti</a>
+        {% for cat in categories %}
+        <a href="/articles?category={{ cat | urlencode }}"
+           class="filter-btn {% if current_category == cat %}active{% endif %}">
+            {{ cat }}
+        </a>
+        {% endfor %}
+    </nav>
+    {% endif %}
+
+    {% if articles %}
+    <div class="articles-list">
+        {% for article in articles %}
+        <article class="article-card article-card-full">
+            <div class="article-header">
+                {% if article.category %}
+                <span class="article-category">{{ article.category }}</span>
+                {% endif %}
+                {% if article.published_date %}
+                <time class="article-date" datetime="{{ article.published_date }}">
+                    {{ article.published_date.strftime('%d/%m/%Y') }}
+                </time>
+                {% endif %}
+            </div>
+            <h2 class="article-title">
+                <a href="/article/{{ article.id }}">{{ article.title }}</a>
+            </h2>
+            <p class="article-meta">
+                {% if article.author %}<span class="author">{{ article.author }}</span>{% endif %}
+                {% if article.author and article.source %} · {% endif %}
+                {% if article.source %}<span class="source">{{ article.source }}</span>{% endif %}
+            </p>
+            {% if article.summary %}
+            <p class="article-summary">{{ article.summary }}</p>
+            {% endif %}
+            <a href="{{ article.link }}" class="article-link" target="_blank" rel="noopener">
+                Leggi l'articolo originale →
+            </a>
+        </article>
+        {% endfor %}
+    </div>
+
+    {% if has_more %}
+    <nav class="pagination">
+        <a href="/articles?page={{ page + 1 }}{% if current_category %}&category={{ current_category | urlencode }}{% endif %}"
+           class="btn btn-outline">
+            Carica altri articoli
+        </a>
+    </nav>
+    {% endif %}
+
+    {% else %}
+    <div class="empty-state">
+        <p>Nessun articolo trovato{% if current_category %} nella categoria "{{ current_category }}"{% endif %}.</p>
+    </div>
+    {% endif %}
+</section>
+{% endblock %}

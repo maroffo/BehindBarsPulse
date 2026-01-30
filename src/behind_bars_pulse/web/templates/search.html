@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block title %}Cerca - BehindBars{% endblock %}
+
+{% block content %}
+<section class="search-page">
+    <header class="page-header">
+        <h1 class="page-title">Cerca</h1>
+        <p class="page-subtitle">Ricerca semantica negli articoli</p>
+    </header>
+
+    <form class="search-form" hx-get="/search/results" hx-target="#search-results" hx-trigger="submit">
+        <div class="search-input-wrapper">
+            <input type="text"
+                   name="q"
+                   placeholder="Cerca articoli su sovraffollamento, diritti dei detenuti, riforme..."
+                   value="{{ query or '' }}"
+                   class="search-input"
+                   autocomplete="off">
+            <button type="submit" class="search-btn">Cerca</button>
+        </div>
+        <p class="search-hint">
+            La ricerca utilizza l'intelligenza artificiale per trovare articoli semanticamente correlati alla tua query.
+        </p>
+    </form>
+
+    <div id="search-results">
+        {% include "partials/search_results.html" %}
+    </div>
+</section>
+{% endblock %}
