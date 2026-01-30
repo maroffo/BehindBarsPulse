@@ -185,7 +185,7 @@ class FollowUp(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
     event: Mapped[str] = mapped_column(Text, nullable=False)
-    expected_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
+    expected_date: Mapped[date] = mapped_column(Date, nullable=False)
     story_id: Mapped[str | None] = mapped_column(
         String(36), ForeignKey("story_threads.id", ondelete="SET NULL"), nullable=True
     )

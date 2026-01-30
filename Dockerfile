@@ -2,7 +2,7 @@
 # ABOUTME: Uses uv for dependency management, runs uvicorn on Cloud Run.
 
 # Build stage
-FROM python:3.13-slim as builder
+FROM python:3.13-slim AS builder
 
 # Install uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
@@ -11,7 +11,7 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 WORKDIR /app
 
 # Copy dependency files
-COPY pyproject.toml uv.lock ./
+COPY pyproject.toml uv.lock README.md ./
 
 # Install dependencies
 RUN uv sync --frozen --no-dev --no-install-project
@@ -24,7 +24,7 @@ COPY alembic.ini ./
 RUN uv sync --frozen --no-dev
 
 # Runtime stage
-FROM python:3.13-slim as runtime
+FROM python:3.13-slim AS runtime
 
 # Create non-root user
 RUN useradd --create-home --shell /bin/bash app

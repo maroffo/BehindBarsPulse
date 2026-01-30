@@ -5,6 +5,7 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
 
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from behind_bars_pulse.config import get_settings
@@ -84,6 +85,8 @@ async def init_db() -> None:
     """
     engine = get_engine()
     async with engine.begin() as conn:
+        # Enable pgvector extension (required for vector columns)
+        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
         await conn.run_sync(Base.metadata.create_all)
 
 
