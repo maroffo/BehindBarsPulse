@@ -95,11 +95,14 @@ def cmd_generate(args: argparse.Namespace) -> int:
     collection_date = date.fromisoformat(args.date) if args.date else date.today()
     days_back = args.days_back
 
+    first_issue = getattr(args, "first_issue", False)
+
     try:
         with NewsletterGenerator() as generator:
             newsletter_content, press_review, _ = generator.generate(
                 collection_date=collection_date,
                 days_back=days_back,
+                first_issue=first_issue,
             )
 
             today_str = collection_date.strftime("%d.%m.%Y")
@@ -263,6 +266,11 @@ def create_parser() -> argparse.ArgumentParser:
         default=7,
         help="Number of days to look back for articles (default: 7)",
     )
+    generate_parser.add_argument(
+        "--first-issue",
+        action="store_true",
+        help="Include introductory text for the first newsletter edition",
+    )
 
     # weekly command
     weekly_parser = subparsers.add_parser(
@@ -301,6 +309,7 @@ def main() -> int:
         args.dry_run = False
         args.date = None
         args.days_back = 7
+        args.first_issue = False
         return cmd_generate(args)
 
     commands = {

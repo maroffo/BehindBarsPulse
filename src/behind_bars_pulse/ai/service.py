@@ -20,6 +20,7 @@ from tenacity import (
 from behind_bars_pulse.ai.prompts import (
     ENTITY_EXTRACTION_PROMPT,
     EXTRACT_INFO_PROMPT,
+    FIRST_ISSUE_INTRO,
     FOLLOWUP_DETECTION_PROMPT,
     NEWSLETTER_CONTENT_PROMPT,
     PRESS_REVIEW_PROMPT,
@@ -301,6 +302,7 @@ class AIService:
         articles: dict[str, EnrichedArticle],
         previous_issues: list[str],
         narrative_context: object | None = None,
+        first_issue: bool = False,
     ) -> NewsletterContent:
         """Generate newsletter title, subtitle, opening, and closing.
 
@@ -308,6 +310,7 @@ class AIService:
             articles: Dictionary of enriched articles.
             previous_issues: List of previous newsletter texts for context.
             narrative_context: Optional NarrativeContext for story/character awareness.
+            first_issue: If True, include introductory text explaining the newsletter.
 
         Returns:
             NewsletterContent with generated fields.
@@ -323,17 +326,23 @@ class AIService:
             for issue in previous_issues:
                 feed_content += "\n\n" + issue
 
+        # Build system prompt, prepending first issue intro if needed
+        system_prompt = NEWSLETTER_CONTENT_PROMPT
+        if first_issue:
+            system_prompt = FIRST_ISSUE_INTRO + system_prompt
+
         log.info(
             "generating_newsletter_content",
             article_count=len(articles),
             prompt_chars=len(feed_content),
             previous_issues_count=len(previous_issues) if previous_issues else 0,
             has_narrative_context=narrative_context is not None,
+            first_issue=first_issue,
         )
 
         response = self._generate(
             prompt=feed_content,
-            system_prompt=NEWSLETTER_CONTENT_PROMPT,
+            system_prompt=system_prompt,
         )
 
         return NewsletterContent(**self._parse_json_response(response))

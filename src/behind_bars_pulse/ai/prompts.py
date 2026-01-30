@@ -1,6 +1,21 @@
 # ABOUTME: System prompts for Gemini AI interactions.
 # ABOUTME: Contains all prompt templates for newsletter generation tasks.
 
+FIRST_ISSUE_INTRO = """**IMPORTANTE: Questa è la PRIMA EDIZIONE della newsletter.**
+
+Nel tuo opening commentary, devi includere una breve introduzione che spieghi ai lettori:
+1. Chi siamo: BehindBars è una newsletter settimanale dedicata al sistema carcerario e alla giustizia italiana
+2. Cosa facciamo: Raccogliamo, analizziamo e sintetizziamo le notizie più rilevanti della settimana sul mondo penitenziario
+3. Perché lo facciamo: Per informare cittadini, operatori e decisori su una realtà spesso trascurata dai media mainstream
+4. Cosa troveranno: Rassegna stampa ragionata, analisi delle tendenze, aggiornamenti su riforme e criticità
+
+L'introduzione deve essere integrata naturalmente nell'opening, non come blocco separato. Mantieni un tono accogliente ma professionale, invitando i lettori a seguire le prossime edizioni.
+
+Esempio di incipit (da adattare al contenuto della settimana):
+"Benvenuti alla prima edizione di BehindBars, la newsletter settimanale dedicata al sistema penitenziario e alla giustizia italiana. Ogni settimana raccoglieremo e analizzeremo le notizie più significative da questo mondo spesso ai margini dell'attenzione mediatica, ma centrale per la nostra democrazia. In questa prima uscita..."
+
+"""
+
 PRESS_REVIEW_PROMPT = """You are an expert editor for a WEEKLY newsletter about the Italian prison system and justice.
 Your task is to SELECT THE BEST ARTICLES from a larger pool and organize them into a compelling, readable newsletter.
 

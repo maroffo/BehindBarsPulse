@@ -138,6 +138,8 @@ class NewsletterGenerator:
         force_fetch: bool = False,
         use_db: bool = True,
         days_back: int = 7,
+        first_issue: bool = False,
+        update_narrative: bool = True,
     ) -> tuple[NewsletterContent, list[PressReviewCategory], dict[str, EnrichedArticle]]:
         """Run the full newsletter generation pipeline.
 
@@ -151,6 +153,8 @@ class NewsletterGenerator:
             force_fetch: If True, skip collected articles and fetch fresh.
             use_db: If True, try loading from database first.
             days_back: Number of days to look back for articles (default 7 for weekly).
+            first_issue: If True, include introductory text for first newsletter.
+            update_narrative: If True, update narrative context after generation.
 
         Returns:
             Tuple of (NewsletterContent, press review categories, enriched articles).
@@ -205,8 +209,9 @@ class NewsletterGenerator:
             enriched_articles,
             previous_issues,
             narrative_context=narrative_context,
+            first_issue=first_issue,
         )
-        log.info("newsletter_content_generated")
+        log.info("newsletter_content_generated", first_issue=first_issue)
 
         # Review and polish content (optional - continue with unreviewed if fails)
         try:
@@ -235,6 +240,10 @@ class NewsletterGenerator:
 
         # Merge enriched data into press review articles
         press_review = self._merge_enriched_data(press_review, enriched_articles)
+
+        # Update narrative context with extracted stories and entities
+        if update_narrative:
+            self._update_narrative_context(enriched_articles, narrative_context)
 
         return newsletter_content, press_review, enriched_articles
 
@@ -293,6 +302,144 @@ class NewsletterGenerator:
 
         log.debug("merge_complete", matched=matched, unmatched=unmatched)
         return press_review
+
+    def _update_narrative_context(
+        self,
+        enriched_articles: dict[str, EnrichedArticle],
+        existing_context: NarrativeMemory | None,
+    ) -> None:
+        """Extract stories and entities from articles and update narrative context.
+
+        Args:
+            enriched_articles: Articles to extract from.
+            existing_context: Current narrative context (may be None).
+        """
+        import uuid
+
+        from behind_bars_pulse.narrative.models import (
+            CharacterPosition,
+            FollowUp,
+            KeyCharacter,
+            StoryThread,
+        )
+
+        log.info("updating_narrative_context", article_count=len(enriched_articles))
+
+        # Load or create context
+        context = existing_context or NarrativeMemory()
+
+        # Extract stories
+        try:
+            existing_stories = [s.model_dump(mode="json") for s in context.ongoing_storylines]
+            story_updates = self.ai_service.extract_stories(enriched_articles, existing_stories)
+
+            # Update existing stories
+            for update in story_updates.get("updated_stories", []):
+                for story in context.ongoing_storylines:
+                    if story.id == update.get("id"):
+                        story.summary = update.get("new_summary", story.summary)
+                        story.keywords = update.get("new_keywords", story.keywords)
+                        story.impact_score = update.get("impact_score", story.impact_score)
+                        story.last_update = date.today()
+                        story.mention_count += 1
+                        for url in update.get("article_urls", []):
+                            if url not in [str(u) for u in story.related_articles]:
+                                story.related_articles.append(url)
+                        log.debug("story_updated", story_id=story.id, topic=story.topic)
+
+            # Add new stories
+            for new_story in story_updates.get("new_stories", []):
+                story = StoryThread(
+                    id=str(uuid.uuid4()),
+                    topic=new_story.get("topic", "Unknown"),
+                    summary=new_story.get("summary", ""),
+                    keywords=new_story.get("keywords", []),
+                    impact_score=new_story.get("impact_score", 0.5),
+                    first_seen=date.today(),
+                    last_update=date.today(),
+                    related_articles=new_story.get("article_urls", []),
+                )
+                context.ongoing_storylines.append(story)
+                log.info("new_story_added", topic=story.topic)
+
+        except Exception as e:
+            log.warning("story_extraction_failed", error=str(e))
+
+        # Extract entities (characters)
+        try:
+            existing_chars = [c.model_dump(mode="json") for c in context.key_characters]
+            entity_updates = self.ai_service.extract_entities(enriched_articles, existing_chars)
+
+            # Update existing characters
+            for update in entity_updates.get("updated_characters", []):
+                for char in context.key_characters:
+                    if char.name.lower() == update.get("name", "").lower():
+                        new_pos = update.get("new_position", {})
+                        if new_pos:
+                            char.positions.append(
+                                CharacterPosition(
+                                    date=date.today(),
+                                    stance=new_pos.get("stance", ""),
+                                    source_url=new_pos.get("source_url"),
+                                )
+                            )
+                        log.debug("character_updated", name=char.name)
+
+            # Add new characters
+            for new_char in entity_updates.get("new_characters", []):
+                initial_pos = new_char.get("initial_position", {})
+                char = KeyCharacter(
+                    name=new_char.get("name", "Unknown"),
+                    role=new_char.get("role", ""),
+                    aliases=new_char.get("aliases", []),
+                    positions=[
+                        CharacterPosition(
+                            date=date.today(),
+                            stance=initial_pos.get("stance", ""),
+                            source_url=initial_pos.get("source_url"),
+                        )
+                    ]
+                    if initial_pos
+                    else [],
+                )
+                context.key_characters.append(char)
+                log.info("new_character_added", name=char.name)
+
+        except Exception as e:
+            log.warning("entity_extraction_failed", error=str(e))
+
+        # Extract follow-ups
+        try:
+            story_ids = [s.id for s in context.ongoing_storylines]
+            followup_data = self.ai_service.detect_followups(enriched_articles, story_ids)
+
+            for fu in followup_data.get("followups", []):
+                followup = FollowUp(
+                    id=str(uuid.uuid4()),
+                    event=fu.get("event", ""),
+                    expected_date=date.fromisoformat(fu.get("expected_date", str(date.today()))),
+                    story_id=fu.get("story_id"),
+                    created_at=date.today(),
+                )
+                context.pending_followups.append(followup)
+                log.info("followup_added", followup_event=followup.event[:50])
+
+        except Exception as e:
+            log.warning("followup_extraction_failed", error=str(e))
+
+        # Archive old stories
+        archived = self.narrative_storage.archive_old_stories(context)
+        if archived:
+            log.info("stories_archived", count=archived)
+
+        # Save updated context
+        self.narrative_storage.save_context(context)
+        log.info(
+            "narrative_context_updated",
+            stories=len(context.ongoing_storylines),
+            characters=len(context.key_characters),
+            followups=len(context.pending_followups),
+        )
 
     def build_context(
         self,
