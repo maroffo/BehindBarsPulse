@@ -34,12 +34,12 @@ services:
       DB_USER: behindbars
       DB_PASSWORD: behindbars_local
       # GCP (optional - only needed for AI features)
-      GCP_PROJECT: ${GCP_PROJECT:-iungo-ai}
+      GCP_PROJECT: ${GCP_PROJECT:-wishew-gemini-test}
       GCP_LOCATION: ${GCP_LOCATION:-us-central1}
       GOOGLE_APPLICATION_CREDENTIALS: /app/credentials/gcp-key.json
     volumes:
-      # Mount GCP credentials for local AI features (optional)
-      - ${GOOGLE_APPLICATION_CREDENTIALS:-./credentials}:/app/credentials:ro
+      # Mount GCP application default credentials for AI features
+      - ~/.config/gcloud/application_default_credentials.json:/app/credentials/gcp-key.json:ro
     depends_on:
       db:
         condition: service_healthy

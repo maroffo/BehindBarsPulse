@@ -55,11 +55,11 @@ async def search_results(
             # Generate embedding for query
             query_embedding = await newsletter_svc.generate_embedding(q)
 
-            # Search by embedding similarity
+            # Search by embedding similarity (≥60% or min 10 results)
             similar = await article_repo.search_by_embedding(
                 embedding=query_embedding,
-                limit=10,
-                threshold=0.5,  # Lower threshold for broader results
+                threshold=0.6,
+                min_results=10,
             )
 
             results = [

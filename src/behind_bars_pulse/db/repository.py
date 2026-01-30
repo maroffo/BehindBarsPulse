@@ -129,28 +129,47 @@ class ArticleRepository:
         return result.scalars().all()
 
     async def search_by_embedding(
-        self, embedding: list[float], limit: int = 10, threshold: float = 0.7
+        self,
+        embedding: list[float],
+        threshold: float = 0.6,
+        min_results: int = 10,
     ) -> Sequence[tuple[Article, float]]:
         """Search articles by embedding similarity (cosine distance).
 
+        Returns all results above threshold, but guarantees min_results.
+        If threshold returns fewer than min_results, top min_results are returned.
+
         Args:
             embedding: Query embedding vector
-            limit: Maximum results to return
             threshold: Minimum similarity threshold (0-1, higher = more similar)
+            min_results: Minimum number of results to return
 
         Returns:
-            List of (Article, similarity_score) tuples
+            List of (Article, similarity_score) tuples sorted by similarity desc
         """
-        # Cosine distance: lower = more similar, so 1 - distance = similarity
         distance = Article.embedding.cosine_distance(embedding)
+        similarity = (1 - distance).label("similarity")
+
+        # First try with threshold
         result = await self.session.execute(
-            select(Article, (1 - distance).label("similarity"))
+            select(Article, similarity)
             .where(Article.embedding.isnot(None))
             .where((1 - distance) >= threshold)
             .order_by(distance)
-            .limit(limit)
         )
-        return [(row.Article, row.similarity) for row in result.all()]
+        results = [(row.Article, row.similarity) for row in result.all()]
+
+        # If not enough results, get top min_results regardless of threshold
+        if len(results) < min_results:
+            result = await self.session.execute(
+                select(Article, similarity)
+                .where(Article.embedding.isnot(None))
+                .order_by(distance)
+                .limit(min_results)
+            )
+            results = [(row.Article, row.similarity) for row in result.all()]
+
+        return results
 
     async def count(self, category: str | None = None) -> int:
         """Count total articles, optionally filtered by category."""
