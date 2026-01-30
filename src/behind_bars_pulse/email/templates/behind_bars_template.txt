@@ -41,6 +41,11 @@ RASSEGNA STAMPA
 
 ───────────────────────────────────────────────────────────────────────────────
 
+  "Il grado di civiltà di un Paese si misura osservando
+   la condizione delle sue carceri."
+
+───────────────────────────────────────────────────────────────────────────────
+
 BehindBarsPulse - https://github.com/maroffo/BehindBarsPulse
 Un progetto che utilizza l'IA per raccogliere notizie sul sistema carcerario italiano.
 

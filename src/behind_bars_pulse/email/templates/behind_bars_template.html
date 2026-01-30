@@ -120,6 +120,19 @@
             margin: 40px 0;
         }
 
+        /* Quote */
+        .closing-quote {
+            font-family: Georgia, 'Times New Roman', serif;
+            font-size: 18px;
+            font-style: italic;
+            color: #4a4a4a;
+            text-align: center;
+            padding: 32px 48px;
+            margin: 0;
+            border-top: 1px solid #e0e0e0;
+            background-color: #fafafa;
+        }
+
         /* Section Header */
         .section-header {
             font-family: Georgia, 'Times New Roman', serif;
@@ -296,6 +309,13 @@
                     <div class="editorial">
                         {{newsletter_closing | replace('\n\n', '</p><p>') | replace('\n', '<br>') | safe}}
                     </div>
+                </td>
+            </tr>
+
+            <!-- Quote -->
+            <tr>
+                <td class="closing-quote">
+                    "Il grado di civiltà di un Paese si misura osservando la condizione delle sue carceri."
                 </td>
             </tr>
 
