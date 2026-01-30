@@ -115,7 +115,7 @@ def cmd_generate(args: argparse.Namespace) -> int:
             else:
                 # Save preview to previous_issues/
                 sender = EmailSender()
-                preview_path = sender.save_preview(context)
+                preview_path = sender.save_preview(context, issue_date=collection_date)
                 log.info(
                     "dry_run_complete", title=newsletter_content.title, preview=str(preview_path)
                 )
