@@ -81,7 +81,7 @@ def cmd_collect(args: argparse.Namespace) -> int:
 
 
 def cmd_generate(args: argparse.Namespace) -> int:
-    """Generate and send daily newsletter.
+    """Generate and send weekly newsletter.
 
     Uses collected articles if available, otherwise fetches fresh.
     Integrates narrative context when available.
@@ -92,11 +92,17 @@ def cmd_generate(args: argparse.Namespace) -> int:
     log = structlog.get_logger()
     log.info("cmd_generate_start")
 
+    collection_date = date.fromisoformat(args.date) if args.date else date.today()
+    days_back = args.days_back
+
     try:
         with NewsletterGenerator() as generator:
-            newsletter_content, press_review, _ = generator.generate()
+            newsletter_content, press_review, _ = generator.generate(
+                collection_date=collection_date,
+                days_back=days_back,
+            )
 
-            today_str = date.today().strftime("%d.%m.%Y")
+            today_str = collection_date.strftime("%d.%m.%Y")
             context = generator.build_context(newsletter_content, press_review, today_str)
 
             if not args.dry_run:
@@ -239,12 +245,23 @@ def create_parser() -> argparse.ArgumentParser:
     # generate command
     generate_parser = subparsers.add_parser(
         "generate",
-        help="Generate and send daily newsletter",
+        help="Generate and send weekly newsletter",
     )
     generate_parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Generate without sending email",
+    )
+    generate_parser.add_argument(
+        "--date",
+        type=str,
+        help="End date for article collection (YYYY-MM-DD). Defaults to today.",
+    )
+    generate_parser.add_argument(
+        "--days-back",
+        type=int,
+        default=7,
+        help="Number of days to look back for articles (default: 7)",
     )
 
     # weekly command
@@ -282,6 +299,8 @@ def main() -> int:
     if args.command is None:
         # Default behavior: run generate (backward compatible)
         args.dry_run = False
+        args.date = None
+        args.days_back = 7
         return cmd_generate(args)
 
     commands = {

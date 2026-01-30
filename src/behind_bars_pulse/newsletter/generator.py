@@ -1,6 +1,7 @@
 # ABOUTME: Newsletter generation orchestrator.
 # ABOUTME: Coordinates feed fetching, AI processing, and content assembly.
 
+import asyncio
 from datetime import date
 from pathlib import Path
 
@@ -19,6 +20,56 @@ from behind_bars_pulse.narrative.models import NarrativeContext as NarrativeMemo
 from behind_bars_pulse.narrative.storage import NarrativeStorage
 
 log = structlog.get_logger()
+
+
+def _load_articles_from_db(
+    end_date: date, days_back: int = 7
+) -> dict[str, EnrichedArticle] | None:
+    """Load articles from database for a date range.
+
+    Args:
+        end_date: The end date of the range (typically today or newsletter date).
+        days_back: Number of days to look back (default 7 for weekly newsletter).
+
+    Returns None if DB is not configured or no articles found.
+    """
+    from datetime import timedelta
+
+    try:
+        from behind_bars_pulse.db.repository import ArticleRepository
+        from behind_bars_pulse.db.session import get_session
+
+        start_date = end_date - timedelta(days=days_back - 1)
+
+        async def _fetch():
+            async with get_session() as session:
+                repo = ArticleRepository(session)
+                articles = await repo.list_by_date_range(start_date, end_date)
+                return articles
+
+        # Run async code synchronously
+        articles = asyncio.run(_fetch())
+
+        if not articles:
+            return None
+
+        # Convert DB models to EnrichedArticle
+        enriched: dict[str, EnrichedArticle] = {}
+        for article in articles:
+            enriched[article.link] = EnrichedArticle(
+                title=article.title,
+                link=article.link,
+                content=article.content,
+                author=article.author,
+                source=article.source,
+                summary=article.summary,
+            )
+
+        return enriched
+
+    except Exception as e:
+        log.debug("db_load_skipped", error=str(e), hint="DB not configured or unavailable")
+        return None
 
 
 class NewsletterGenerator:
@@ -85,25 +136,43 @@ class NewsletterGenerator:
         self,
         collection_date: date | None = None,
         force_fetch: bool = False,
+        use_db: bool = True,
+        days_back: int = 7,
     ) -> tuple[NewsletterContent, list[PressReviewCategory], dict[str, EnrichedArticle]]:
         """Run the full newsletter generation pipeline.
 
-        Automatically uses pre-collected articles if available for the date,
-        otherwise fetches fresh from RSS.
+        Article loading priority:
+        1. Database (if use_db=True and DB configured)
+        2. Pre-collected JSON files
+        3. Fresh fetch from RSS
 
         Args:
-            collection_date: Date to load articles from. Defaults to today.
+            collection_date: End date for article collection. Defaults to today.
             force_fetch: If True, skip collected articles and fetch fresh.
+            use_db: If True, try loading from database first.
+            days_back: Number of days to look back for articles (default 7 for weekly).
 
         Returns:
             Tuple of (NewsletterContent, press review categories, enriched articles).
         """
-        log.info("starting_newsletter_generation")
+        log.info("starting_newsletter_generation", days_back=days_back)
         collection_date = collection_date or date.today()
 
-        # Try to use pre-collected articles first (avoids rate limiting)
         enriched_articles: dict[str, EnrichedArticle] = {}
-        if not force_fetch:
+
+        # 1. Try database first (if enabled)
+        if not force_fetch and use_db:
+            enriched_articles = _load_articles_from_db(collection_date, days_back) or {}
+            if enriched_articles:
+                log.info(
+                    "using_db_articles",
+                    count=len(enriched_articles),
+                    end_date=str(collection_date),
+                    days_back=days_back,
+                )
+
+        # 2. Fall back to pre-collected JSON files
+        if not enriched_articles and not force_fetch:
             enriched_articles = self.narrative_storage.load_collected_articles(collection_date)
             if enriched_articles:
                 log.info(
@@ -112,7 +181,7 @@ class NewsletterGenerator:
                     date=str(collection_date),
                 )
 
-        # Fall back to fetching if no collected articles
+        # 3. Fall back to fetching fresh from RSS
         if not enriched_articles:
             log.info("fetching_fresh_articles")
             enriched_articles = self._fetch_and_enrich()

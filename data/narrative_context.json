@@ -5,21 +5,29 @@
       "topic": "Emergenza suicidi e sovraffollamento carcerario 2026",
       "status": "active",
       "first_seen": "2026-01-29",
-      "last_update": "2026-01-29",
-      "summary": "L'inizio del 2026 conferma una crisi umanitaria sistemica nel sistema penitenziario italiano, con una scia di suicidi che ha colpito gli istituti di Asti, Cremona e Sollicciano (Firenze). Con oltre 64.000 detenuti a fronte di 46.000 posti, il dibattito si sposta sulla necessità di provvedimenti di clemenza e sull'insufficienza dei rimedi risarcitori previsti per le condizioni degradanti.",
+      "last_update": "2026-01-30",
+      "summary": "Il dibattito sull'emergenza carceraria si intensifica con l'apertura del Cardinale Matteo Zuppi (CEI) alla proposta di 'indulto differito' e l'annuncio di un'assemblea nazionale a Roma per il 6 febbraio 2026. Le associazioni Antigone, Arci, Cgil e Acli hanno lanciato un appello per la clemenza e l'umanità, definendo la situazione attuale una 'questione democratica' insostenibile, aggravata dal quinto suicidio dall'inizio dell'anno avvenuto a Padova.",
       "keywords": [
-        "suicidi",
+        "Antigone",
         "sovraffollamento",
-        "clemenza",
+        "suicidi",
+        "Cardinale Zuppi",
         "Sollicciano",
-        "rimedi risarcitori"
+        "rimedi risarcitori",
+        "assemblea 6 febbraio",
+        "diritti umani",
+        "clemenza",
+        "indulto differito"
       ],
       "related_articles": [
         "https://ristretti.org/carceri-stop-alla-catastrofe-umanitaria",
         "https://ristretti.org/firenze-a-sollicciano-il-primo-suicidio-del-2026-detenuto-di-29-anni-si-e-tolto-la-vita",
-        "https://ristretti.org/prato-sovraffollamento-e-risarcimento-ai-detenuti-un-incontro-organizzato-dalla-camera-penale"
+        "https://ristretti.org/prato-sovraffollamento-e-risarcimento-ai-detenuti-un-incontro-organizzato-dalla-camera-penale",
+        "https://ristretti.org/lappello-per-diritti-e-umanita-in-carcere-dopo-lultimo-suicidio-ce-unenorme-questione-democratica",
+        "https://ristretti.org/carceri-card-zuppi-si-alla-proposta-di-indulto-differito",
+        "https://ristretti.org/di-trasferimenti-e-riorganizzazione-dei-circuiti-detentivi"
       ],
-      "mention_count": 1,
+      "mention_count": 2,
       "impact_score": 0.9,
       "weekly_highlight": false
     },
@@ -28,22 +36,32 @@
       "topic": "Chiusura Alta Sicurezza a Padova e crisi del Modello Due Palazzi",
       "status": "active",
       "first_seen": "2026-01-29",
-      "last_update": "2026-01-29",
-      "summary": "La decisione di chiudere la sezione di Alta Sicurezza 1 del carcere Due Palazzi di Padova per far posto a trasferimenti forzati ha innescato una crisi profonda, culminata nel suicidio di un detenuto di 74 anni. L'opposizione (Pd) e le associazioni denunciano la distruzione di percorsi rieducativi decennali e parlano di violenza istituzionale.",
+      "last_update": "2026-01-30",
+      "summary": "La crisi al carcere Due Palazzi di Padova è precipitata con il suicidio del 73enne Pietro Marinaro, verificatosi poco prima di un trasferimento forzato che avrebbe interrotto un percorso riabilitativo di 19 anni. Il DAP ha disposto il declassamento della sezione Alta Sicurezza 1 per raddoppiare la capienza dei posti (da 25 a 50) nel tentativo di gestire il sovraffollamento, scatenando dure critiche da parte di Ristretti Orizzonti e Antigone. Le parlamentari Ilaria Cucchi e Stefania Ascari hanno presentato un'interrogazione urgente al Ministro Nordio denunciando la 'violenza istituzionale' dei trasferimenti repentini.",
       "keywords": [
-        "Padova",
-        "Due Palazzi",
-        "Alta Sicurezza",
+        "Pietro Marinaro",
+        "declassamento",
         "trasferimenti",
-        "Ristretti Orizzonti"
+        "Due Palazzi",
+        "Padova",
+        "Alta Sicurezza",
+        "Ilaria Cucchi",
+        "Ristretti Orizzonti",
+        "interrogazione parlamentare"
       ],
       "related_articles": [
         "https://ristretti.org/padova-detenuto-suicida-in-carcere-alla-vigilia-della-protesta-contro-la-chiusura-del-settore-as",
         "https://ristretti.org/padova-dramma-al-due-palazzi-detenuto-74enne-si-toglie-la-vita",
-        "https://ristretti.org/serracchiani-e-zan-pd-suicidio-in-carcere-a-padova-e-tragedia-annunciata-governo-ha-gravi-responsabilita"
+        "https://ristretti.org/serracchiani-e-zan-pd-suicidio-in-carcere-a-padova-e-tragedia-annunciata-governo-ha-gravi-responsabilita",
+        "https://ristretti.org/vorrei-istituzioni-che-sappiano-essere-miti-e-sensibili",
+        "https://ristretti.org/padova-detenuto-si-uccide-per-evitare-il-trasferimento-ilaria-cucchi-interrogazione-a-nordio",
+        "https://ristretti.org/padova-detenuto-suicida-era-nellelenco-dei-reclusi-da-trasferire-si-mobilitano-le-associazioni",
+        "https://ristretti.org/padova-detenuto-si-uccide-in-cella-alla-notizia-del-trasferimento",
+        "https://ristretti.org/padova-si-uccide-uno-dei-20-detenuti-da-trasferire-lo-stato-cosi-ha-gia-perso",
+        "https://ristretti.org/padova-siamo-davanti-a-una-tragedia-annunciata-da-tempo-si-parlava-di-una-dismissione"
       ],
-      "mention_count": 1,
-      "impact_score": 0.8,
+      "mention_count": 2,
+      "impact_score": 0.9,
       "weekly_highlight": false
     },
     {
@@ -51,20 +69,26 @@
       "topic": "Referendum separazione delle carriere e scontro procedurale",
       "status": "active",
       "first_seen": "2026-01-29",
-      "last_update": "2026-01-29",
-      "summary": "Il Comitato dei 15 ha depositato oltre 500.000 firme in Cassazione per il referendum oppositivo alla separazione delle carriere. Resta però il rebus legale davanti al Tar del Lazio per lo spostamento della data del voto, fissata dal governo per marzo, in un clima di forte tensione tra magistratura e politica.",
+      "last_update": "2026-01-30",
+      "summary": "Il Tar del Lazio ha confermato le date del 22 e 23 marzo 2026 per il referendum sulla riforma della giustizia, respingendo il ricorso presentato da un comitato di giuristi che chiedeva un rinvio. La sentenza n. 1694 stabilisce che la consultazione deve procedere in tempi certi, superando i tentativi di blocco procedurale e garantendo la stabilità del calendario elettorale per la separazione delle carriere.",
       "keywords": [
+        "Ministro Nordio",
         "separazione carriere",
-        "referendum",
+        "marzo 2026",
+        "giustizia",
+        "ordinamento giurisdizionale",
         "Cassazione",
-        "Tar Lazio",
-        "giustizia"
+        "Tar del Lazio",
+        "referendum giustizia",
+        "referendum",
+        "Tar Lazio"
       ],
       "related_articles": [
-        "https://ristretti.org/arrivano-in-cassazione-le-firme-dei-volenterosi-e-resta-il-rebus-tar"
+        "https://ristretti.org/arrivano-in-cassazione-le-firme-dei-volenterosi-e-resta-il-rebus-tar",
+        "https://ristretti.org/referendum-sulla-giustizia-il-tar-del-lazio-respinge-il-ricorso-sulla-data-si-vota-il-22-e-23-marzo"
       ],
-      "mention_count": 1,
-      "impact_score": 0.8,
+      "mention_count": 2,
+      "impact_score": 0.7,
       "weekly_highlight": false
     },
     {
@@ -116,20 +140,25 @@
       "topic": "Inchiesta sull'uccisione di Abderrahim Mansouri a Milano",
       "status": "active",
       "first_seen": "2026-01-29",
-      "last_update": "2026-01-29",
-      "summary": "Un poliziotto è indagato per omicidio volontario dopo aver ucciso il 28enne Abderrahim Mansouri durante un'operazione antidroga a Milano. La difesa invoca la legittima difesa per una pistola a salve, mentre la famiglia della vittima contesta la dinamica dei fatti, riaprendo il dibattito sull'uso delle armi e la necessità di body cam.",
+      "last_update": "2026-01-30",
+      "summary": "L'uccisione di un giovane nel parco di Rogoredo a Milano alimenta nuove riflessioni critiche sul degrado della sicurezza urbana e sul fallimento dei sistemi repressivi puri. Viene sollevata la necessità di un cambio di paradigma verso la prevenzione sociale e culturale per contrastare l'alienazione che alimenta la criminalità nelle aree marginali della metropoli.",
       "keywords": [
-        "Milano",
-        "polizia",
+        "Rogoredo",
         "omicidio volontario",
+        "repressione",
         "legittima difesa",
-        "body cam"
+        "sicurezza sociale",
+        "polizia",
+        "body cam",
+        "degrado urbano",
+        "Milano"
       ],
       "related_articles": [
-        "https://ristretti.org/morte-a-milano-lagente-non-doveva-essere-nel-boschetto"
+        "https://ristretti.org/morte-a-milano-lagente-non-doveva-essere-nel-boschetto",
+        "https://ristretti.org/morire-a-rogoredo-ordine-senza-giustizia"
       ],
-      "mention_count": 1,
-      "impact_score": 0.5,
+      "mention_count": 2,
+      "impact_score": 0.4,
       "weekly_highlight": false
     },
     {
@@ -152,6 +181,69 @@
       "mention_count": 1,
       "impact_score": 0.4,
       "weekly_highlight": false
+    },
+    {
+      "id": "800385b3-47be-48f6-b20d-08a129348d7a",
+      "topic": "Stabilizzazione del personale PNRR nella Giustizia",
+      "status": "active",
+      "first_seen": "2026-01-30",
+      "last_update": "2026-01-30",
+      "summary": "Il Ministero della Giustizia ha avviato un piano massiccio di stabilizzazione per 9.368 addetti dell'Ufficio per il Processo, con un investimento di 349 milioni di euro. La misura mira a consolidare le risorse umane introdotte con il PNRR per ridurre l'arretrato giudiziario e modernizzare l'organizzazione dei tribunali italiani, rispondendo alle richieste dell'Associazione Nazionale Magistrati.",
+      "keywords": [
+        "PNRR",
+        "Ufficio per il Processo",
+        "stabilizzazione",
+        "personale giudiziario",
+        "Ministero Giustizia"
+      ],
+      "related_articles": [
+        "https://ristretti.org/giustizia-e-pnrr-trovate-le-risorse-per-stabilizzare-oltre-9-000-persone"
+      ],
+      "mention_count": 1,
+      "impact_score": 0.8,
+      "weekly_highlight": false
+    },
+    {
+      "id": "b64fd3cf-d3da-45b2-9461-e9dcbf06ce76",
+      "topic": "Diritti nelle Camere di Sicurezza (Carcere Ombra)",
+      "status": "active",
+      "first_seen": "2026-01-30",
+      "last_update": "2026-01-30",
+      "summary": "In Emilia-Romagna è emersa la questione delle 'camere di sicurezza' delle forze di polizia, definite un 'carcere ombra' che ospita circa 2.000 persone all'anno. Il Garante regionale Roberto Cavalieri denuncia criticità igieniche e mancanza di formazione specifica per gestire soggetti fragili (tossicodipendenti e malati psichici) trattenuti in attesa di udienza, avviando monitoraggi e corsi di formazione per la Polizia Locale.",
+      "keywords": [
+        "camere di sicurezza",
+        "Garante Emilia-Romagna",
+        "fermo di polizia",
+        "diritti detenuti",
+        "Roberto Cavalieri"
+      ],
+      "related_articles": [
+        "https://ristretti.org/emilia-romagna-laltro-carcere-2-000-allanno-nella-zona-grigia-delle-camere-di-sicurezza"
+      ],
+      "mention_count": 1,
+      "impact_score": 0.5,
+      "weekly_highlight": false
+    },
+    {
+      "id": "b6ef607c-c322-47c1-b408-b57ed64a500b",
+      "topic": "Digitalizzazione e abbattimento barriere: Progetto ZeroMail",
+      "status": "active",
+      "first_seen": "2026-01-30",
+      "last_update": "2026-01-30",
+      "summary": "Nelle carceri italiane prende piede il servizio ZeroMail, un'iniziativa che consente ai detenuti di inviare e ricevere posta elettronica tramite scansioni digitali gestite in sicurezza. Il progetto non solo riduce l'isolamento tecnologico, ma offre impiego retribuito ai reclusi, contribuendo attivamente alla riduzione della recidiva attraverso il lavoro e la tecnologia.",
+      "keywords": [
+        "ZeroMail",
+        "tecnologia in carcere",
+        "comunicazione",
+        "lavoro carcerario",
+        "recidiva"
+      ],
+      "related_articles": [
+        "https://ristretti.org/in-carcere-la-vida-tecnologica-e-ferma-a-decenni-fa-ma-ce-un-servizio-di-email-che-cerca-di-abbattere-queste-barriere"
+      ],
+      "mention_count": 1,
+      "impact_score": 0.4,
+      "weekly_highlight": false
     }
   ],
   "key_characters": [
@@ -166,6 +258,11 @@
           "date": "2026-01-29",
           "stance": "Criticized for indifference toward prison suicides and system collapse; his administration is also facing scrutiny over delays in prison expansion projects (Verziano) and the controversial closure of High Security sectors.",
           "source_url": "https://ristretti.org/carceri-stop-alla-catastrofe-umanitaria"
+        },
+        {
+          "date": "2026-01-30",
+          "stance": "Target of a formal parliamentary interrogation following the suicide of a 73-year-old prisoner in Padova facing a sudden transfer.",
+          "source_url": "https://ristretti.org/padova-detenuto-si-uccide-per-evitare-il-trasferimento-ilaria-cucchi-interrogazione-a-nordio"
         }
       ]
     },
@@ -218,6 +315,11 @@
           "date": "2026-01-29",
           "stance": "Describes recent prison suicides as 'institutional violence' and blames the government for canceling the rehabilitative function of sentences through abrupt prisoner transfers.",
           "source_url": "https://ristretti.org/serracchiani-e-zan-pd-suicidio-in-carcere-a-padova-e-tragedia-annunciata-governo-ha-gravi-responsabilita"
+        },
+        {
+          "date": "2026-01-30",
+          "stance": "Defined the suicide in Padova as a 'tragedy foretold' and criticized sudden prisoner transfers as a 'deliberate cancellation of the rehabilitative function of the sentence.'",
+          "source_url": "https://ristretti.org/padova-detenuto-suicida-era-nellelenco-dei-reclusi-da-trasferire-si-mobilitano-le-associazioni"
         }
       ]
     },
@@ -230,6 +332,11 @@
           "date": "2026-01-29",
           "stance": "Co-denounces the government for 'grave responsibilities' regarding prison suicides and the degradation of treatment standards in penitentiaries.",
           "source_url": "https://ristretti.org/serracchiani-e-zan-pd-suicidio-in-carcere-a-padova-e-tragedia-annunciata-governo-ha-gravi-responsabilita"
+        },
+        {
+          "date": "2026-01-30",
+          "stance": "Denounced the lack of transparency in the DAP's decision to transfer high-security prisoners from Padova, calling it a measure that lacks safety logic and destroys social reintegration paths.",
+          "source_url": "https://ristretti.org/padova-detenuto-suicida-era-nellelenco-dei-reclusi-da-trasferire-si-mobilitano-le-associazioni"
         }
       ]
     },
@@ -278,6 +385,73 @@
           "date": "2026-01-29",
           "stance": "Leading protests against the closure of the Alta Sicurezza 1 section in Padova, arguing it destroys decades of rehabilitative progress.",
           "source_url": "https://ristretti.org/padova-dramma-al-due-palazzi-detenuto-74enne-si-toglie-la-vita"
+        },
+        {
+          "date": "2026-01-30",
+          "stance": "Identified as Ornella Favero in today's reports; she strongly condemned the 'ferocious' and sudden transfers ordered by the DAP in Padova, characterizing them as a move of administrative convenience that ignores human dignity.",
+          "source_url": "https://ristretti.org/vorrei-istituzioni-che-sappiano-essere-miti-e-sensibili"
+        }
+      ]
+    },
+    {
+      "name": "Matteo Zuppi",
+      "role": "Cardinal and President of the Italian Episcopal Conference (CEI)",
+      "aliases": [
+        "Cardinale Zuppi"
+      ],
+      "positions": [
+        {
+          "date": "2026-01-30",
+          "stance": "Expresses strong support for the 'deferred pardon' (indulto differito) proposal and calls for dignity, opportunity, and social reintegration for prisoners.",
+          "source_url": "https://ristretti.org/carceri-card-zuppi-si-alla-proposta-di-indulto-differito"
+        }
+      ]
+    },
+    {
+      "name": "Ilaria Cucchi",
+      "role": "Senator",
+      "aliases": [],
+      "positions": [
+        {
+          "date": "2026-01-30",
+          "stance": "Announced a formal interrogation to the Minister of Justice regarding the suicide of Pietro Marinaro and the management of high-security transfers.",
+          "source_url": "https://ristretti.org/padova-detenuto-si-uccide-per-evitare-il-trasferimento-ilaria-cucchi-interrogazione-a-nordio"
+        }
+      ]
+    },
+    {
+      "name": "Patrizio Gonnella",
+      "role": "President of Antigone",
+      "aliases": [],
+      "positions": [
+        {
+          "date": "2026-01-30",
+          "stance": "Criticizes the practice of treating prisoners like 'parcels' to be moved, arguing that sudden transfers break essential rehabilitative and affective bonds.",
+          "source_url": "https://ristretti.org/padova-detenuto-si-uccide-per-evitare-il-trasferimento-ilaria-cucchi-interrogazione-a-nordio"
+        }
+      ]
+    },
+    {
+      "name": "Roberto Cavalieri",
+      "role": "Regional Guarantor for Prisoners' Rights (Emilia-Romagna)",
+      "aliases": [],
+      "positions": [
+        {
+          "date": "2026-01-30",
+          "stance": "Highlights the 'shadow prison' of police security cells (camere di sicurezza), advocating for better training and rights monitoring in these temporary detention spaces.",
+          "source_url": "https://ristretti.org/emilia-romagna-laltro-carcere-2-000-allanno-nella-zona-grigia-delle-camere-di-sicurezza"
+        }
+      ]
+    },
+    {
+      "name": "Maria Brucale",
+      "role": "Lawyer and Human Rights Activist",
+      "aliases": [],
+      "positions": [
+        {
+          "date": "2026-01-30",
+          "stance": "Describes prisoner transfers as 'irrational' and 'ferocious' disruptions that prioritize bureaucratic 'security' over constitutional rehabilitative obligations.",
+          "source_url": "https://ristretti.org/di-trasferimenti-e-riorganizzazione-dei-circuiti-detentivi"
         }
       ]
     }
@@ -315,7 +489,23 @@
       "story_id": null,
       "created_at": "2026-01-29",
       "resolved": false
+    },
+    {
+      "id": "1826c492-2452-48dd-a3fb-adedaaa65fdc",
+      "event": "Referendum costituzionale sulla separazione delle carriere e l'ordinamento giurisdizionale",
+      "expected_date": "2026-03-22",
+      "story_id": null,
+      "created_at": "2026-01-30",
+      "resolved": false
+    },
+    {
+      "id": "9b82f7d4-05c0-4fb7-b5d4-537f81dbb30a",
+      "event": "Stabilizzazione di 9.368 lavoratori PNRR della giustizia (addetti all'ufficio del processo, assistenti e funzionari)",
+      "expected_date": "2026-07-01",
+      "story_id": null,
+      "created_at": "2026-01-30",
+      "resolved": false
     }
   ],
-  "last_updated": "2026-01-29T10:03:24.312494"
+  "last_updated": "2026-01-30T09:12:41.862283"
 }

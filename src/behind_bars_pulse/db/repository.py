@@ -96,6 +96,27 @@ class ArticleRepository:
         )
         return result.scalars().all()
 
+    async def list_by_published_date(self, published_date: date) -> Sequence[Article]:
+        """List articles published on a specific date."""
+        result = await self.session.execute(
+            select(Article)
+            .where(Article.published_date == published_date)
+            .order_by(Article.id)
+        )
+        return result.scalars().all()
+
+    async def list_by_date_range(
+        self, start_date: date, end_date: date
+    ) -> Sequence[Article]:
+        """List articles published within a date range (inclusive)."""
+        result = await self.session.execute(
+            select(Article)
+            .where(Article.published_date >= start_date)
+            .where(Article.published_date <= end_date)
+            .order_by(Article.published_date.desc(), Article.id)
+        )
+        return result.scalars().all()
+
     async def list_recent(
         self, limit: int = 20, offset: int = 0, category: str | None = None
     ) -> Sequence[Article]:
