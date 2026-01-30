@@ -83,28 +83,38 @@ class NewsletterGenerator:
 
     def generate(
         self,
-        use_collected: bool = False,
         collection_date: date | None = None,
+        force_fetch: bool = False,
     ) -> tuple[NewsletterContent, list[PressReviewCategory], dict[str, EnrichedArticle]]:
         """Run the full newsletter generation pipeline.
 
+        Automatically uses pre-collected articles if available for the date,
+        otherwise fetches fresh from RSS.
+
         Args:
-            use_collected: If True, use pre-collected articles from storage.
             collection_date: Date to load articles from. Defaults to today.
+            force_fetch: If True, skip collected articles and fetch fresh.
 
         Returns:
             Tuple of (NewsletterContent, press review categories, enriched articles).
         """
         log.info("starting_newsletter_generation")
+        collection_date = collection_date or date.today()
 
-        # Get enriched articles
-        if use_collected:
-            collection_date = collection_date or date.today()
+        # Try to use pre-collected articles first (avoids rate limiting)
+        enriched_articles: dict[str, EnrichedArticle] = {}
+        if not force_fetch:
             enriched_articles = self.narrative_storage.load_collected_articles(collection_date)
-            if not enriched_articles:
-                log.warning("no_collected_articles_falling_back_to_fetch")
-                enriched_articles = self._fetch_and_enrich()
-        else:
+            if enriched_articles:
+                log.info(
+                    "using_collected_articles",
+                    count=len(enriched_articles),
+                    date=str(collection_date),
+                )
+
+        # Fall back to fetching if no collected articles
+        if not enriched_articles:
+            log.info("fetching_fresh_articles")
             enriched_articles = self._fetch_and_enrich()
 
         if not enriched_articles:
@@ -129,12 +139,19 @@ class NewsletterGenerator:
         )
         log.info("newsletter_content_generated")
 
-        # Review and polish content
-        newsletter_content = self.ai_service.review_newsletter_content(
-            newsletter_content,
-            previous_issues,
-        )
-        log.info("newsletter_content_reviewed")
+        # Review and polish content (optional - continue with unreviewed if fails)
+        try:
+            newsletter_content = self.ai_service.review_newsletter_content(
+                newsletter_content,
+                previous_issues,
+            )
+            log.info("newsletter_content_reviewed")
+        except (ValueError, Exception) as e:
+            log.warning(
+                "review_step_skipped",
+                error=str(e),
+                hint="Using unreviewed content - newsletter will still be generated",
+            )
 
         # Generate press review with categorization
         # Convert EnrichedArticle to Article for press review
@@ -174,16 +191,38 @@ class NewsletterGenerator:
 
         The press review from AI only has title/link/importance.
         This adds author/source/summary from enriched articles.
+
+        Matches by title (normalized) since LLM sometimes hallucinates URLs.
         """
+        # Build title-to-enriched lookup (normalized titles)
+        title_lookup: dict[str, tuple[str, EnrichedArticle]] = {}
+        for url, enriched in enriched_articles.items():
+            normalized_title = enriched.title.lower().strip()
+            title_lookup[normalized_title] = (url, enriched)
+
+        matched = 0
+        unmatched = 0
+
         for category in press_review:
             for article in category.articles:
-                url = str(article.link)
-                if url in enriched_articles:
-                    enriched = enriched_articles[url]
+                normalized_title = article.title.lower().strip()
+                if normalized_title in title_lookup:
+                    url, enriched = title_lookup[normalized_title]
                     article.author = enriched.author
                     article.source = enriched.source
                     article.summary = enriched.summary
+                    # Fix URL if AI hallucinated it
+                    article.link = enriched.link
+                    matched += 1
+                else:
+                    log.warning(
+                        "article_merge_failed",
+                        title=article.title[:50],
+                        hint="Article not found in enriched data",
+                    )
+                    unmatched += 1
 
+        log.debug("merge_complete", matched=matched, unmatched=unmatched)
         return press_review
 
     def build_context(

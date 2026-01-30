@@ -100,7 +100,7 @@ def sample_press_review() -> list[PressReviewCategory]:
             comment="This is a test category comment.",
             articles=[
                 PressReviewArticle(
-                    title="Test Article",
+                    title="Test Article Title",  # Must match sample_enriched_article
                     link="https://example.com/article-1",
                     importance="Alta",
                     author="",

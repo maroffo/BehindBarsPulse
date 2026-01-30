@@ -1,6 +1,7 @@
 # ABOUTME: Google Gemini AI service for content generation via Vertex AI.
 # ABOUTME: Handles all LLM interactions for newsletter generation pipeline.
 
+import html
 import json
 import re
 from time import sleep
@@ -122,25 +123,56 @@ class AIService:
             Generated text response.
         """
         model = model or self.settings.gemini_model
-        log.debug("generating_content", model=model)
+        log.debug(
+            "generating_content",
+            model=model,
+            prompt_length=len(prompt),
+            system_prompt_length=len(system_prompt),
+        )
 
         contents = [
             types.Content(
                 role="user",
-                parts=[types.Part.from_text(text=f'"{prompt}"')],
+                parts=[types.Part.from_text(text=prompt)],
             ),
         ]
 
         config = self._generate_content_config(system_prompt, response_mime_type)
         result = ""
+        chunk_count = 0
+        finish_reason = None
 
         for chunk in self.client.models.generate_content_stream(
             model=model,
             contents=contents,
             config=config,
         ):
+            chunk_count += 1
+
+            # Check for safety blocks or other issues
+            if hasattr(chunk, "candidates") and chunk.candidates:
+                candidate = chunk.candidates[0]
+                if hasattr(candidate, "finish_reason") and candidate.finish_reason:
+                    finish_reason = candidate.finish_reason
+
             if chunk.text:
                 result += chunk.text
+
+        log.debug(
+            "generation_complete",
+            chunk_count=chunk_count,
+            result_length=len(result),
+            finish_reason=str(finish_reason) if finish_reason else None,
+        )
+
+        # Log warning if empty response
+        if not result.strip():
+            log.warning(
+                "empty_generation_result",
+                chunk_count=chunk_count,
+                finish_reason=str(finish_reason) if finish_reason else "unknown",
+                prompt_preview=prompt[:200] if len(prompt) > 200 else prompt,
+            )
 
         if sleep_after and self.settings.ai_sleep_between_calls > 0:
             sleep(self.settings.ai_sleep_between_calls)
@@ -180,6 +212,25 @@ class AIService:
         text = re.sub(r",\s*]", "]", text)
         return text
 
+    def _unescape_html_entities(self, data: Any) -> Any:
+        """Recursively unescape HTML entities in parsed JSON data.
+
+        LLMs sometimes return HTML-escaped content like &#39; instead of '.
+
+        Args:
+            data: Parsed JSON data (dict, list, or primitive).
+
+        Returns:
+            Data with all string values unescaped.
+        """
+        if isinstance(data, str):
+            return html.unescape(data)
+        if isinstance(data, dict):
+            return {k: self._unescape_html_entities(v) for k, v in data.items()}
+        if isinstance(data, list):
+            return [self._unescape_html_entities(item) for item in data]
+        return data
+
     def _parse_json_response(self, response: str) -> Any:
         """Parse JSON from LLM response, handling common issues.
 
@@ -206,7 +257,9 @@ class AIService:
         cleaned = self._fix_json_trailing_commas(cleaned)
 
         try:
-            return json.loads(cleaned)
+            data = json.loads(cleaned)
+            # Unescape HTML entities (LLMs sometimes return &#39; instead of ')
+            return self._unescape_html_entities(data)
         except json.JSONDecodeError as e:
             # Log the problematic response for debugging
             log.error(
@@ -259,8 +312,6 @@ class AIService:
         Returns:
             NewsletterContent with generated fields.
         """
-        log.info("generating_newsletter_content")
-
         feed_content = self._aggregate_articles_content(articles)
 
         # Add narrative context if available
@@ -271,6 +322,14 @@ class AIService:
             feed_content += "\n\nPrevious newsletter issues:"
             for issue in previous_issues:
                 feed_content += "\n\n" + issue
+
+        log.info(
+            "generating_newsletter_content",
+            article_count=len(articles),
+            prompt_chars=len(feed_content),
+            previous_issues_count=len(previous_issues) if previous_issues else 0,
+            has_narrative_context=narrative_context is not None,
+        )
 
         response = self._generate(
             prompt=feed_content,
@@ -411,17 +470,24 @@ class AIService:
                 author = info.author
                 source = info.source
                 summary = info.summary
-            except (ValueError, json.JSONDecodeError) as e:
-                # If enrichment fails, use defaults and continue
+            except Exception as e:
+                # If enrichment fails for any reason (API error, parsing, etc.), use defaults
+                error_type = type(e).__name__
                 log.warning(
                     "article_enrichment_failed",
                     title=article.title[:30],
-                    error=str(e),
+                    error_type=error_type,
+                    error=str(e)[:100],
                 )
                 author = "Sconosciuto"
                 source = "Ristretti Orizzonti"
                 summary = ""
                 failed_count += 1
+
+                # If we hit rate limiting, add extra delay before next attempt
+                if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
+                    log.warning("rate_limit_hit_adding_delay", delay=60)
+                    sleep(60)
 
             enriched[url] = EnrichedArticle(
                 title=article.title,
@@ -433,7 +499,9 @@ class AIService:
             )
 
         if failed_count > 0:
-            log.warning("enrichment_completed_with_failures", failed=failed_count, total=len(articles))
+            log.warning(
+                "enrichment_completed_with_failures", failed=failed_count, total=len(articles)
+            )
 
         return enriched
 
