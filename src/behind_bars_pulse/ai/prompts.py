@@ -17,7 +17,7 @@ Esempio di incipit (da adattare al contenuto della settimana):
 """
 
 PRESS_REVIEW_PROMPT = """You are an expert editor for a WEEKLY newsletter about the Italian prison system and justice.
-Your task is to SELECT THE BEST ARTICLES from a larger pool and organize them into a compelling, readable newsletter.
+Your task is to SELECT THE BEST ARTICLES and write an EDITORIAL SYNTHESIS that weaves together their perspectives.
 
 **CRITICAL: This is a weekly digest. You must be HIGHLY SELECTIVE.**
 - Include ONLY 8-12 articles total (not all articles provided!)
@@ -32,7 +32,7 @@ Your task is to SELECT THE BEST ARTICLES from a larger pool and organize them in
 - Have low news value or are merely routine announcements
 - Don't add meaningful content to the week's narrative
 
-The articles will be provided in JSON format with title, link, and content.
+The articles will be provided in JSON format with title, link, content, author, and source.
 
 **Your selection criteria (in order of priority):**
 1. **Breaking developments** - Major legislative changes, significant court decisions, tragic events
@@ -41,13 +41,23 @@ The articles will be provided in JSON format with title, link, and content.
 4. **Analysis and debate** - Thoughtful commentary that adds perspective
 5. **Positive developments** - Progress, successful initiatives, reforms working
 
+**THE KEY INNOVATION - EDITORIAL SYNTHESIS:**
+The "comment" field must be a RICH EDITORIAL that:
+- Synthesizes the key facts and perspectives from the selected articles
+- **Explicitly references authors and sources** when presenting their viewpoints
+- Shows how different journalists/outlets approached the same story
+- Creates a coherent narrative that gives readers the full picture
+
+**Example of good comment:**
+"Il 2025 si chiude con un bilancio drammatico. Damiano Aliprandi su Il Dubbio parla di 'anno in cui le carceri hanno toccato il fondo', documentando 80 suicidi e 17.000 detenuti oltre capienza. Un quadro confermato da Ilaria Dioguardi su Reti Solidali, che aggiunge la dimensione territoriale: il Lazio raggiunge il 149% di affollamento. Ma è il caso di Christian Guercio, raccontato da Daniela Peira su La Nuova Provincia, a incarnare il fallimento sistemico: un uomo con fragilità psichiche finito in cella invece che in cura."
+
 **Output Format:**
 Return a JSON array with 3-5 categories, each containing 2-4 articles maximum:
 
 [
     {
       "category": "Category name in Italian",
-      "comment": "2-3 sentence synthesis in Italian connecting the articles thematically.",
+      "comment": "Rich editorial synthesis (5-8 sentences) weaving together the articles' perspectives, explicitly citing authors and sources.",
       "articles": [
         {
           "title": "Exact article title (do not modify)",
@@ -63,7 +73,8 @@ Return a JSON array with 3-5 categories, each containing 2-4 articles maximum:
 - Total articles across all categories: 8-12 maximum
 - Categories sorted by importance (most important first)
 - Articles within categories sorted by importance
-- Comments in Italian, insightful, connecting the articles thematically
+- Comments MUST reference specific authors and sources from the articles
+- The comment IS the value-add - it synthesizes, it doesn't just list
 - Be ruthless in selection - a focused newsletter is better than a comprehensive one"""
 
 NEWSLETTER_CONTENT_PROMPT = """You are a professional and expert commentator for a WEEKLY newsletter focused on the Italian prison system and justice.

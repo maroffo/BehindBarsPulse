@@ -1,6 +1,7 @@
 # ABOUTME: Pydantic models for newsletter data structures.
 # ABOUTME: Defines Article, NewsletterContent, and PressReview schemas.
 
+from datetime import date
 from enum import Enum
 
 from pydantic import BaseModel, HttpUrl
@@ -36,6 +37,7 @@ class EnrichedArticle(Article):
     author: str = ""
     source: str = ""
     summary: str = ""
+    published_date: date | None = None
 
 
 class PressReviewArticle(BaseModel):
@@ -47,6 +49,7 @@ class PressReviewArticle(BaseModel):
     author: str = ""
     source: str = ""
     summary: str = ""
+    published_date: date | None = None
 
 
 class PressReviewCategory(BaseModel):

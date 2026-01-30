@@ -28,12 +28,10 @@ RASSEGNA STAMPA
 │
 {% if topic.comment %}│  {{topic.comment}}
 │
-{% endif %}{% for article in topic.articles %}│  • {{article.title}}
-│    {{article.link}}
-│    {% if article.author %}di {{article.author}}{% endif %}{% if article.author and article.source %} · {% endif %}{% if article.source %}{{article.source}}{% endif %}
+{% endif %}{% for article in topic.articles %}│  → {{article.title}}
+│    {% if article.author %}{{article.author}}{% endif %}{% if article.author and article.source %} · {% endif %}{% if article.source %}{{article.source}}{% endif %}{% if (article.author or article.source) and article.published_date %} · {% endif %}{% if article.published_date %}{{article.published_date.strftime('%d %b')}}{% endif %}
 
-{% if article.summary %}│    {{article.summary}}
-{% endif %}
+│    {{article.link}}
 {% endfor %}└──────────────────────────────────────────────────────────────────────────────
 
 {% endfor %}

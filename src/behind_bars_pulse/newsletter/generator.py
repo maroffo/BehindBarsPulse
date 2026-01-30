@@ -63,6 +63,7 @@ def _load_articles_from_db(
                 author=article.author,
                 source=article.source,
                 summary=article.summary,
+                published_date=article.published_date,
             )
 
         return enriched
@@ -289,6 +290,7 @@ class NewsletterGenerator:
                     article.author = enriched.author
                     article.source = enriched.source
                     article.summary = enriched.summary
+                    article.published_date = enriched.published_date
                     # Fix URL if AI hallucinated it
                     article.link = enriched.link
                     matched += 1

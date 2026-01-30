@@ -141,59 +141,46 @@
             color: #c0392b;
             text-transform: uppercase;
             letter-spacing: 1.5px;
-            margin: 0 0 8px 0;
+            margin: 0 0 16px 0;
         }
         .category-comment {
             font-size: 16px;
-            color: #4a4a4a;
-            line-height: 1.6;
-            margin: 0 0 20px 0;
-            font-style: italic;
-            padding-left: 16px;
-            border-left: 3px solid #e0e0e0;
+            color: #2a2a2a;
+            line-height: 1.7;
+            margin: 0 0 24px 0;
         }
 
-        /* Article */
-        .article {
-            margin-bottom: 24px;
-            padding-bottom: 24px;
-            border-bottom: 1px solid #f0f0f0;
+        /* Article Links */
+        .article-links {
+            border-top: 1px solid #e8e8e8;
+            padding-top: 16px;
         }
-        .article:last-child {
-            border-bottom: none;
+        .article-link {
+            margin-bottom: 12px;
+            padding-left: 16px;
+            border-left: 2px solid #e0e0e0;
+        }
+        .article-link:last-child {
             margin-bottom: 0;
-            padding-bottom: 0;
         }
-        .article-title {
+        .article-link-title {
             font-family: Georgia, 'Times New Roman', serif;
-            font-size: 18px;
-            font-weight: 700;
-            margin: 0 0 6px 0;
+            font-size: 15px;
+            font-weight: 600;
+            margin: 0 0 4px 0;
             line-height: 1.3;
         }
-        .article-title a {
+        .article-link-title a {
             color: #1a1a1a;
             text-decoration: none;
         }
-        .article-title a:hover {
+        .article-link-title a:hover {
             color: #c0392b;
             text-decoration: underline;
         }
-        .article-meta {
-            font-size: 13px;
+        .article-link-meta {
+            font-size: 12px;
             color: #888888;
-            margin: 0 0 10px 0;
-        }
-        .article-meta .author {
-            color: #666666;
-        }
-        .article-meta .source {
-            color: #999999;
-        }
-        .article-summary {
-            font-size: 15px;
-            color: #4a4a4a;
-            line-height: 1.6;
             margin: 0;
         }
 
@@ -300,21 +287,22 @@
                         <p class="category-comment">{{topic.comment}}</p>
                         {% endif %}
 
+                        <div class="article-links">
                         {% for article in topic.articles %}
-                        <div class="article">
-                            <h3 class="article-title">
-                                <a href="{{article.link}}">{{article.title}}</a>
-                            </h3>
-                            <p class="article-meta">
-                                {% if article.author %}<span class="author">{{article.author}}</span>{% endif %}
-                                {% if article.author and article.source %} · {% endif %}
-                                {% if article.source %}<span class="source">{{article.source}}</span>{% endif %}
-                            </p>
-                            {% if article.summary %}
-                            <p class="article-summary">{{article.summary}}</p>
-                            {% endif %}
-                        </div>
+                            <div class="article-link">
+                                <p class="article-link-title">
+                                    <a href="{{article.link}}">{{article.title}}</a>
+                                </p>
+                                <p class="article-link-meta">
+                                    {% if article.author %}{{article.author}}{% endif %}
+                                    {% if article.author and article.source %} · {% endif %}
+                                    {% if article.source %}{{article.source}}{% endif %}
+                                    {% if (article.author or article.source) and article.published_date %} · {% endif %}
+                                    {% if article.published_date %}{{article.published_date.strftime('%d %b')}}{% endif %}
+                                </p>
+                            </div>
                         {% endfor %}
+                        </div>
                     </div>
                     {% endfor %}
                 </td>
