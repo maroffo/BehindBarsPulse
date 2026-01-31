@@ -1,6 +1,7 @@
 # ABOUTME: Daily article collector for narrative-aware newsletter pipeline.
 # ABOUTME: Fetches, enriches articles and updates narrative context.
 
+import asyncio
 import uuid
 from datetime import date
 
@@ -20,6 +21,77 @@ from behind_bars_pulse.narrative.models import (
 from behind_bars_pulse.narrative.storage import NarrativeStorage
 
 log = structlog.get_logger()
+
+
+def _save_articles_to_db(
+    articles: dict[str, EnrichedArticle], collection_date: date
+) -> int:
+    """Save enriched articles to database with embeddings.
+
+    Args:
+        articles: Dictionary of URL -> EnrichedArticle.
+        collection_date: Date to use as published_date.
+
+    Returns:
+        Number of articles saved. Returns 0 if DB is not available.
+    """
+    try:
+        from behind_bars_pulse.db.models import Article as DbArticle
+        from behind_bars_pulse.db.session import get_session
+        from behind_bars_pulse.services.newsletter_service import NewsletterService
+
+        async def _save():
+            svc = NewsletterService()
+            saved_count = 0
+            skipped_count = 0
+
+            async with get_session() as session:
+                for url, article in articles.items():
+                    # Check if article already exists
+                    from sqlalchemy import select
+
+                    existing = await session.execute(
+                        select(DbArticle).where(DbArticle.link == url)
+                    )
+                    if existing.scalar_one_or_none():
+                        skipped_count += 1
+                        continue
+
+                    # Generate embedding
+                    text = article.title
+                    if article.summary:
+                        text = f"{article.title}. {article.summary}"
+
+                    try:
+                        embedding = await svc.generate_embedding(text)
+                    except Exception as e:
+                        log.warning("embedding_generation_failed", url=url[:50], error=str(e))
+                        embedding = None
+
+                    # Create DB article
+                    db_article = DbArticle(
+                        title=article.title,
+                        link=url,
+                        content=article.content,
+                        author=article.author or None,
+                        source=article.source or None,
+                        summary=article.summary or None,
+                        published_date=collection_date,
+                        embedding=embedding,
+                    )
+                    session.add(db_article)
+                    saved_count += 1
+
+                await session.commit()
+
+            log.info("db_save_complete", saved=saved_count, skipped=skipped_count)
+            return saved_count
+
+        return asyncio.run(_save())
+
+    except Exception as e:
+        log.debug("db_save_skipped", error=str(e), hint="DB not configured or unavailable")
+        return 0
 
 
 class ArticleCollector:
@@ -81,6 +153,11 @@ class ArticleCollector:
 
         # Save to dated collection file
         self.storage.save_collected_articles(enriched, collection_date)
+
+        # Save to database if configured (with embeddings)
+        db_saved = _save_articles_to_db(enriched, collection_date)
+        if db_saved > 0:
+            log.info("articles_saved_to_db", count=db_saved)
 
         log.info("collection_complete", date=collection_date.isoformat(), count=len(enriched))
         return enriched
