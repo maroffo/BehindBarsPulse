@@ -61,9 +61,10 @@ class AIService:
         self,
         system_prompt: str,
         response_mime_type: str = "application/json",
+        response_schema: dict[str, Any] | None = None,
     ) -> types.GenerateContentConfig:
         """Create generation config with safety settings disabled."""
-        return types.GenerateContentConfig(
+        config = types.GenerateContentConfig(
             temperature=self.settings.ai_temperature,
             top_p=self.settings.ai_top_p,
             max_output_tokens=self.settings.ai_max_output_tokens,
@@ -89,6 +90,9 @@ class AIService:
             response_mime_type=response_mime_type,
             system_instruction=[types.Part.from_text(text=system_prompt)],
         )
+        if response_schema:
+            config.response_json_schema = response_schema
+        return config
 
     @retry(
         retry=retry_if_exception_type(Exception),
@@ -107,6 +111,7 @@ class AIService:
         system_prompt: str,
         model: str | None = None,
         response_mime_type: str = "application/json",
+        response_schema: dict[str, Any] | None = None,
         sleep_after: bool = True,
     ) -> str:
         """Generate content using the Gemini model.
@@ -118,6 +123,7 @@ class AIService:
             system_prompt: System instructions.
             model: Model name override. Defaults to settings value.
             response_mime_type: Expected response format.
+            response_schema: JSON schema for structured output (guarantees valid JSON).
             sleep_after: Whether to sleep after the call for rate limiting.
 
         Returns:
@@ -138,7 +144,9 @@ class AIService:
             ),
         ]
 
-        config = self._generate_content_config(system_prompt, response_mime_type)
+        config = self._generate_content_config(
+            system_prompt, response_mime_type, response_schema
+        )
         result = ""
         chunk_count = 0
         finish_reason = None
@@ -282,6 +290,8 @@ class AIService:
         Returns:
             List of PressReviewCategory objects.
         """
+        from pydantic import TypeAdapter
+
         log.info("generating_press_review", article_count=len(articles))
 
         articles_json = json.dumps(
@@ -289,12 +299,17 @@ class AIService:
             indent=2,
         )
 
+        # Use structured output with JSON schema for guaranteed valid JSON
+        schema = TypeAdapter(list[PressReviewCategory]).json_schema()
+
         response = self._generate(
             prompt=articles_json,
             system_prompt=PRESS_REVIEW_PROMPT,
+            response_schema=schema,
         )
 
-        raw_categories = self._parse_json_response(response)
+        # With structured output, response is guaranteed valid JSON
+        raw_categories = json.loads(response)
         return [PressReviewCategory(**cat) for cat in raw_categories]
 
     def generate_newsletter_content(
