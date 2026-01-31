@@ -4,7 +4,7 @@
 from datetime import date
 from enum import Enum
 
-from pydantic import BaseModel, HttpUrl
+from pydantic import BaseModel
 
 
 class Importance(str, Enum):
@@ -19,7 +19,7 @@ class Article(BaseModel):
     """Raw article from RSS feed."""
 
     title: str
-    link: HttpUrl
+    link: str
     content: str
 
 
@@ -44,7 +44,7 @@ class PressReviewArticle(BaseModel):
     """Article reference in press review."""
 
     title: str
-    link: HttpUrl
+    link: str
     importance: Importance
     author: str = ""
     source: str = ""

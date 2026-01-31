@@ -97,14 +97,5 @@ class TestArticleModel:
         )
 
         assert article.title == "Test Title"
-        assert str(article.link) == "https://example.com/test"
+        assert article.link == "https://example.com/test"
         assert article.content == "Test content"
-
-    def test_article_invalid_url_raises(self) -> None:
-        """Article should raise error for invalid URL."""
-        with pytest.raises(ValueError):
-            Article(
-                title="Test",
-                link="not-a-url",
-                content="Content",
-            )

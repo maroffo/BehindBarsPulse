@@ -5,7 +5,7 @@ from datetime import date, datetime
 from enum import Enum
 from typing import Literal
 
-from pydantic import BaseModel, Field, HttpUrl
+from pydantic import BaseModel, Field
 
 
 class StoryStatus(str, Enum):
@@ -26,7 +26,7 @@ class StoryThread(BaseModel):
     last_update: date
     summary: str = Field(description="Current summary of the story")
     keywords: list[str] = Field(default_factory=list, description="Keywords for matching")
-    related_articles: list[HttpUrl] = Field(default_factory=list)
+    related_articles: list[str] = Field(default_factory=list)
     mention_count: int = Field(default=1, description="Times mentioned in newsletters")
     impact_score: float = Field(default=0.0, ge=0.0, le=1.0, description="AI-calculated impact")
     weekly_highlight: bool = Field(default=False, description="Flag for weekly inclusion")
@@ -37,7 +37,7 @@ class CharacterPosition(BaseModel):
 
     date: date
     stance: str = Field(description="Position or statement")
-    source_url: HttpUrl | None = None
+    source_url: str | None = None
 
 
 class KeyCharacter(BaseModel):
