@@ -32,6 +32,7 @@ dependencies = [
     "fastapi>=0.115.0",
     "uvicorn[standard]>=0.34.0",
     "bleach>=6.0.0",
+    "python-multipart>=0.0.22",
 ]
 
 [dependency-groups]

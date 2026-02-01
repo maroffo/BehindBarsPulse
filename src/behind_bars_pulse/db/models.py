@@ -242,7 +242,7 @@ class PrisonEvent(Base):
     )
     confidence: Mapped[float] = mapped_column(Float, default=1.0, nullable=False)
     extracted_at: Mapped[datetime] = mapped_column(
-        DateTime, default=lambda: datetime.now(UTC), nullable=False
+        DateTime, default=datetime.utcnow, nullable=False
     )
 
     article: Mapped[Article | None] = relationship("Article")

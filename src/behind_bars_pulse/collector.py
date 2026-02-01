@@ -3,7 +3,7 @@
 
 import asyncio
 import uuid
-from datetime import UTC, date, datetime
+from datetime import date, datetime
 
 import structlog
 
@@ -82,7 +82,7 @@ def _save_prison_events_to_db(events: list[dict], article_url_to_id: dict[str, i
                         source_url=source_url,
                         article_id=article_id,
                         confidence=float(event_data.get("confidence", 1.0)),
-                        extracted_at=datetime.now(UTC),
+                        extracted_at=datetime.utcnow(),
                     )
                     await repo.save(event)
                     saved_count += 1
