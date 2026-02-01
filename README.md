@@ -8,6 +8,9 @@
 - **Narrative Memory System**: Tracks ongoing stories, key characters, and follow-up events across issues, creating continuity and context
 - **Weekly Digest**: Synthesizes the week's coverage into a cohesive summary highlighting major narrative arcs
 - **AI-Powered Content**: Uses Google Gemini (via Vertex AI) for article summarization, categorization, and editorial commentary
+- **Structured Output**: Gemini's `response_json_schema` guarantees valid JSON, eliminating parsing errors
+- **Integrated Editorial**: Press review comments synthesize multiple sources by name, not just list summaries
+- **Semantic Embeddings**: Articles stored with 768-dimension embeddings for future RAG and search features
 
 ## Technology Stack
 
@@ -82,11 +85,15 @@ BehindBarsPulse provides four CLI commands:
 
 ```bash
 # Collect and enrich articles (run daily, e.g., 6:00 AM)
+# Saves to DB with embeddings if configured
 uv run python -m behind_bars_pulse collect
 
 # Generate and send daily newsletter
 uv run python -m behind_bars_pulse generate
 uv run python -m behind_bars_pulse generate --dry-run  # Preview without sending
+
+# Generate for a specific date range (useful for weekly newsletters)
+uv run python -m behind_bars_pulse generate --date 2026-01-07 --days-back 7 --first-issue
 
 # Generate and send weekly digest (run weekly, e.g., Sunday 8:00 AM)
 uv run python -m behind_bars_pulse weekly
@@ -95,6 +102,15 @@ uv run python -m behind_bars_pulse weekly --dry-run
 # View narrative context status
 uv run python -m behind_bars_pulse status
 ```
+
+### CLI Options
+
+| Option | Description |
+|--------|-------------|
+| `--dry-run` | Preview without sending email |
+| `--date YYYY-MM-DD` | Generate for specific date |
+| `--days-back N` | Include articles from past N days |
+| `--first-issue` | Include special intro for first newsletter in series |
 
 ### Typical Workflow
 
@@ -204,6 +220,19 @@ This enables the newsletter to:
 - Reference previous coverage: *"Come abbiamo seguito nelle ultime settimane..."*
 - Track story evolution: *"Il Ministro Nordio, che la settimana scorsa aveva dichiarato X, oggi..."*
 - Alert readers to upcoming events: *"Ricordiamo che domani è previsto..."*
+
+## Embedding Use Cases (Future)
+
+Articles are embedded using Vertex AI's `text-multilingual-embedding-002` model (768 dimensions, optimized for Italian). Planned applications:
+
+| Use Case | Description |
+|----------|-------------|
+| **RAG** | Retrieve historical context before generating AI commentary |
+| **Deduplication** | Skip near-duplicate articles across days (cosine similarity > 0.95) |
+| **Related Articles** | "See also" suggestions based on semantic similarity |
+| **Story Detection** | Cluster related articles into narrative threads automatically |
+| **Trend Analysis** | Track topic evolution over time via embedding drift |
+| **Chatbot** | Q&A interface over historical coverage |
 
 ## Development
 
