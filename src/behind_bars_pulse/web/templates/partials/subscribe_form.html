@@ -1,0 +1,46 @@
+<!-- HTMX subscribe form partial - can be included in any page -->
+<form class="subscribe-form-inline" hx-post="/subscribe" hx-target="#subscribe-result" hx-swap="innerHTML">
+    <div class="subscribe-inline-wrapper">
+        <input
+            type="email"
+            name="email"
+            class="subscribe-input-inline"
+            placeholder="La tua email"
+            required
+            autocomplete="email"
+        >
+        <button type="submit" class="btn btn-primary">Iscriviti</button>
+    </div>
+</form>
+<div id="subscribe-result"></div>
+
+<style>
+.subscribe-form-inline {
+    margin: var(--spacing-md) 0;
+}
+
+.subscribe-inline-wrapper {
+    display: flex;
+    gap: var(--spacing-sm);
+    max-width: 400px;
+}
+
+.subscribe-input-inline {
+    flex: 1;
+    font-size: 14px;
+    padding: var(--spacing-sm) var(--spacing-md);
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+}
+
+.subscribe-input-inline:focus {
+    outline: none;
+    border-color: var(--color-accent);
+}
+
+@media (max-width: 480px) {
+    .subscribe-inline-wrapper {
+        flex-direction: column;
+    }
+}
+</style>

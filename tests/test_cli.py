@@ -66,14 +66,14 @@ class TestCreateParser:
         parser = create_parser()
         args = parser.parse_args(["generate"])
         assert args.command == "generate"
-        assert args.dry_run is False
+        assert args.days_back == 7  # Default value
 
-    def test_generate_dry_run(self) -> None:
-        """Generate command accepts dry-run flag."""
+    def test_generate_with_days_back(self) -> None:
+        """Generate command accepts days-back argument."""
         parser = create_parser()
-        args = parser.parse_args(["generate", "--dry-run"])
+        args = parser.parse_args(["generate", "--days-back", "14"])
         assert args.command == "generate"
-        assert args.dry_run is True
+        assert args.days_back == 14
 
     def test_weekly_command(self) -> None:
         """Weekly command parses correctly."""

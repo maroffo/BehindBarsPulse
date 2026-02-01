@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <title>Conferma la tua iscrizione - BehindBars</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <style>
+        /* Reset */
+        body, table, td, p, a, li, blockquote {
+            -webkit-text-size-adjust: 100%;
+            -ms-text-size-adjust: 100%;
+        }
+        table, td {
+            mso-table-lspace: 0pt;
+            mso-table-rspace: 0pt;
+        }
+
+        /* Base */
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            background-color: #f5f5f5;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            color: #1a1a1a;
+        }
+
+        /* Container */
+        .wrapper {
+            width: 100%;
+            background-color: #f5f5f5;
+            padding: 40px 0;
+        }
+        .container {
+            max-width: 560px;
+            margin: 0 auto;
+            background-color: #ffffff;
+        }
+
+        /* Header */
+        .header {
+            padding: 40px 48px 32px;
+            border-bottom: 3px solid #c0392b;
+        }
+        .header-title {
+            font-family: Georgia, 'Times New Roman', serif;
+            font-size: 28px;
+            font-weight: 700;
+            color: #1a1a1a;
+            margin: 0 0 4px 0;
+            letter-spacing: -0.5px;
+        }
+        .header-subtitle {
+            font-size: 14px;
+            color: #666666;
+            margin: 0;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Content */
+        .content {
+            padding: 40px 48px;
+        }
+        .content h1 {
+            font-family: Georgia, 'Times New Roman', serif;
+            font-size: 24px;
+            font-weight: 700;
+            color: #1a1a1a;
+            margin: 0 0 24px 0;
+            line-height: 1.3;
+        }
+        .content p {
+            font-size: 16px;
+            color: #2a2a2a;
+            line-height: 1.7;
+            margin: 0 0 16px 0;
+        }
+
+        /* Button */
+        .button-container {
+            text-align: center;
+            margin: 32px 0;
+        }
+        .button {
+            display: inline-block;
+            background-color: #c0392b;
+            color: #ffffff !important;
+            font-size: 16px;
+            font-weight: 600;
+            text-decoration: none;
+            padding: 14px 32px;
+            border-radius: 4px;
+        }
+        .button:hover {
+            background-color: #a93226;
+        }
+
+        /* Link fallback */
+        .link-fallback {
+            font-size: 13px;
+            color: #666666;
+            word-break: break-all;
+            margin-top: 24px;
+            padding: 16px;
+            background-color: #f8f8f8;
+            border-radius: 4px;
+        }
+        .link-fallback a {
+            color: #c0392b;
+        }
+
+        /* Footer */
+        .footer {
+            padding: 32px 48px;
+            background-color: #2c3e50;
+            color: #b0b0b0;
+        }
+        .footer p {
+            font-size: 13px;
+            line-height: 1.6;
+            margin: 0 0 16px 0;
+        }
+        .footer a {
+            color: #ffffff;
+            text-decoration: none;
+        }
+        .footer-note {
+            font-size: 12px;
+            color: #808080;
+            font-style: italic;
+        }
+
+        /* Responsive */
+        @media only screen and (max-width: 560px) {
+            .container {
+                width: 100% !important;
+            }
+            .header, .content, .footer {
+                padding-left: 24px !important;
+                padding-right: 24px !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="wrapper">
+        <table class="container" cellpadding="0" cellspacing="0" role="presentation">
+            <!-- Header -->
+            <tr>
+                <td class="header">
+                    <p class="header-title">BehindBars</p>
+                    <p class="header-subtitle">Giustizia e Sistema Carcerario</p>
+                </td>
+            </tr>
+
+            <!-- Content -->
+            <tr>
+                <td class="content">
+                    <h1>Conferma la tua iscrizione</h1>
+
+                    <p>Grazie per il tuo interesse in BehindBars!</p>
+
+                    <p>
+                        Per completare l'iscrizione alla newsletter settimanale sul sistema
+                        carcerario italiano, clicca il pulsante qui sotto.
+                    </p>
+
+                    <div class="button-container">
+                        <a href="{{confirm_url}}" class="button">Conferma Iscrizione</a>
+                    </div>
+
+                    <p>
+                        Riceverai una newsletter ogni domenica mattina con le notizie più
+                        rilevanti della settimana, analisi e approfondimenti.
+                    </p>
+
+                    <div class="link-fallback">
+                        Se il pulsante non funziona, copia e incolla questo link nel browser:<br>
+                        <a href="{{confirm_url}}">{{confirm_url}}</a>
+                    </div>
+                </td>
+            </tr>
+
+            <!-- Footer -->
+            <tr>
+                <td class="footer">
+                    <p>
+                        Se non hai richiesto questa iscrizione, puoi ignorare questa email.
+                    </p>
+                    <p class="footer-note">
+                        Non verranno inviate altre email finché non confermi l'iscrizione.
+                    </p>
+                </td>
+            </tr>
+        </table>
+    </div>
+</body>
+</html>

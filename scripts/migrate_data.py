@@ -17,9 +17,8 @@ Usage:
 import argparse
 import asyncio
 import json
-import re
 import sys
-from datetime import date, datetime
+from datetime import datetime
 from pathlib import Path
 
 # Add src to path
@@ -199,13 +198,9 @@ async def migrate_articles(
 
             # Generate embeddings if requested
             if not skip_embeddings and newsletter_service:
-                await _generate_embeddings_batch(
-                    session, newsletter_service, articles_to_save
-                )
+                await _generate_embeddings_batch(session, newsletter_service, articles_to_save)
 
-        logger.info(
-            "articles_batch_migrated", date=date_str, count=len(articles_to_save)
-        )
+        logger.info("articles_batch_migrated", date=date_str, count=len(articles_to_save))
 
     logger.info("articles_migration_complete", total=migrated)
     return migrated

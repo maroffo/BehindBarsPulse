@@ -22,9 +22,7 @@ from behind_bars_pulse.narrative.storage import NarrativeStorage
 log = structlog.get_logger()
 
 
-def _load_articles_from_db(
-    end_date: date, days_back: int = 7
-) -> dict[str, EnrichedArticle] | None:
+def _load_articles_from_db(end_date: date, days_back: int = 7) -> dict[str, EnrichedArticle] | None:
     """Load articles from database for a date range.
 
     Args:

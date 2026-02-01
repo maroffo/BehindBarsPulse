@@ -12,17 +12,19 @@ import structlog
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
+from sqlalchemy import select, text
+
 from behind_bars_pulse.ai.service import AIService
 from behind_bars_pulse.config import get_settings
 from behind_bars_pulse.db.models import Article
-from behind_bars_pulse.db.session import get_engine, get_session, close_db
+from behind_bars_pulse.db.session import close_db, get_engine, get_session
 from behind_bars_pulse.models import Article as ArticleModel
-
-from sqlalchemy import text, select
 
 log = structlog.get_logger()
 
-BACKFILL_FILE = Path(__file__).parent.parent / "data" / "collected_articles" / "2026-01-january-backfill.json"
+BACKFILL_FILE = (
+    Path(__file__).parent.parent / "data" / "collected_articles" / "2026-01-january-backfill.json"
+)
 BATCH_SIZE = 5  # Articles per AI batch
 AI_DELAY = 2.0  # Seconds between AI calls
 
@@ -107,7 +109,7 @@ async def save_article(session, article: dict) -> bool:
 
 
 async def main():
-    settings = get_settings()
+    _ = get_settings()  # Initialize settings (validates configuration)
 
     # Load backfill data
     log.info("loading_backfill", file=str(BACKFILL_FILE))
@@ -138,7 +140,7 @@ async def main():
     error_count = 0
 
     for i in range(0, len(to_process), BATCH_SIZE):
-        batch = to_process[i:i + BATCH_SIZE]
+        batch = to_process[i : i + BATCH_SIZE]
         batch_num = i // BATCH_SIZE + 1
         total_batches = (len(to_process) + BATCH_SIZE - 1) // BATCH_SIZE
 
@@ -153,18 +155,16 @@ async def main():
                     # Save to DB
                     if await save_article(session, enriched):
                         success_count += 1
-                        log.info("article_saved",
-                                 title=enriched["title"][:50],
-                                 total=success_count)
+                        log.info("article_saved", title=enriched["title"][:50], total=success_count)
                     else:
                         error_count += 1
                 else:
                     # Save without enrichment as fallback
                     if await save_article(session, article):
                         success_count += 1
-                        log.info("article_saved_raw",
-                                 title=article["title"][:50],
-                                 total=success_count)
+                        log.info(
+                            "article_saved_raw", title=article["title"][:50], total=success_count
+                        )
                     else:
                         error_count += 1
 
@@ -174,10 +174,7 @@ async def main():
             # Commit batch
             await session.commit()
 
-        log.info("batch_complete",
-                 batch=batch_num,
-                 success=success_count,
-                 errors=error_count)
+        log.info("batch_complete", batch=batch_num, success=success_count, errors=error_count)
 
     log.info("import_complete", success=success_count, errors=error_count)
 

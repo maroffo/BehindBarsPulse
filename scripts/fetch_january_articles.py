@@ -2,6 +2,7 @@
 # ABOUTME: Uses readability for content extraction, saves as enriched articles.
 
 import asyncio
+import contextlib
 import json
 import re
 from datetime import date
@@ -43,31 +44,46 @@ async def fetch_article(client: httpx.AsyncClient, url: str) -> dict | None:
         source = None
 
         # Common patterns: "di Nome Cognome" at start, or "*Nome Cognome"
-        author_match = re.search(r"(?:^|\n)\s*(?:di|Di|DI)\s+([A-Z][a-zà-ú]+(?:\s+[A-Z][a-zà-ú]+)+)", content)
+        author_match = re.search(
+            r"(?:^|\n)\s*(?:di|Di|DI)\s+([A-Z][a-zà-ú]+(?:\s+[A-Z][a-zà-ú]+)+)", content
+        )
         if author_match:
             author = author_match.group(1).strip()
 
         # Source often in bold or after author: "Il Fatto Quotidiano, 29 gennaio 2026"
-        source_match = re.search(r"\n([A-Za-z\s\.]+(?:\.it|\.com|\.org)?),?\s*\d{1,2}\s+\w+\s+202\d", content)
+        source_match = re.search(
+            r"\n([A-Za-z\s\.]+(?:\.it|\.com|\.org)?),?\s*\d{1,2}\s+\w+\s+202\d", content
+        )
         if source_match:
             source = source_match.group(1).strip()
 
         # Extract date from content if possible
-        date_match = re.search(r"(\d{1,2})\s+(gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre)\s+(202\d)", content, re.IGNORECASE)
+        date_match = re.search(
+            r"(\d{1,2})\s+(gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre)\s+(202\d)",
+            content,
+            re.IGNORECASE,
+        )
         pub_date = None
         if date_match:
             day = int(date_match.group(1))
             month_name = date_match.group(2).lower()
             year = int(date_match.group(3))
             months = {
-                "gennaio": 1, "febbraio": 2, "marzo": 3, "aprile": 4,
-                "maggio": 5, "giugno": 6, "luglio": 7, "agosto": 8,
-                "settembre": 9, "ottobre": 10, "novembre": 11, "dicembre": 12
+                "gennaio": 1,
+                "febbraio": 2,
+                "marzo": 3,
+                "aprile": 4,
+                "maggio": 5,
+                "giugno": 6,
+                "luglio": 7,
+                "agosto": 8,
+                "settembre": 9,
+                "ottobre": 10,
+                "novembre": 11,
+                "dicembre": 12,
             }
-            try:
+            with contextlib.suppress(ValueError):
                 pub_date = date(year, months[month_name], day).isoformat()
-            except ValueError:
-                pass
 
         if not content or len(content) < 100:
             return None
@@ -110,8 +126,10 @@ async def main():
     ) as client:
         # Process in batches
         for i in range(0, len(urls), MAX_CONCURRENT):
-            batch = urls[i:i + MAX_CONCURRENT]
-            print(f"Fetching batch {i // MAX_CONCURRENT + 1}/{(len(urls) + MAX_CONCURRENT - 1) // MAX_CONCURRENT} ({len(batch)} URLs)...")
+            batch = urls[i : i + MAX_CONCURRENT]
+            print(
+                f"Fetching batch {i // MAX_CONCURRENT + 1}/{(len(urls) + MAX_CONCURRENT - 1) // MAX_CONCURRENT} ({len(batch)} URLs)..."
+            )
 
             articles = await fetch_batch(client, batch)
             all_articles.extend(articles)

@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block title %}Contatti - BehindBars{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">Contatti</h1>
+</div>
+
+<div class="contact-content">
+    <section class="contact-section">
+        <h2>GitHub</h2>
+        <p>
+            Per segnalazioni di bug, richieste di funzionalità o contributi al codice,
+            apri una issue sul repository GitHub:
+        </p>
+        <a href="https://github.com/maroffo/BehindBarsPulse/issues" class="btn btn-outline" target="_blank" rel="noopener">
+            Apri una issue
+        </a>
+    </section>
+
+    <section class="contact-section">
+        <h2>Email</h2>
+        <p>
+            Per comunicazioni private o collaborazioni:
+        </p>
+        <p class="contact-email">
+            <a href="mailto:behindbars@iungomail.com">behindbars@iungomail.com</a>
+        </p>
+    </section>
+
+    <section class="contact-section">
+        <h2>Social</h2>
+        <p>
+            Il progetto è sviluppato e mantenuto da
+            <a href="https://github.com/maroffo" target="_blank" rel="noopener">@maroffo</a>.
+        </p>
+    </section>
+</div>
+
+<style>
+.contact-content {
+    max-width: 640px;
+}
+
+.contact-section {
+    margin-bottom: var(--spacing-xl);
+}
+
+.contact-section h2 {
+    font-family: var(--font-serif);
+    font-size: 22px;
+    margin: 0 0 var(--spacing-md) 0;
+    color: var(--color-text);
+}
+
+.contact-section p {
+    font-size: 16px;
+    line-height: 1.7;
+    color: var(--color-text-light);
+    margin: 0 0 var(--spacing-md) 0;
+}
+
+.contact-email a {
+    font-size: 18px;
+    font-weight: 600;
+}
+</style>
+{% endblock %}

@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block title %}Iscrizione confermata - BehindBars{% endblock %}
+
+{% block content %}
+<div class="message-page">
+    <div class="message-icon">🎉</div>
+    <h1>Sei iscritto!</h1>
+    <p class="message-text">
+        La tua iscrizione è stata confermata. Riceverai la newsletter
+        ogni domenica mattina con le notizie più rilevanti della settimana.
+    </p>
+    <a href="/" class="btn btn-primary">Vai alla home</a>
+</div>
+
+<style>
+.message-page {
+    text-align: center;
+    padding: var(--spacing-xl) 0;
+    max-width: 480px;
+    margin: 0 auto;
+}
+
+.message-icon {
+    font-size: 64px;
+    margin-bottom: var(--spacing-lg);
+}
+
+.message-page h1 {
+    font-family: var(--font-serif);
+    font-size: 28px;
+    margin: 0 0 var(--spacing-md) 0;
+}
+
+.message-text {
+    font-size: 17px;
+    color: var(--color-text-light);
+    line-height: 1.6;
+    margin: 0 0 var(--spacing-xl) 0;
+}
+</style>
+{% endblock %}

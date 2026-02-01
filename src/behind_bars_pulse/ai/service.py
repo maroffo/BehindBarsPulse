@@ -144,9 +144,7 @@ class AIService:
             ),
         ]
 
-        config = self._generate_content_config(
-            system_prompt, response_mime_type, response_schema
-        )
+        config = self._generate_content_config(system_prompt, response_mime_type, response_schema)
         result = ""
         chunk_count = 0
         finish_reason = None

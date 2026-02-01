@@ -23,9 +23,7 @@ from behind_bars_pulse.narrative.storage import NarrativeStorage
 log = structlog.get_logger()
 
 
-def _save_articles_to_db(
-    articles: dict[str, EnrichedArticle], collection_date: date
-) -> int:
+def _save_articles_to_db(articles: dict[str, EnrichedArticle], collection_date: date) -> int:
     """Save enriched articles to database with embeddings.
 
     Args:
@@ -50,9 +48,7 @@ def _save_articles_to_db(
                     # Check if article already exists
                     from sqlalchemy import select
 
-                    existing = await session.execute(
-                        select(DbArticle).where(DbArticle.link == url)
-                    )
+                    existing = await session.execute(select(DbArticle).where(DbArticle.link == url))
                     if existing.scalar_one_or_none():
                         skipped_count += 1
                         continue

@@ -13,7 +13,16 @@ from fastapi.templating import Jinja2Templates
 from markupsafe import Markup
 
 from behind_bars_pulse.db.session import close_db, init_db
-from behind_bars_pulse.web.routes import archive, articles, home, search
+from behind_bars_pulse.web.routes import (
+    api,
+    archive,
+    articles,
+    home,
+    landing,
+    pages,
+    search,
+    subscribe,
+)
 
 logger = structlog.get_logger()
 
@@ -61,10 +70,14 @@ def create_app() -> FastAPI:
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
     # Include routers
+    app.include_router(landing.router)
+    app.include_router(subscribe.router)
+    app.include_router(pages.router)
     app.include_router(home.router)
     app.include_router(archive.router)
     app.include_router(articles.router)
     app.include_router(search.router)
+    app.include_router(api.router)
 
     return app
 

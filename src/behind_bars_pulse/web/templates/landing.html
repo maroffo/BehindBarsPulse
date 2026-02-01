@@ -1,0 +1,220 @@
+{% extends "base.html" %}
+
+{% block title %}BehindBars - Newsletter sul Sistema Carcerario Italiano{% endblock %}
+{% block description %}Newsletter settimanale che raccoglie e analizza le notizie sul sistema carcerario e la giustizia in Italia{% endblock %}
+
+{% block content %}
+<div class="landing-hero">
+    <h1 class="landing-title">Ogni settimana, le notizie che contano</h1>
+    <p class="landing-subtitle">
+        Una newsletter che raccoglie, analizza e sintetizza le notizie
+        sul sistema carcerario e la giustizia in Italia.
+    </p>
+</div>
+
+<div class="landing-signup">
+    <h2>Iscriviti alla newsletter</h2>
+    <p>Ricevi ogni domenica mattina un riepilogo delle notizie più rilevanti.</p>
+
+    <form id="subscribe-form" class="subscribe-form" hx-post="/subscribe" hx-target="#form-result" hx-swap="innerHTML">
+        <div class="subscribe-input-wrapper">
+            <input
+                type="email"
+                name="email"
+                class="subscribe-input"
+                placeholder="La tua email"
+                required
+                autocomplete="email"
+            >
+            <button type="submit" class="btn btn-primary subscribe-btn">
+                Iscriviti
+            </button>
+        </div>
+        <p class="subscribe-note">Niente spam. Potrai cancellarti in qualsiasi momento.</p>
+    </form>
+    <div id="form-result"></div>
+</div>
+
+<hr class="divider-strong">
+
+<div class="landing-features">
+    <div class="feature">
+        <h3>Rassegna stampa curata</h3>
+        <p>
+            Raccogliamo le notizie più rilevanti da decine di fonti e le organizziamo
+            per tema, fornendo contesto e analisi.
+        </p>
+    </div>
+    <div class="feature">
+        <h3>Continuità narrativa</h3>
+        <p>
+            Seguiamo le storie nel tempo, mantenendo traccia degli sviluppi
+            e collegando eventi correlati.
+        </p>
+    </div>
+    <div class="feature">
+        <h3>Sintesi accessibile</h3>
+        <p>
+            Contenuti sintetizzati e commentati per rendere accessibile
+            un tema spesso complesso.
+        </p>
+    </div>
+</div>
+
+{% if latest_newsletter %}
+<hr class="divider-strong">
+
+<div class="landing-latest">
+    <h2>Ultima edizione</h2>
+    <div class="newsletter-preview">
+        <span class="preview-date">{{ latest_newsletter.issue_date.strftime('%d %B %Y') }}</span>
+        <h3 class="preview-title">
+            <a href="/archive/{{ latest_newsletter.issue_date }}">{{ latest_newsletter.title }}</a>
+        </h3>
+        <p class="preview-subtitle">{{ latest_newsletter.subtitle }}</p>
+        <a href="/archive/{{ latest_newsletter.issue_date }}" class="btn btn-outline">Leggi</a>
+    </div>
+</div>
+{% endif %}
+
+<style>
+.landing-hero {
+    text-align: center;
+    padding: var(--spacing-xl) 0;
+}
+
+.landing-title {
+    font-family: var(--font-serif);
+    font-size: 42px;
+    font-weight: 700;
+    line-height: 1.2;
+    color: var(--color-text);
+    margin: 0 0 var(--spacing-md) 0;
+}
+
+.landing-subtitle {
+    font-size: 20px;
+    color: var(--color-text-light);
+    max-width: 600px;
+    margin: 0 auto;
+    line-height: 1.6;
+}
+
+.landing-signup {
+    background-color: var(--color-bg);
+    padding: var(--spacing-xl);
+    border-radius: 8px;
+    text-align: center;
+    margin: var(--spacing-xl) 0;
+}
+
+.landing-signup h2 {
+    font-family: var(--font-serif);
+    font-size: 24px;
+    margin: 0 0 var(--spacing-sm) 0;
+}
+
+.landing-signup > p {
+    color: var(--color-text-light);
+    margin: 0 0 var(--spacing-lg) 0;
+}
+
+.subscribe-form {
+    max-width: 480px;
+    margin: 0 auto;
+}
+
+.subscribe-input-wrapper {
+    display: flex;
+    gap: var(--spacing-sm);
+}
+
+.subscribe-input {
+    flex: 1;
+    font-size: 16px;
+    padding: var(--spacing-md);
+    border: 2px solid var(--color-border);
+    border-radius: 4px;
+}
+
+.subscribe-input:focus {
+    outline: none;
+    border-color: var(--color-accent);
+}
+
+.subscribe-btn {
+    white-space: nowrap;
+}
+
+.subscribe-note {
+    font-size: 13px;
+    color: var(--color-text-muted);
+    margin: var(--spacing-sm) 0 0 0;
+}
+
+.landing-features {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: var(--spacing-xl);
+    margin: var(--spacing-xl) 0;
+}
+
+.feature h3 {
+    font-family: var(--font-serif);
+    font-size: 18px;
+    margin: 0 0 var(--spacing-sm) 0;
+}
+
+.feature p {
+    font-size: 15px;
+    color: var(--color-text-light);
+    line-height: 1.6;
+    margin: 0;
+}
+
+.landing-latest {
+    margin: var(--spacing-xl) 0;
+}
+
+.landing-latest h2 {
+    font-family: var(--font-serif);
+    font-size: 24px;
+    margin: 0 0 var(--spacing-lg) 0;
+}
+
+/* Success/Error messages */
+.form-success {
+    background-color: #d4edda;
+    color: #155724;
+    padding: var(--spacing-md);
+    border-radius: 4px;
+    margin-top: var(--spacing-md);
+}
+
+.form-error {
+    background-color: #f8d7da;
+    color: #721c24;
+    padding: var(--spacing-md);
+    border-radius: 4px;
+    margin-top: var(--spacing-md);
+}
+
+@media (max-width: 768px) {
+    .landing-title {
+        font-size: 32px;
+    }
+
+    .landing-subtitle {
+        font-size: 18px;
+    }
+
+    .subscribe-input-wrapper {
+        flex-direction: column;
+    }
+
+    .subscribe-btn {
+        width: 100%;
+    }
+}
+</style>
+{% endblock %}

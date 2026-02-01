@@ -18,10 +18,11 @@
                     <span class="logo-subtitle">Giustizia e Sistema Carcerario</span>
                 </a>
                 <ul class="nav-links">
-                    <li><a href="/" {% if request.url.path == "/" %}class="active"{% endif %}>Oggi</a></li>
+                    <li><a href="/latest" {% if request.url.path == "/latest" %}class="active"{% endif %}>Ultima Edizione</a></li>
                     <li><a href="/archive" {% if request.url.path.startswith("/archive") %}class="active"{% endif %}>Archivio</a></li>
                     <li><a href="/articles" {% if request.url.path.startswith("/articles") or request.url.path.startswith("/article") %}class="active"{% endif %}>Articoli</a></li>
                     <li><a href="/search" {% if request.url.path.startswith("/search") %}class="active"{% endif %}>Cerca</a></li>
+                    <li><a href="/" {% if request.url.path == "/" %}class="active"{% endif %}>Iscriviti</a></li>
                 </ul>
             </nav>
         </div>

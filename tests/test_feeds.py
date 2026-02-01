@@ -4,7 +4,6 @@
 from unittest.mock import MagicMock, patch
 
 import httpx
-import pytest
 
 from behind_bars_pulse.config import Settings
 from behind_bars_pulse.feeds.fetcher import FeedFetcher

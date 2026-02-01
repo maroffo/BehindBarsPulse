@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+
+{% block title %}Informazioni - BehindBars{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">Informazioni</h1>
+</div>
+
+<div class="about-content">
+    <section class="about-section">
+        <h2>Il progetto</h2>
+        <p>
+            BehindBarsPulse è un progetto personale che utilizza l'intelligenza artificiale
+            per raccogliere, analizzare e sintetizzare le notizie sul sistema carcerario
+            e la giustizia in Italia.
+        </p>
+        <p>
+            Ogni settimana, il sistema raccoglie automaticamente articoli da decine di fonti,
+            li organizza per tema, e produce una newsletter con commenti editoriali che
+            contestualizzano le notizie più rilevanti.
+        </p>
+    </section>
+
+    <section class="about-section">
+        <h2>Come funziona</h2>
+        <p>
+            Il processo è completamente automatizzato:
+        </p>
+        <ul>
+            <li>Raccolta giornaliera di articoli da feed RSS specializzati</li>
+            <li>Arricchimento con metadati (autore, fonte, riassunto)</li>
+            <li>Tracciamento narrativo delle storie in corso</li>
+            <li>Generazione settimanale della newsletter con analisi AI</li>
+        </ul>
+    </section>
+
+    <section class="about-section">
+        <h2>Trasparenza</h2>
+        <p>
+            I contenuti editoriali sono generati con l'ausilio di modelli linguistici avanzati
+            (Google Gemini via Vertex AI) e supervisionati. I riassunti riflettono i temi
+            degli articoli originali, non necessariamente le opinioni dell'autore del progetto.
+        </p>
+        <p>
+            Il codice sorgente è disponibile su
+            <a href="https://github.com/maroffo/BehindBarsPulse">GitHub</a>.
+        </p>
+    </section>
+
+    <section class="about-section">
+        <h2>Contatti</h2>
+        <p>
+            Per domande, suggerimenti o segnalazioni, puoi aprire una issue su GitHub
+            o contattarmi via email.
+        </p>
+        <a href="/contact" class="btn btn-outline">Contattaci</a>
+    </section>
+</div>
+
+<style>
+.about-content {
+    max-width: 640px;
+}
+
+.about-section {
+    margin-bottom: var(--spacing-xl);
+}
+
+.about-section h2 {
+    font-family: var(--font-serif);
+    font-size: 22px;
+    margin: 0 0 var(--spacing-md) 0;
+    color: var(--color-text);
+}
+
+.about-section p {
+    font-size: 16px;
+    line-height: 1.7;
+    color: var(--color-text-light);
+    margin: 0 0 var(--spacing-md) 0;
+}
+
+.about-section ul {
+    margin: 0 0 var(--spacing-md) 0;
+    padding-left: var(--spacing-lg);
+}
+
+.about-section li {
+    font-size: 16px;
+    line-height: 1.7;
+    color: var(--color-text-light);
+    margin-bottom: var(--spacing-sm);
+}
+</style>
+{% endblock %}

@@ -14,6 +14,7 @@ from behind_bars_pulse.db.models import (
     KeyCharacter,
     Newsletter,
     StoryThread,
+    Subscriber,
 )
 
 
@@ -99,15 +100,11 @@ class ArticleRepository:
     async def list_by_published_date(self, published_date: date) -> Sequence[Article]:
         """List articles published on a specific date."""
         result = await self.session.execute(
-            select(Article)
-            .where(Article.published_date == published_date)
-            .order_by(Article.id)
+            select(Article).where(Article.published_date == published_date).order_by(Article.id)
         )
         return result.scalars().all()
 
-    async def list_by_date_range(
-        self, start_date: date, end_date: date
-    ) -> Sequence[Article]:
+    async def list_by_date_range(self, start_date: date, end_date: date) -> Sequence[Article]:
         """List articles published within a date range (inclusive)."""
         result = await self.session.execute(
             select(Article)
@@ -316,3 +313,50 @@ class NarrativeRepository:
             followup.resolved = True
             return True
         return False
+
+
+class SubscriberRepository:
+    """Repository for Subscriber CRUD operations."""
+
+    def __init__(self, session: AsyncSession):
+        self.session = session
+
+    async def save(self, subscriber: Subscriber) -> Subscriber:
+        """Save a subscriber (insert or update)."""
+        self.session.add(subscriber)
+        await self.session.flush()
+        return subscriber
+
+    async def get_by_email(self, email: str) -> Subscriber | None:
+        """Get subscriber by email address."""
+        result = await self.session.execute(select(Subscriber).where(Subscriber.email == email))
+        return result.scalar_one_or_none()
+
+    async def get_by_token(self, token: str) -> Subscriber | None:
+        """Get subscriber by confirmation/unsubscribe token."""
+        result = await self.session.execute(select(Subscriber).where(Subscriber.token == token))
+        return result.scalar_one_or_none()
+
+    async def list_active(self) -> Sequence[Subscriber]:
+        """List active subscribers (confirmed and not unsubscribed)."""
+        result = await self.session.execute(
+            select(Subscriber)
+            .where(Subscriber.confirmed == True)  # noqa: E712
+            .where(Subscriber.unsubscribed_at.is_(None))
+            .order_by(Subscriber.subscribed_at)
+        )
+        return result.scalars().all()
+
+    async def count_active(self) -> int:
+        """Count active subscribers."""
+        result = await self.session.execute(
+            select(func.count(Subscriber.id))
+            .where(Subscriber.confirmed == True)  # noqa: E712
+            .where(Subscriber.unsubscribed_at.is_(None))
+        )
+        return result.scalar_one()
+
+    async def count_all(self) -> int:
+        """Count all subscribers (including unconfirmed and unsubscribed)."""
+        result = await self.session.execute(select(func.count(Subscriber.id)))
+        return result.scalar_one()

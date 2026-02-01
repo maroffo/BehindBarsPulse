@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block title %}Disiscrizione - BehindBars{% endblock %}
+
+{% block content %}
+<div class="message-page">
+    {% if confirmed %}
+    <div class="message-icon">👋</div>
+    <h1>Ti abbiamo disiscritto</h1>
+    <p class="message-text">
+        Non riceverai più la newsletter. Ci dispiace vederti andare!
+    </p>
+    <p class="message-hint">
+        Se cambi idea, puoi sempre iscriverti di nuovo dalla home page.
+    </p>
+    <a href="/" class="btn btn-outline">Torna alla home</a>
+    {% else %}
+    <div class="message-icon">🤔</div>
+    <h1>Vuoi cancellarti?</h1>
+    <p class="message-text">
+        Stai per cancellare la tua iscrizione alla newsletter BehindBars.
+    </p>
+    <form method="post" class="unsubscribe-form">
+        <button type="submit" class="btn btn-primary">Conferma disiscrizione</button>
+        <a href="/" class="btn btn-outline">Annulla</a>
+    </form>
+    {% endif %}
+</div>
+
+<style>
+.message-page {
+    text-align: center;
+    padding: var(--spacing-xl) 0;
+    max-width: 480px;
+    margin: 0 auto;
+}
+
+.message-icon {
+    font-size: 64px;
+    margin-bottom: var(--spacing-lg);
+}
+
+.message-page h1 {
+    font-family: var(--font-serif);
+    font-size: 28px;
+    margin: 0 0 var(--spacing-md) 0;
+}
+
+.message-text {
+    font-size: 17px;
+    color: var(--color-text-light);
+    line-height: 1.6;
+    margin: 0 0 var(--spacing-md) 0;
+}
+
+.message-hint {
+    font-size: 14px;
+    color: var(--color-text-muted);
+    margin: 0 0 var(--spacing-xl) 0;
+}
+
+.unsubscribe-form {
+    display: flex;
+    gap: var(--spacing-md);
+    justify-content: center;
+    margin-top: var(--spacing-lg);
+}
+</style>
+{% endblock %}

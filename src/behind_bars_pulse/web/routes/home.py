@@ -1,5 +1,5 @@
 # ABOUTME: Home route displaying the latest newsletter.
-# ABOUTME: Serves the main landing page with today's newsletter.
+# ABOUTME: Serves the latest edition page with most recent newsletter.
 
 from datetime import date
 
@@ -11,8 +11,8 @@ from behind_bars_pulse.web.dependencies import NewsletterRepo, Templates
 router = APIRouter()
 
 
-@router.get("/", response_class=HTMLResponse)
-async def home(
+@router.get("/latest", response_class=HTMLResponse)
+async def latest(
     request: Request,
     templates: Templates,
     newsletter_repo: NewsletterRepo,

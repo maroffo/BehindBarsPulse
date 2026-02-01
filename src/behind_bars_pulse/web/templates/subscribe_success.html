@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}Controlla la tua email - BehindBars{% endblock %}
+
+{% block content %}
+<div class="message-page">
+    <div class="message-icon">✉️</div>
+    <h1>Controlla la tua email</h1>
+    <p class="message-text">
+        Ti abbiamo inviato un'email all'indirizzo <strong>{{ email }}</strong>
+        con un link per confermare la tua iscrizione.
+    </p>
+    <p class="message-hint">
+        Se non la trovi, controlla la cartella spam.
+    </p>
+    <a href="/" class="btn btn-outline">Torna alla home</a>
+</div>
+
+<style>
+.message-page {
+    text-align: center;
+    padding: var(--spacing-xl) 0;
+    max-width: 480px;
+    margin: 0 auto;
+}
+
+.message-icon {
+    font-size: 64px;
+    margin-bottom: var(--spacing-lg);
+}
+
+.message-page h1 {
+    font-family: var(--font-serif);
+    font-size: 28px;
+    margin: 0 0 var(--spacing-md) 0;
+}
+
+.message-text {
+    font-size: 17px;
+    color: var(--color-text-light);
+    line-height: 1.6;
+    margin: 0 0 var(--spacing-md) 0;
+}
+
+.message-hint {
+    font-size: 14px;
+    color: var(--color-text-muted);
+    margin: 0 0 var(--spacing-xl) 0;
+}
+</style>
+{% endblock %}

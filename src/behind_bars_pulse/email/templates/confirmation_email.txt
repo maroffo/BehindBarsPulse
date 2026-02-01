@@ -1,0 +1,29 @@
+═══════════════════════════════════════════════════════════════════════════════
+
+BEHINDBARS
+Giustizia e Sistema Carcerario
+
+═══════════════════════════════════════════════════════════════════════════════
+
+CONFERMA LA TUA ISCRIZIONE
+
+Grazie per il tuo interesse in BehindBars!
+
+Per completare l'iscrizione alla newsletter settimanale sul sistema carcerario
+italiano, visita questo link:
+
+{{confirm_url}}
+
+───────────────────────────────────────────────────────────────────────────────
+
+Riceverai una newsletter ogni domenica mattina con le notizie più rilevanti
+della settimana, analisi e approfondimenti.
+
+───────────────────────────────────────────────────────────────────────────────
+
+Se non hai richiesto questa iscrizione, puoi ignorare questa email.
+Non verranno inviate altre email finché non confermi l'iscrizione.
+
+───────────────────────────────────────────────────────────────────────────────
+
+BehindBarsPulse - https://github.com/maroffo/BehindBarsPulse

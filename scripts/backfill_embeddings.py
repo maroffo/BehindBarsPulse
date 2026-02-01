@@ -6,13 +6,13 @@ import sys
 from pathlib import Path
 
 import structlog
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from behind_bars_pulse.db.models import Article
-from behind_bars_pulse.db.session import get_session, close_db
+from behind_bars_pulse.db.session import close_db, get_session
 from behind_bars_pulse.services.newsletter_service import NewsletterService
 
 log = structlog.get_logger()
@@ -34,10 +34,7 @@ async def get_articles_without_embeddings(limit: int) -> list[Article]:
     """Get a batch of articles without embeddings."""
     async with get_session() as session:
         result = await session.execute(
-            select(Article)
-            .where(Article.embedding.is_(None))
-            .order_by(Article.id)
-            .limit(limit)
+            select(Article).where(Article.embedding.is_(None)).order_by(Article.id).limit(limit)
         )
         return list(result.scalars().all())
 

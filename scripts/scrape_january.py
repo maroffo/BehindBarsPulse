@@ -3,7 +3,6 @@
 
 import asyncio
 import json
-import re
 from datetime import date
 from pathlib import Path
 
@@ -84,11 +83,16 @@ async def main():
     output_file = OUTPUT_DIR / "january_2026_urls.json"
 
     with open(output_file, "w") as f:
-        json.dump({
-            "scraped_date": str(date.today()),
-            "total_urls": len(urls),
-            "urls": urls,
-        }, f, indent=2, ensure_ascii=False)
+        json.dump(
+            {
+                "scraped_date": str(date.today()),
+                "total_urls": len(urls),
+                "urls": urls,
+            },
+            f,
+            indent=2,
+            ensure_ascii=False,
+        )
 
     print(f"Saved to {output_file}")
 

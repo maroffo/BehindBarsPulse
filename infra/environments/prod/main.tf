@@ -79,6 +79,7 @@ resource "google_project_service" "apis" {
     "vpcaccess.googleapis.com",
     "servicenetworking.googleapis.com",
     "aiplatform.googleapis.com",
+    "cloudscheduler.googleapis.com",
   ])
 
   project = var.project_id
@@ -156,6 +157,19 @@ module "cloud_run" {
   depends_on = [module.cloud_sql, module.secrets]
 }
 
+# Cloud Scheduler
+module "cloud_scheduler" {
+  source = "../../modules/cloud_scheduler"
+
+  project_id                = var.project_id
+  region                    = var.region
+  environment               = local.environment
+  cloud_run_service_url     = module.cloud_run.service_url
+  cloud_run_service_account = module.cloud_run.service_account_email
+
+  depends_on = [google_project_service.apis, module.cloud_run]
+}
+
 output "cloud_sql_instance" {
   value = module.cloud_sql.instance_connection_name
 }
@@ -171,4 +185,8 @@ output "service_url" {
 
 output "tfstate_bucket" {
   value = module.storage.tfstate_bucket
+}
+
+output "scheduler_service_account" {
+  value = module.cloud_scheduler.scheduler_service_account
 }

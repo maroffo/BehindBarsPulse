@@ -198,3 +198,27 @@ class FollowUp(Base):
 
     def __repr__(self) -> str:
         return f"<FollowUp {self.id[:8]}: {self.event[:40]}...>"
+
+
+class Subscriber(Base):
+    """A newsletter subscriber with double opt-in confirmation."""
+
+    __tablename__ = "subscribers"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    email: Mapped[str] = mapped_column(String(320), unique=True, nullable=False)
+    token: Mapped[str] = mapped_column(String(64), unique=True, nullable=False, index=True)
+    confirmed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    subscribed_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, nullable=False
+    )
+    confirmed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    unsubscribed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    __table_args__ = (Index("ix_subscribers_email", email),)
+
+    def __repr__(self) -> str:
+        status = "confirmed" if self.confirmed else "pending"
+        if self.unsubscribed_at:
+            status = "unsubscribed"
+        return f"<Subscriber {self.email} ({status})>"
