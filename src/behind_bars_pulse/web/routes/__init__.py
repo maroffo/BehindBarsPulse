@@ -9,7 +9,18 @@ from behind_bars_pulse.web.routes import (
     landing,
     pages,
     search,
+    stats,
     subscribe,
 )
 
-__all__ = ["api", "archive", "articles", "home", "landing", "pages", "search", "subscribe"]
+__all__ = [
+    "api",
+    "archive",
+    "articles",
+    "home",
+    "landing",
+    "pages",
+    "search",
+    "stats",
+    "subscribe",
+]

@@ -13,6 +13,7 @@ from behind_bars_pulse.db.models import (
     FollowUp,
     KeyCharacter,
     Newsletter,
+    PrisonEvent,
     StoryThread,
     Subscriber,
 )
@@ -360,3 +361,220 @@ class SubscriberRepository:
         """Count all subscribers (including unconfirmed and unsubscribed)."""
         result = await self.session.execute(select(func.count(Subscriber.id)))
         return result.scalar_one()
+
+
+class PrisonEventRepository:
+    """Repository for PrisonEvent CRUD and analytics operations."""
+
+    def __init__(self, session: AsyncSession):
+        self.session = session
+
+    async def save(self, event: PrisonEvent) -> PrisonEvent:
+        """Save a prison event."""
+        self.session.add(event)
+        await self.session.flush()
+        return event
+
+    async def save_batch(self, events: list[PrisonEvent]) -> list[PrisonEvent]:
+        """Save multiple events in batch."""
+        self.session.add_all(events)
+        await self.session.flush()
+        return events
+
+    async def get_by_id(self, event_id: int) -> PrisonEvent | None:
+        """Get event by ID."""
+        return await self.session.get(PrisonEvent, event_id)
+
+    async def list_by_type(
+        self,
+        event_type: str,
+        date_from: date | None = None,
+        date_to: date | None = None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> Sequence[PrisonEvent]:
+        """List events by type, optionally filtered by date range."""
+        query = (
+            select(PrisonEvent)
+            .where(PrisonEvent.event_type == event_type)
+            .order_by(PrisonEvent.event_date.desc().nulls_last())
+        )
+        if date_from:
+            query = query.where(PrisonEvent.event_date >= date_from)
+        if date_to:
+            query = query.where(PrisonEvent.event_date <= date_to)
+        query = query.limit(limit).offset(offset)
+        result = await self.session.execute(query)
+        return result.scalars().all()
+
+    async def list_by_facility(self, facility: str, limit: int = 50) -> Sequence[PrisonEvent]:
+        """List events for a specific facility."""
+        result = await self.session.execute(
+            select(PrisonEvent)
+            .where(PrisonEvent.facility == facility)
+            .order_by(PrisonEvent.event_date.desc().nulls_last())
+            .limit(limit)
+        )
+        return result.scalars().all()
+
+    async def list_by_region(self, region: str, limit: int = 50) -> Sequence[PrisonEvent]:
+        """List events for a specific region."""
+        result = await self.session.execute(
+            select(PrisonEvent)
+            .where(PrisonEvent.region == region)
+            .order_by(PrisonEvent.event_date.desc().nulls_last())
+            .limit(limit)
+        )
+        return result.scalars().all()
+
+    async def count_by_type(
+        self, date_from: date | None = None, date_to: date | None = None
+    ) -> dict[str, int]:
+        """Count events grouped by type."""
+        query = select(PrisonEvent.event_type, func.count(PrisonEvent.id)).group_by(
+            PrisonEvent.event_type
+        )
+        if date_from:
+            query = query.where(PrisonEvent.event_date >= date_from)
+        if date_to:
+            query = query.where(PrisonEvent.event_date <= date_to)
+        result = await self.session.execute(query)
+        return {row[0]: row[1] for row in result.all()}
+
+    async def count_by_region(
+        self,
+        event_type: str | None = None,
+        date_from: date | None = None,
+        date_to: date | None = None,
+    ) -> dict[str, int]:
+        """Count events grouped by region."""
+        query = select(PrisonEvent.region, func.count(PrisonEvent.id)).where(
+            PrisonEvent.region.isnot(None)
+        )
+        if event_type:
+            query = query.where(PrisonEvent.event_type == event_type)
+        if date_from:
+            query = query.where(PrisonEvent.event_date >= date_from)
+        if date_to:
+            query = query.where(PrisonEvent.event_date <= date_to)
+        query = query.group_by(PrisonEvent.region)
+        result = await self.session.execute(query)
+        return {row[0]: row[1] for row in result.all()}
+
+    async def count_by_facility(
+        self,
+        event_type: str | None = None,
+        limit: int = 20,
+    ) -> list[tuple[str, int]]:
+        """Count events grouped by facility, sorted by count descending."""
+        query = select(PrisonEvent.facility, func.count(PrisonEvent.id)).where(
+            PrisonEvent.facility.isnot(None)
+        )
+        if event_type:
+            query = query.where(PrisonEvent.event_type == event_type)
+        query = (
+            query.group_by(PrisonEvent.facility)
+            .order_by(func.count(PrisonEvent.id).desc())
+            .limit(limit)
+        )
+        result = await self.session.execute(query)
+        return [(row[0], row[1]) for row in result.all()]
+
+    async def count_by_month(
+        self,
+        event_type: str | None = None,
+        date_from: date | None = None,
+        date_to: date | None = None,
+    ) -> list[tuple[str, int]]:
+        """Count events grouped by year-month (YYYY-MM), sorted chronologically.
+
+        Note: Uses PostgreSQL-specific to_char(). This project requires PostgreSQL.
+        """
+        year_month = func.to_char(PrisonEvent.event_date, "YYYY-MM").label("year_month")
+        query = select(year_month, func.count(PrisonEvent.id)).where(
+            PrisonEvent.event_date.isnot(None)
+        )
+        if event_type:
+            query = query.where(PrisonEvent.event_type == event_type)
+        if date_from:
+            query = query.where(PrisonEvent.event_date >= date_from)
+        if date_to:
+            query = query.where(PrisonEvent.event_date <= date_to)
+        query = query.group_by(year_month).order_by(year_month)
+        result = await self.session.execute(query)
+        return [(row[0], row[1]) for row in result.all()]
+
+    async def get_timeline(
+        self,
+        event_type: str | None = None,
+        date_from: date | None = None,
+        date_to: date | None = None,
+        limit: int = 100,
+    ) -> Sequence[PrisonEvent]:
+        """Get events for timeline visualization, sorted by date."""
+        query = select(PrisonEvent).where(PrisonEvent.event_date.isnot(None))
+        if event_type:
+            query = query.where(PrisonEvent.event_type == event_type)
+        if date_from:
+            query = query.where(PrisonEvent.event_date >= date_from)
+        if date_to:
+            query = query.where(PrisonEvent.event_date <= date_to)
+        query = query.order_by(PrisonEvent.event_date.desc()).limit(limit)
+        result = await self.session.execute(query)
+        return result.scalars().all()
+
+    async def exists_by_source_url(self, source_url: str) -> bool:
+        """Check if an event with the given source URL exists (for deduplication)."""
+        result = await self.session.execute(
+            select(func.count(PrisonEvent.id)).where(PrisonEvent.source_url == source_url)
+        )
+        return result.scalar_one() > 0
+
+    async def exists_by_composite_key(
+        self,
+        source_url: str,
+        event_type: str,
+        event_date: date | None,
+        facility: str | None,
+    ) -> bool:
+        """Check if an event with the same composite key exists.
+
+        Uses source_url + event_type + event_date + facility to allow
+        multiple different events from the same article.
+        """
+        query = select(func.count(PrisonEvent.id)).where(
+            PrisonEvent.source_url == source_url,
+            PrisonEvent.event_type == event_type,
+        )
+        if event_date is not None:
+            query = query.where(PrisonEvent.event_date == event_date)
+        else:
+            query = query.where(PrisonEvent.event_date.is_(None))
+
+        if facility is not None:
+            query = query.where(PrisonEvent.facility == facility)
+        else:
+            query = query.where(PrisonEvent.facility.is_(None))
+
+        result = await self.session.execute(query)
+        return result.scalar_one() > 0
+
+    async def list_distinct_facilities(self) -> Sequence[str]:
+        """List all distinct facility names."""
+        result = await self.session.execute(
+            select(PrisonEvent.facility)
+            .where(PrisonEvent.facility.isnot(None))
+            .distinct()
+            .order_by(PrisonEvent.facility)
+        )
+        return result.scalars().all()
+
+    async def list_distinct_regions(self) -> Sequence[str]:
+        """List all distinct region names."""
+        result = await self.session.execute(
+            select(PrisonEvent.region)
+            .where(PrisonEvent.region.isnot(None))
+            .distinct()
+            .order_by(PrisonEvent.region)
+        )
+        return result.scalars().all()

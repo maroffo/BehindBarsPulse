@@ -19,6 +19,7 @@ from tenacity import (
 
 from behind_bars_pulse.ai.prompts import (
     ENTITY_EXTRACTION_PROMPT,
+    EVENT_EXTRACTION_PROMPT,
     EXTRACT_INFO_PROMPT,
     FIRST_ISSUE_INTRO,
     FOLLOWUP_DETECTION_PROMPT,
@@ -643,6 +644,45 @@ class AIService:
         response = self._generate(
             prompt=json.dumps(prompt_data, indent=2, ensure_ascii=False),
             system_prompt=FOLLOWUP_DETECTION_PROMPT,
+        )
+
+        return self._parse_json_response(response)
+
+    def extract_prison_events(
+        self,
+        articles: dict[str, EnrichedArticle],
+        existing_events: list[dict[str, Any]] | None = None,
+    ) -> dict[str, Any]:
+        """Extract structured prison events from articles.
+
+        Extracts events of types: suicide, protest, overcrowding.
+
+        Args:
+            articles: Dictionary of enriched articles.
+            existing_events: List of existing event dicts for deduplication.
+                Each dict should have: event_type, event_date, facility, source_url.
+
+        Returns:
+            Dictionary with 'events' list containing extracted events.
+        """
+        log.info("extracting_prison_events", article_count=len(articles))
+
+        prompt_data = {
+            "articles": {
+                url: {
+                    "title": a.title,
+                    "link": str(a.link),
+                    "content": a.content[:2000],
+                    "source": a.source,
+                }
+                for url, a in articles.items()
+            },
+            "existing_events": existing_events or [],
+        }
+
+        response = self._generate(
+            prompt=json.dumps(prompt_data, indent=2, ensure_ascii=False),
+            system_prompt=EVENT_EXTRACTION_PROMPT,
         )
 
         return self._parse_json_response(response)

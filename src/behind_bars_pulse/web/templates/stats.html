@@ -1,0 +1,319 @@
+{% extends "base.html" %}
+
+{% block title %}Statistiche - BehindBars{% endblock %}
+{% block description %}Visualizzazione dati su suicidi, proteste e sovraffollamento nelle carceri italiane{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="/static/css/stats.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="stats-page">
+    <header class="stats-header">
+        <h1>Statistiche Sistema Carcerario</h1>
+        <p class="stats-intro">
+            Dati estratti automaticamente dagli articoli raccolti dalla newsletter.
+            I grafici mostrano eventi di suicidi, proteste e sovraffollamento nelle carceri italiane.
+        </p>
+    </header>
+
+    <div class="stats-filters">
+        <div class="filter-group">
+            <label for="days-filter">Periodo:</label>
+            <select id="days-filter">
+                <option value="90">Ultimi 3 mesi</option>
+                <option value="180">Ultimi 6 mesi</option>
+                <option value="365" selected>Ultimo anno</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label for="type-filter">Tipo evento:</label>
+            <select id="type-filter">
+                <option value="">Tutti</option>
+                <option value="suicide">Suicidi</option>
+                <option value="protest">Proteste</option>
+                <option value="overcrowding">Sovraffollamento</option>
+            </select>
+        </div>
+        <button id="refresh-btn" class="btn btn-primary">Aggiorna</button>
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-card stat-card-wide">
+            <h2>Eventi per Tipo</h2>
+            <div class="chart-container">
+                <canvas id="by-type-chart"></canvas>
+            </div>
+        </div>
+
+        <div class="stat-card stat-card-wide">
+            <h2>Andamento Mensile</h2>
+            <div class="chart-container chart-container-large">
+                <canvas id="monthly-chart"></canvas>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <h2>Per Regione</h2>
+            <div class="chart-container chart-container-tall">
+                <canvas id="by-region-chart"></canvas>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <h2>Per Istituto (Top 15)</h2>
+            <div class="chart-container chart-container-tall">
+                <canvas id="by-facility-chart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-card stat-card-full">
+            <h2>Timeline Eventi Recenti</h2>
+            <div id="timeline-container" class="timeline-container">
+                <p class="loading">Caricamento timeline...</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="stats-note">
+        <p>
+            <strong>Nota:</strong> I dati sono estratti automaticamente dagli articoli usando intelligenza artificiale.
+            Possono contenere imprecisioni o duplicati. I numeri rappresentano gli eventi menzionati negli articoli,
+            non statistiche ufficiali.
+        </p>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const COLORS = {
+    suicide: 'rgba(220, 53, 69, 0.8)',
+    protest: 'rgba(255, 193, 7, 0.8)',
+    overcrowding: 'rgba(23, 162, 184, 0.8)',
+};
+
+const LABELS = {
+    suicide: 'Suicidi',
+    protest: 'Proteste',
+    overcrowding: 'Sovraffollamento',
+};
+
+let byTypeChart, monthlyChart, byRegionChart, byFacilityChart;
+
+function getFilters() {
+    const days = document.getElementById('days-filter').value;
+    const eventType = document.getElementById('type-filter').value;
+    return { days, eventType };
+}
+
+async function fetchData(endpoint, params = {}) {
+    const url = new URL(endpoint, window.location.origin);
+    Object.entries(params).forEach(([k, v]) => {
+        if (v) url.searchParams.append(k, v);
+    });
+    const response = await fetch(url);
+    return response.json();
+}
+
+async function loadByTypeChart() {
+    const { days } = getFilters();
+    const data = await fetchData('/stats/api/by-type', { days });
+
+    const ctx = document.getElementById('by-type-chart').getContext('2d');
+
+    if (byTypeChart) byTypeChart.destroy();
+
+    byTypeChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['Suicidi', 'Proteste', 'Sovraffollamento'],
+            datasets: [{
+                label: 'Numero Eventi',
+                data: [data.suicide, data.protest, data.overcrowding],
+                backgroundColor: [COLORS.suicide, COLORS.protest, COLORS.overcrowding],
+                borderColor: [COLORS.suicide, COLORS.protest, COLORS.overcrowding],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                y: { beginAtZero: true }
+            }
+        }
+    });
+}
+
+async function loadMonthlyChart() {
+    const { days, eventType } = getFilters();
+    const months = Math.ceil(parseInt(days) / 30);
+    const data = await fetchData('/stats/api/by-month', {
+        months,
+        event_type: eventType || undefined
+    });
+
+    const ctx = document.getElementById('monthly-chart').getContext('2d');
+
+    if (monthlyChart) monthlyChart.destroy();
+
+    monthlyChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: data.data.map(d => d.month),
+            datasets: [{
+                label: eventType ? LABELS[eventType] : 'Tutti gli eventi',
+                data: data.data.map(d => d.count),
+                borderColor: eventType ? COLORS[eventType] : 'rgba(108, 117, 125, 0.8)',
+                backgroundColor: eventType ? COLORS[eventType].replace('0.8', '0.2') : 'rgba(108, 117, 125, 0.2)',
+                fill: true,
+                tension: 0.3
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: true, position: 'top' }
+            },
+            scales: {
+                y: { beginAtZero: true }
+            }
+        }
+    });
+}
+
+async function loadByRegionChart() {
+    const { days, eventType } = getFilters();
+    const data = await fetchData('/stats/api/by-region', {
+        days,
+        event_type: eventType || undefined
+    });
+
+    const ctx = document.getElementById('by-region-chart').getContext('2d');
+
+    if (byRegionChart) byRegionChart.destroy();
+
+    const regions = data.regions.slice(0, 12);
+
+    byRegionChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: regions.map(r => r.region),
+            datasets: [{
+                label: 'Eventi',
+                data: regions.map(r => r.count),
+                backgroundColor: 'rgba(108, 117, 125, 0.7)',
+                borderColor: 'rgba(108, 117, 125, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                x: { beginAtZero: true }
+            }
+        }
+    });
+}
+
+async function loadByFacilityChart() {
+    const { eventType } = getFilters();
+    const data = await fetchData('/stats/api/by-facility', {
+        event_type: eventType || undefined,
+        limit: 15
+    });
+
+    const ctx = document.getElementById('by-facility-chart').getContext('2d');
+
+    if (byFacilityChart) byFacilityChart.destroy();
+
+    byFacilityChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: data.facilities.map(f => f.facility.length > 25 ? f.facility.substring(0, 25) + '...' : f.facility),
+            datasets: [{
+                label: 'Eventi',
+                data: data.facilities.map(f => f.count),
+                backgroundColor: 'rgba(52, 58, 64, 0.7)',
+                borderColor: 'rgba(52, 58, 64, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                x: { beginAtZero: true }
+            }
+        }
+    });
+}
+
+async function loadTimeline() {
+    const { days, eventType } = getFilters();
+    const container = document.getElementById('timeline-container');
+
+    try {
+        const data = await fetchData('/stats/api/timeline', {
+            days,
+            event_type: eventType || undefined
+        });
+
+        if (data.events.length === 0) {
+            container.innerHTML = '<p class="no-data">Nessun evento trovato nel periodo selezionato.</p>';
+            return;
+        }
+
+        const html = data.events.slice(0, 50).map(e => `
+            <div class="timeline-event timeline-event-${e.type}">
+                <div class="timeline-date">${e.date || 'Data sconosciuta'}</div>
+                <div class="timeline-badge">${LABELS[e.type] || e.type}</div>
+                <div class="timeline-content">
+                    ${e.facility ? `<strong>${e.facility}</strong><br>` : ''}
+                    ${e.description}
+                    ${e.count ? `<span class="timeline-count">(${e.count})</span>` : ''}
+                </div>
+            </div>
+        `).join('');
+
+        container.innerHTML = html;
+    } catch (error) {
+        container.innerHTML = '<p class="error">Errore nel caricamento della timeline.</p>';
+        console.error('Timeline error:', error);
+    }
+}
+
+async function loadAllCharts() {
+    await Promise.all([
+        loadByTypeChart(),
+        loadMonthlyChart(),
+        loadByRegionChart(),
+        loadByFacilityChart(),
+        loadTimeline()
+    ]);
+}
+
+document.getElementById('refresh-btn').addEventListener('click', loadAllCharts);
+document.getElementById('days-filter').addEventListener('change', loadAllCharts);
+document.getElementById('type-filter').addEventListener('change', loadAllCharts);
+
+document.addEventListener('DOMContentLoaded', loadAllCharts);
+</script>
+{% endblock %}

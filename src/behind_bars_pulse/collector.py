@@ -1,9 +1,9 @@
 # ABOUTME: Daily article collector for narrative-aware newsletter pipeline.
-# ABOUTME: Fetches, enriches articles and updates narrative context.
+# ABOUTME: Fetches, enriches articles, updates narrative context, and extracts prison events.
 
 import asyncio
 import uuid
-from datetime import date
+from datetime import UTC, date, datetime
 
 import structlog
 
@@ -23,7 +23,85 @@ from behind_bars_pulse.narrative.storage import NarrativeStorage
 log = structlog.get_logger()
 
 
-def _save_articles_to_db(articles: dict[str, EnrichedArticle], collection_date: date) -> int:
+def _save_prison_events_to_db(events: list[dict], article_url_to_id: dict[str, int]) -> int:
+    """Save extracted prison events to database.
+
+    Args:
+        events: List of event dicts from AI extraction.
+        article_url_to_id: Mapping of article URLs to DB article IDs.
+
+    Returns:
+        Number of events saved. Returns 0 if DB is not available.
+    """
+    try:
+        from behind_bars_pulse.db.models import PrisonEvent
+        from behind_bars_pulse.db.repository import PrisonEventRepository
+        from behind_bars_pulse.db.session import get_session
+
+        async def _save():
+            saved_count = 0
+            skipped_count = 0
+
+            async with get_session() as session:
+                repo = PrisonEventRepository(session)
+
+                for event_data in events:
+                    source_url = event_data.get("source_url", "")
+                    event_type = event_data.get("event_type", "unknown")
+                    facility = event_data.get("facility")
+
+                    # Parse event date
+                    event_date = None
+                    if event_data.get("event_date"):
+                        try:
+                            event_date = date.fromisoformat(event_data["event_date"])
+                        except ValueError:
+                            log.warning(
+                                "invalid_event_date",
+                                date=event_data["event_date"],
+                            )
+
+                    # Check for duplicate by composite key (url + type + date + facility)
+                    # This allows multiple different events from the same article
+                    if await repo.exists_by_composite_key(
+                        source_url, event_type, event_date, facility
+                    ):
+                        skipped_count += 1
+                        continue
+
+                    # Get article ID if available
+                    article_id = article_url_to_id.get(source_url)
+
+                    event = PrisonEvent(
+                        event_type=event_type,
+                        event_date=event_date,
+                        facility=facility,
+                        region=event_data.get("region"),
+                        count=event_data.get("count"),
+                        description=event_data.get("description", ""),
+                        source_url=source_url,
+                        article_id=article_id,
+                        confidence=float(event_data.get("confidence", 1.0)),
+                        extracted_at=datetime.now(UTC),
+                    )
+                    await repo.save(event)
+                    saved_count += 1
+
+                await session.commit()
+
+            log.info("prison_events_saved", saved=saved_count, skipped=skipped_count)
+            return saved_count
+
+        return asyncio.run(_save())
+
+    except Exception as e:
+        log.debug("prison_events_save_skipped", error=str(e))
+        return 0
+
+
+def _save_articles_to_db(
+    articles: dict[str, EnrichedArticle], collection_date: date
+) -> tuple[int, dict[str, int]]:
     """Save enriched articles to database with embeddings.
 
     Args:
@@ -31,7 +109,7 @@ def _save_articles_to_db(articles: dict[str, EnrichedArticle], collection_date: 
         collection_date: Date to use as published_date.
 
     Returns:
-        Number of articles saved. Returns 0 if DB is not available.
+        Tuple of (articles saved count, URL-to-article-ID mapping).
     """
     try:
         from behind_bars_pulse.db.models import Article as DbArticle
@@ -42,6 +120,7 @@ def _save_articles_to_db(articles: dict[str, EnrichedArticle], collection_date: 
             svc = NewsletterService()
             saved_count = 0
             skipped_count = 0
+            url_to_id: dict[str, int] = {}
 
             async with get_session() as session:
                 for url, article in articles.items():
@@ -49,8 +128,10 @@ def _save_articles_to_db(articles: dict[str, EnrichedArticle], collection_date: 
                     from sqlalchemy import select
 
                     existing = await session.execute(select(DbArticle).where(DbArticle.link == url))
-                    if existing.scalar_one_or_none():
+                    existing_article = existing.scalar_one_or_none()
+                    if existing_article:
                         skipped_count += 1
+                        url_to_id[url] = existing_article.id
                         continue
 
                     # Generate embedding
@@ -76,18 +157,20 @@ def _save_articles_to_db(articles: dict[str, EnrichedArticle], collection_date: 
                         embedding=embedding,
                     )
                     session.add(db_article)
+                    await session.flush()  # Get the ID
+                    url_to_id[url] = db_article.id
                     saved_count += 1
 
                 await session.commit()
 
             log.info("db_save_complete", saved=saved_count, skipped=skipped_count)
-            return saved_count
+            return saved_count, url_to_id
 
         return asyncio.run(_save())
 
     except Exception as e:
         log.debug("db_save_skipped", error=str(e), hint="DB not configured or unavailable")
-        return 0
+        return 0, {}
 
 
 class ArticleCollector:
@@ -151,9 +234,12 @@ class ArticleCollector:
         self.storage.save_collected_articles(enriched, collection_date)
 
         # Save to database if configured (with embeddings)
-        db_saved = _save_articles_to_db(enriched, collection_date)
+        db_saved, url_to_id = _save_articles_to_db(enriched, collection_date)
         if db_saved > 0:
             log.info("articles_saved_to_db", count=db_saved)
+
+        # Extract and save prison events
+        self._extract_and_save_events(enriched, url_to_id)
 
         log.info("collection_complete", date=collection_date.isoformat(), count=len(enriched))
         return enriched
@@ -342,3 +428,37 @@ class ArticleCollector:
                 followup_event=followup.event,
                 followup_date=str(followup.expected_date),
             )
+
+    def _extract_and_save_events(
+        self,
+        articles: dict[str, EnrichedArticle],
+        url_to_id: dict[str, int],
+    ) -> None:
+        """Extract prison events from articles and save to database.
+
+        Args:
+            articles: Enriched articles to process.
+            url_to_id: Mapping of article URLs to database IDs.
+        """
+        if not articles:
+            return
+
+        log.info("extracting_prison_events", article_count=len(articles))
+
+        try:
+            result = self.ai_service.extract_prison_events(articles)
+        except Exception:
+            log.exception("prison_event_extraction_failed")
+            return
+
+        events = result.get("events", [])
+        if not events:
+            log.info("no_prison_events_extracted")
+            return
+
+        log.info("prison_events_extracted", count=len(events))
+
+        # Save to database
+        saved = _save_prison_events_to_db(events, url_to_id)
+        if saved > 0:
+            log.info("prison_events_saved_to_db", count=saved)

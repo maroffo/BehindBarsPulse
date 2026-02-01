@@ -1,0 +1,245 @@
+/* ABOUTME: Styles for the stats dashboard page.
+   ABOUTME: Chart containers, responsive grid layout, timeline styling. */
+
+.stats-page {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 2rem 1rem;
+}
+
+.stats-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.stats-header h1 {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+    color: #1a1a2e;
+}
+
+.stats-intro {
+    color: #6c757d;
+    max-width: 700px;
+    margin: 0 auto;
+    line-height: 1.6;
+}
+
+.stats-filters {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+.filter-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.filter-group label {
+    font-weight: 500;
+    color: #495057;
+}
+
+.filter-group select {
+    padding: 0.5rem 1rem;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    background: white;
+}
+
+.btn {
+    padding: 0.5rem 1.25rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background-color 0.2s;
+}
+
+.btn-primary {
+    background: #1a1a2e;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #2d2d44;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+@media (max-width: 900px) {
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.stat-card {
+    background: white;
+    border-radius: 8px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.stat-card h2 {
+    font-size: 1.1rem;
+    margin-bottom: 1rem;
+    color: #1a1a2e;
+    border-bottom: 2px solid #f0f0f0;
+    padding-bottom: 0.5rem;
+}
+
+.stat-card-wide {
+    grid-column: span 1;
+}
+
+.stat-card-full {
+    grid-column: span 2;
+}
+
+@media (max-width: 900px) {
+    .stat-card-wide,
+    .stat-card-full {
+        grid-column: span 1;
+    }
+}
+
+.chart-container {
+    position: relative;
+    height: 250px;
+}
+
+.chart-container-large {
+    height: 300px;
+}
+
+.chart-container-tall {
+    height: 350px;
+}
+
+.timeline-container {
+    max-height: 500px;
+    overflow-y: auto;
+    padding-right: 0.5rem;
+}
+
+.timeline-event {
+    display: grid;
+    grid-template-columns: 100px auto 1fr;
+    gap: 1rem;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid #eee;
+    align-items: start;
+}
+
+.timeline-event:last-child {
+    border-bottom: none;
+}
+
+.timeline-date {
+    font-size: 0.85rem;
+    color: #6c757d;
+    font-family: monospace;
+}
+
+.timeline-badge {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-weight: 500;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.timeline-event-suicide .timeline-badge {
+    background: rgba(220, 53, 69, 0.15);
+    color: #dc3545;
+}
+
+.timeline-event-protest .timeline-badge {
+    background: rgba(255, 193, 7, 0.2);
+    color: #856404;
+}
+
+.timeline-event-overcrowding .timeline-badge {
+    background: rgba(23, 162, 184, 0.15);
+    color: #17a2b8;
+}
+
+.timeline-content {
+    font-size: 0.9rem;
+    line-height: 1.5;
+    color: #333;
+}
+
+.timeline-content strong {
+    color: #1a1a2e;
+}
+
+.timeline-count {
+    color: #6c757d;
+    font-size: 0.85rem;
+}
+
+.stats-note {
+    margin-top: 2rem;
+    padding: 1rem;
+    background: #fff3cd;
+    border-radius: 8px;
+    border-left: 4px solid #ffc107;
+}
+
+.stats-note p {
+    margin: 0;
+    font-size: 0.9rem;
+    color: #856404;
+}
+
+.loading,
+.no-data,
+.error {
+    text-align: center;
+    padding: 2rem;
+    color: #6c757d;
+}
+
+.error {
+    color: #dc3545;
+}
+
+@media (max-width: 600px) {
+    .timeline-event {
+        grid-template-columns: 1fr;
+        gap: 0.5rem;
+    }
+
+    .timeline-date {
+        font-size: 0.8rem;
+    }
+
+    .stats-filters {
+        flex-direction: column;
+    }
+
+    .filter-group {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .filter-group select {
+        flex: 1;
+    }
+}

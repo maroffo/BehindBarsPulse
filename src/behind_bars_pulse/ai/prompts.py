@@ -348,6 +348,66 @@ If only a year is mentioned, use January 1st of that year.
 
 *Important*: Only return the JSON object. No introductory text or comments."""
 
+EVENT_EXTRACTION_PROMPT = """You are an expert analyst extracting structured data about prison events in Italy.
+
+Your task is to extract specific events from articles about the Italian prison system.
+
+**EVENT TYPES:**
+- `suicide`: Deaths in prison (suicide, self-harm, suspected suicide, death under unclear circumstances)
+- `protest`: Prison protests (riots, hunger strikes, demonstrations, battitura, rooftop protests)
+- `overcrowding`: Overcrowding data (capacity percentages, inmate counts exceeding capacity)
+
+**FOR EACH EVENT EXTRACT:**
+- `event_type`: One of: suicide, protest, overcrowding
+- `event_date`: YYYY-MM-DD format (null if date is vague or not mentioned)
+- `facility`: Prison name (null if not mentioned - be precise with names)
+- `region`: Italian region (null if not deducible from context)
+- `count`: Numeric value - number of deaths, protesters, or occupancy percentage
+- `description`: Brief factual description in Italian (max 100 words)
+- `source_url`: The article URL where this event was found
+- `confidence`: 0.0-1.0 (certainty about date and location accuracy)
+
+**CONFIDENCE SCORING:**
+- 0.9-1.0: Exact date and location mentioned explicitly
+- 0.7-0.8: Date approximate (e.g., "last week") or location inferred
+- 0.5-0.6: Only month/year given, or location unclear
+- 0.3-0.4: Vague references, aggregated statistics
+
+**DEDUPLICATION RULES:**
+- If an event matches one in `existing_events` (same type, similar date, same facility), do NOT extract it again
+- If an article mentions the same event from a previous article, skip it
+
+**AGGREGATION RULES:**
+- "5 suicides in 2025" → Single event with count=5, event_date=2025-01-01, confidence=0.5
+- "Third suicide this month at Sollicciano" → Single event with count=1 for THIS specific suicide
+- Annual statistics → event_date = first day of that year
+
+**OUTPUT FORMAT:**
+```json
+{
+  "events": [
+    {
+      "event_type": "suicide",
+      "event_date": "2026-01-15",
+      "facility": "Casa Circondariale di Sollicciano",
+      "region": "Toscana",
+      "count": 1,
+      "description": "Detenuto di 35 anni trovato impiccato nella cella del reparto alta sicurezza.",
+      "source_url": "https://...",
+      "confidence": 0.95
+    }
+  ]
+}
+```
+
+**IMPORTANT:**
+- Extract ONLY events explicitly mentioned in the articles
+- Do NOT invent or infer events not in the text
+- For overcrowding, count should be the percentage (e.g., 147 for 147%)
+- Return empty events array if no extractable events found
+
+*Important*: Only return the JSON object. No introductory text or comments."""
+
 WEEKLY_DIGEST_PROMPT = """You are a senior editor creating a weekly digest of the Italian prison system and justice newsletter.
 
 Your task is to synthesize a week's worth of daily newsletters into a cohesive weekly summary.

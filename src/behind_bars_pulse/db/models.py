@@ -1,7 +1,7 @@
 # ABOUTME: SQLAlchemy ORM models for newsletter database persistence.
 # ABOUTME: Defines Newsletter, Article, StoryThread, KeyCharacter, FollowUp tables with pgvector support.
 
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
@@ -222,3 +222,38 @@ class Subscriber(Base):
         if self.unsubscribed_at:
             status = "unsubscribed"
         return f"<Subscriber {self.email} ({status})>"
+
+
+class PrisonEvent(Base):
+    """A structured event extracted from articles (suicide, protest, overcrowding)."""
+
+    __tablename__ = "prison_events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    event_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    event_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    facility: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    region: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    source_url: Mapped[str] = mapped_column(String(2000), nullable=False)
+    article_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("articles.id", ondelete="SET NULL"), nullable=True
+    )
+    confidence: Mapped[float] = mapped_column(Float, default=1.0, nullable=False)
+    extracted_at: Mapped[datetime] = mapped_column(
+        DateTime, default=lambda: datetime.now(UTC), nullable=False
+    )
+
+    article: Mapped[Article | None] = relationship("Article")
+
+    __table_args__ = (
+        Index("ix_prison_events_event_type", "event_type"),
+        Index("ix_prison_events_event_date", event_date.desc()),
+        Index("ix_prison_events_facility", "facility"),
+        Index("ix_prison_events_region", "region"),
+    )
+
+    def __repr__(self) -> str:
+        date_str = self.event_date.isoformat() if self.event_date else "unknown"
+        return f"<PrisonEvent {self.event_type} @ {date_str}>"
