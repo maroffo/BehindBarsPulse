@@ -1,4 +1,4 @@
-# ABOUTME: Static page routes for about and contact pages.
+# ABOUTME: Static page routes for about, contact, and privacy pages.
 # ABOUTME: Simple template rendering without database queries.
 
 from fastapi import APIRouter, Request
@@ -25,5 +25,15 @@ async def contact(request: Request, templates: Templates):
     return templates.TemplateResponse(
         request=request,
         name="contact.html",
+        context={},
+    )
+
+
+@router.get("/privacy", response_class=HTMLResponse)
+async def privacy(request: Request, templates: Templates):
+    """Display the privacy policy page."""
+    return templates.TemplateResponse(
+        request=request,
+        name="privacy.html",
         context={},
     )
