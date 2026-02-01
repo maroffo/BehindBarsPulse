@@ -366,6 +366,7 @@ Your task is to extract specific events from articles about the Italian prison s
 - `description`: Brief factual description in Italian (max 100 words)
 - `source_url`: The article URL where this event was found
 - `confidence`: 0.0-1.0 (certainty about date and location accuracy)
+- `is_aggregate`: true if this is a statistical summary (e.g., "80 suicides in 2025"), false for individual events
 
 **CONFIDENCE SCORING:**
 - 0.9-1.0: Exact date and location mentioned explicitly
@@ -373,14 +374,21 @@ Your task is to extract specific events from articles about the Italian prison s
 - 0.5-0.6: Only month/year given, or location unclear
 - 0.3-0.4: Vague references, aggregated statistics
 
-**DEDUPLICATION RULES:**
-- If an event matches one in `existing_events` (same type, similar date, same facility), do NOT extract it again
-- If an article mentions the same event from a previous article, skip it
+**DEDUPLICATION RULES (CRITICAL):**
+- Review `existing_events` carefully before extracting
+- If an event matches an existing one (same type + similar date + same/similar facility), do NOT extract it
+- Same person reported by multiple articles = ONE event (check names, ages, dates)
+- Example: "Pietro Marinaro, 74 anni, Due Palazzi" in existing_events → skip any article about same person
+
+**INDIVIDUAL vs AGGREGATE:**
+- `is_aggregate: false` - A SPECIFIC event with identifiable victim/date (e.g., "Mario Rossi, 35 anni, morto il 15 gennaio")
+- `is_aggregate: true` - STATISTICS or summaries (e.g., "80 suicidi nel 2025", "5 morti dall'inizio dell'anno")
+- When in doubt, prefer individual events over aggregates
 
 **AGGREGATION RULES:**
-- "5 suicides in 2025" → Single event with count=5, event_date=2025-01-01, confidence=0.5
-- "Third suicide this month at Sollicciano" → Single event with count=1 for THIS specific suicide
-- Annual statistics → event_date = first day of that year
+- "5 suicides in 2025" → Single event with count=5, event_date=2025-01-01, is_aggregate=true
+- "Third suicide this month at Sollicciano" → Single event with count=1, is_aggregate=false
+- Annual/monthly statistics → is_aggregate=true, event_date = first day of period
 
 **OUTPUT FORMAT:**
 ```json
@@ -394,7 +402,8 @@ Your task is to extract specific events from articles about the Italian prison s
       "count": 1,
       "description": "Detenuto di 35 anni trovato impiccato nella cella del reparto alta sicurezza.",
       "source_url": "https://...",
-      "confidence": 0.95
+      "confidence": 0.95,
+      "is_aggregate": false
     }
   ]
 }
@@ -405,6 +414,7 @@ Your task is to extract specific events from articles about the Italian prison s
 - Do NOT invent or infer events not in the text
 - For overcrowding, count should be the percentage (e.g., 147 for 147%)
 - Return empty events array if no extractable events found
+- ALWAYS check existing_events to avoid duplicates
 
 *Important*: Only return the JSON object. No introductory text or comments."""
 

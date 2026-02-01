@@ -1,7 +1,7 @@
 # ABOUTME: SQLAlchemy ORM models for newsletter database persistence.
 # ABOUTME: Defines Newsletter, Article, StoryThread, KeyCharacter, FollowUp tables with pgvector support.
 
-from datetime import UTC, date, datetime
+from datetime import date, datetime
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
@@ -241,6 +241,7 @@ class PrisonEvent(Base):
         Integer, ForeignKey("articles.id", ondelete="SET NULL"), nullable=True
     )
     confidence: Mapped[float] = mapped_column(Float, default=1.0, nullable=False)
+    is_aggregate: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     extracted_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, nullable=False
     )

@@ -4,6 +4,7 @@
 import asyncio
 import uuid
 from datetime import date, datetime
+from typing import Any
 
 import structlog
 
@@ -19,6 +20,7 @@ from behind_bars_pulse.narrative.models import (
     StoryThread,
 )
 from behind_bars_pulse.narrative.storage import NarrativeStorage
+from behind_bars_pulse.utils.facilities import get_facility_region, normalize_facility_name
 
 log = structlog.get_logger()
 
@@ -48,7 +50,15 @@ def _save_prison_events_to_db(events: list[dict], article_url_to_id: dict[str, i
                 for event_data in events:
                     source_url = event_data.get("source_url", "")
                     event_type = event_data.get("event_type", "unknown")
-                    facility = event_data.get("facility")
+
+                    # Normalize facility name for consistency
+                    raw_facility = event_data.get("facility")
+                    facility = normalize_facility_name(raw_facility)
+
+                    # Infer region from facility if not provided
+                    region = event_data.get("region")
+                    if not region and facility:
+                        region = get_facility_region(facility)
 
                     # Parse event date
                     event_date = None
@@ -61,7 +71,7 @@ def _save_prison_events_to_db(events: list[dict], article_url_to_id: dict[str, i
                                 date=event_data["event_date"],
                             )
 
-                    # Check for duplicate by composite key (url + type + date + facility)
+                    # Check for duplicate by composite key (url + type + date + normalized facility)
                     # This allows multiple different events from the same article
                     if await repo.exists_by_composite_key(
                         source_url, event_type, event_date, facility
@@ -72,16 +82,20 @@ def _save_prison_events_to_db(events: list[dict], article_url_to_id: dict[str, i
                     # Get article ID if available
                     article_id = article_url_to_id.get(source_url)
 
+                    # Determine if this is an aggregate statistic
+                    is_aggregate = event_data.get("is_aggregate", False)
+
                     event = PrisonEvent(
                         event_type=event_type,
                         event_date=event_date,
                         facility=facility,
-                        region=event_data.get("region"),
+                        region=region,
                         count=event_data.get("count"),
                         description=event_data.get("description", ""),
                         source_url=source_url,
                         article_id=article_id,
                         confidence=float(event_data.get("confidence", 1.0)),
+                        is_aggregate=is_aggregate,
                         extracted_at=datetime.utcnow(),
                     )
                     await repo.save(event)
@@ -97,6 +111,28 @@ def _save_prison_events_to_db(events: list[dict], article_url_to_id: dict[str, i
     except Exception as e:
         log.debug("prison_events_save_skipped", error=str(e))
         return 0
+
+
+def _get_existing_events_for_dedup() -> list[dict[str, Any]]:
+    """Get recent events from DB for AI deduplication.
+
+    Returns:
+        List of event dicts, or empty list if DB not available.
+    """
+    try:
+        from behind_bars_pulse.db.repository import PrisonEventRepository
+        from behind_bars_pulse.db.session import get_session
+
+        async def _fetch():
+            async with get_session() as session:
+                repo = PrisonEventRepository(session)
+                return await repo.list_recent_for_dedup(days=90)
+
+        return asyncio.run(_fetch())
+
+    except Exception as e:
+        log.debug("existing_events_fetch_skipped", error=str(e))
+        return []
 
 
 def _save_articles_to_db(
@@ -445,8 +481,12 @@ class ArticleCollector:
 
         log.info("extracting_prison_events", article_count=len(articles))
 
+        # Get existing events for AI deduplication
+        existing_events = _get_existing_events_for_dedup()
+        log.info("existing_events_for_dedup", count=len(existing_events))
+
         try:
-            result = self.ai_service.extract_prison_events(articles)
+            result = self.ai_service.extract_prison_events(articles, existing_events)
         except Exception:
             log.exception("prison_event_extraction_failed")
             return
@@ -458,7 +498,7 @@ class ArticleCollector:
 
         log.info("prison_events_extracted", count=len(events))
 
-        # Save to database
+        # Save to database (with normalized facility names)
         saved = _save_prison_events_to_db(events, url_to_id)
         if saved > 0:
             log.info("prison_events_saved_to_db", count=saved)

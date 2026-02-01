@@ -428,12 +428,22 @@ class PrisonEventRepository:
         return result.scalars().all()
 
     async def count_by_type(
-        self, date_from: date | None = None, date_to: date | None = None
+        self,
+        date_from: date | None = None,
+        date_to: date | None = None,
+        exclude_aggregates: bool = True,
     ) -> dict[str, int]:
-        """Count events grouped by type."""
-        query = select(PrisonEvent.event_type, func.count(PrisonEvent.id)).group_by(
-            PrisonEvent.event_type
-        )
+        """Count events grouped by type.
+
+        Args:
+            date_from: Start date filter.
+            date_to: End date filter.
+            exclude_aggregates: If True, exclude is_aggregate=True events.
+        """
+        query = select(PrisonEvent.event_type, func.count(PrisonEvent.id))
+        if exclude_aggregates:
+            query = query.where(PrisonEvent.is_aggregate == False)  # noqa: E712
+        query = query.group_by(PrisonEvent.event_type)
         if date_from:
             query = query.where(PrisonEvent.event_date >= date_from)
         if date_to:
@@ -446,11 +456,21 @@ class PrisonEventRepository:
         event_type: str | None = None,
         date_from: date | None = None,
         date_to: date | None = None,
+        exclude_aggregates: bool = True,
     ) -> dict[str, int]:
-        """Count events grouped by region."""
+        """Count events grouped by region.
+
+        Args:
+            event_type: Filter by event type.
+            date_from: Start date filter.
+            date_to: End date filter.
+            exclude_aggregates: If True, exclude is_aggregate=True events.
+        """
         query = select(PrisonEvent.region, func.count(PrisonEvent.id)).where(
             PrisonEvent.region.isnot(None)
         )
+        if exclude_aggregates:
+            query = query.where(PrisonEvent.is_aggregate == False)  # noqa: E712
         if event_type:
             query = query.where(PrisonEvent.event_type == event_type)
         if date_from:
@@ -465,11 +485,20 @@ class PrisonEventRepository:
         self,
         event_type: str | None = None,
         limit: int = 20,
+        exclude_aggregates: bool = True,
     ) -> list[tuple[str, int]]:
-        """Count events grouped by facility, sorted by count descending."""
+        """Count events grouped by facility, sorted by count descending.
+
+        Args:
+            event_type: Filter by event type.
+            limit: Max facilities to return.
+            exclude_aggregates: If True, exclude is_aggregate=True events.
+        """
         query = select(PrisonEvent.facility, func.count(PrisonEvent.id)).where(
             PrisonEvent.facility.isnot(None)
         )
+        if exclude_aggregates:
+            query = query.where(PrisonEvent.is_aggregate == False)  # noqa: E712
         if event_type:
             query = query.where(PrisonEvent.event_type == event_type)
         query = (
@@ -485,15 +514,24 @@ class PrisonEventRepository:
         event_type: str | None = None,
         date_from: date | None = None,
         date_to: date | None = None,
+        exclude_aggregates: bool = True,
     ) -> list[tuple[str, int]]:
         """Count events grouped by year-month (YYYY-MM), sorted chronologically.
 
         Note: Uses PostgreSQL-specific to_char(). This project requires PostgreSQL.
+
+        Args:
+            event_type: Filter by event type.
+            date_from: Start date filter.
+            date_to: End date filter.
+            exclude_aggregates: If True, exclude is_aggregate=True events.
         """
         year_month = func.to_char(PrisonEvent.event_date, "YYYY-MM").label("year_month")
         query = select(year_month, func.count(PrisonEvent.id)).where(
             PrisonEvent.event_date.isnot(None)
         )
+        if exclude_aggregates:
+            query = query.where(PrisonEvent.is_aggregate == False)  # noqa: E712
         if event_type:
             query = query.where(PrisonEvent.event_type == event_type)
         if date_from:
@@ -510,9 +548,20 @@ class PrisonEventRepository:
         date_from: date | None = None,
         date_to: date | None = None,
         limit: int = 100,
+        exclude_aggregates: bool = True,
     ) -> Sequence[PrisonEvent]:
-        """Get events for timeline visualization, sorted by date."""
+        """Get events for timeline visualization, sorted by date.
+
+        Args:
+            event_type: Filter by event type.
+            date_from: Start date filter.
+            date_to: End date filter.
+            limit: Max events to return.
+            exclude_aggregates: If True, exclude is_aggregate=True events.
+        """
         query = select(PrisonEvent).where(PrisonEvent.event_date.isnot(None))
+        if exclude_aggregates:
+            query = query.where(PrisonEvent.is_aggregate == False)  # noqa: E712
         if event_type:
             query = query.where(PrisonEvent.event_type == event_type)
         if date_from:
@@ -578,3 +627,42 @@ class PrisonEventRepository:
             .order_by(PrisonEvent.region)
         )
         return result.scalars().all()
+
+    async def list_recent_for_dedup(
+        self,
+        days: int = 90,
+        limit: int = 500,
+    ) -> list[dict]:
+        """List recent events for AI deduplication.
+
+        Returns simplified event dicts to pass to AI for checking duplicates.
+
+        Args:
+            days: How many days back to look for events.
+            limit: Maximum events to return.
+
+        Returns:
+            List of event dicts with: event_type, event_date, facility, description.
+        """
+        from datetime import timedelta
+
+        from behind_bars_pulse.utils.facilities import normalize_facility_name
+
+        date_from = date.today() - timedelta(days=days)
+        result = await self.session.execute(
+            select(PrisonEvent)
+            .where(PrisonEvent.event_date >= date_from)
+            .order_by(PrisonEvent.event_date.desc())
+            .limit(limit)
+        )
+        events = result.scalars().all()
+        return [
+            {
+                "event_type": e.event_type,
+                "event_date": e.event_date.isoformat() if e.event_date else None,
+                "facility": normalize_facility_name(e.facility),
+                "description": e.description[:100] if e.description else "",
+                "is_aggregate": e.is_aggregate,
+            }
+            for e in events
+        ]
