@@ -45,6 +45,7 @@ class Settings(BaseSettings):
     sender_email: str = "behindbars@iungomail.com"
     sender_name: str = "Behind Bars Pulse"
     bounce_email: str = "bounces@iungomail.com"
+    confirmation_email_subject: str = "Conferma la tua iscrizione a BehindBars"
     default_recipient: str = "maroffo@gmail.com"
 
     # Database (optional - only required for web and DB persistence)
@@ -66,7 +67,9 @@ class Settings(BaseSettings):
     def database_url_sync(self) -> str:
         """Build sync PostgreSQL connection URL (for Alembic)."""
         password = self.db_password.get_secret_value() if self.db_password else ""
-        return f"postgresql://{self.db_user}:{password}@{self.db_host}:{self.db_port}/{self.db_name}"
+        return (
+            f"postgresql://{self.db_user}:{password}@{self.db_host}:{self.db_port}/{self.db_name}"
+        )
 
     # Paths
     previous_issues_dir: Path = Path("previous_issues")
@@ -83,6 +86,10 @@ class Settings(BaseSettings):
     # Logging
     log_level: str = "INFO"
     log_format: str = "console"  # "console" or "json"
+
+    # Web / API
+    app_base_url: str = "http://localhost:8000"  # Base URL for email links
+    scheduler_audience: str = ""  # OIDC audience for Cloud Scheduler verification
 
 
 @lru_cache

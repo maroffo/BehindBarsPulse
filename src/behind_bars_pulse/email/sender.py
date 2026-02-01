@@ -1,5 +1,5 @@
 # ABOUTME: Email sender for newsletter distribution via AWS SES SMTP.
-# ABOUTME: Handles template rendering, SMTP delivery, and newsletter archival.
+# ABOUTME: Handles template rendering, SMTP delivery, confirmation emails, and newsletter archival.
 
 import smtplib
 from datetime import date
@@ -16,6 +16,8 @@ log = structlog.get_logger()
 
 HTML_TEMPLATE = "behind_bars_template.html"
 TXT_TEMPLATE = "behind_bars_template.txt"
+CONFIRMATION_HTML_TEMPLATE = "confirmation_email.html"
+CONFIRMATION_TXT_TEMPLATE = "confirmation_email.txt"
 
 
 class EmailSender:
@@ -176,3 +178,31 @@ class EmailSender:
         html_path = self._archive_newsletter(html_content, "html", "_preview", issue_date)
 
         return html_path
+
+    def send_confirmation_email(self, to_email: str, confirm_url: str) -> None:
+        """Send subscription confirmation email.
+
+        Args:
+            to_email: Email address to send confirmation to.
+            confirm_url: Full URL for confirming the subscription.
+        """
+        log.info("sending_confirmation_email", to=to_email)
+
+        template_context = {"confirm_url": confirm_url}
+
+        html_template = self.jinja_env.get_template(CONFIRMATION_HTML_TEMPLATE)
+        txt_template = self.jinja_env.get_template(CONFIRMATION_TXT_TEMPLATE)
+
+        html_content = html_template.render(**template_context)
+        txt_content = txt_template.render(**template_context)
+
+        message = EmailMessage()
+        message["Subject"] = self.settings.confirmation_email_subject
+        message["From"] = f"{self.settings.sender_name} <{self.settings.sender_email}>"
+        message["To"] = to_email
+        message.add_header("Return-Path", self.settings.bounce_email)
+
+        message.set_content(txt_content)
+        message.add_alternative(html_content, subtype="html")
+
+        self._send_smtp(message, [to_email])

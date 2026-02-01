@@ -73,6 +73,11 @@ locals {
   service_name = "behindbars-${var.environment}"
 }
 
+# Get project number for Cloud Run URL
+data "google_project" "project" {
+  project_id = var.project_id
+}
+
 # Service account for Cloud Run
 resource "google_service_account" "cloud_run" {
   account_id   = "${local.service_name}-sa"
@@ -166,6 +171,19 @@ resource "google_cloud_run_v2_service" "main" {
       env {
         name  = "GCP_LOCATION"
         value = var.region
+      }
+
+      # Web / API settings for subscription flow and OIDC
+      # APP_BASE_URL uses custom domain if provided, otherwise Cloud Run default URL pattern
+      env {
+        name  = "APP_BASE_URL"
+        value = var.custom_domain != "" ? "https://${var.custom_domain}" : "https://${local.service_name}-${data.google_project.project.number}.${var.region}.run.app"
+      }
+
+      # SCHEDULER_AUDIENCE for OIDC token verification (dynamic like APP_BASE_URL)
+      env {
+        name  = "SCHEDULER_AUDIENCE"
+        value = var.custom_domain != "" ? "https://${var.custom_domain}" : "https://${local.service_name}-${data.google_project.project.number}.${var.region}.run.app"
       }
 
       ports {

@@ -81,10 +81,11 @@ def cmd_collect(args: argparse.Namespace) -> int:
 
 
 def cmd_generate(args: argparse.Namespace) -> int:
-    """Generate and send weekly newsletter.
+    """Generate daily newsletter and archive it.
 
     Uses collected articles if available, otherwise fetches fresh.
     Integrates narrative context when available.
+    Always archives without sending - use 'weekly' command to send.
     """
     from behind_bars_pulse.email.sender import EmailSender
     from behind_bars_pulse.newsletter.generator import NewsletterGenerator
@@ -108,17 +109,12 @@ def cmd_generate(args: argparse.Namespace) -> int:
             today_str = collection_date.strftime("%d.%m.%Y")
             context = generator.build_context(newsletter_content, press_review, today_str)
 
-            if not args.dry_run:
-                sender = EmailSender()
-                sender.send(context)
-                log.info("newsletter_sent")
-            else:
-                # Save preview to previous_issues/
-                sender = EmailSender()
-                preview_path = sender.save_preview(context, issue_date=collection_date)
-                log.info(
-                    "dry_run_complete", title=newsletter_content.title, preview=str(preview_path)
-                )
+            # Always archive (never send directly - use 'weekly' command for sending)
+            sender = EmailSender()
+            preview_path = sender.save_preview(context, issue_date=collection_date)
+            log.info(
+                "newsletter_archived", title=newsletter_content.title, preview=str(preview_path)
+            )
 
         log.info("cmd_generate_complete")
         return 0
@@ -131,19 +127,35 @@ def cmd_generate(args: argparse.Namespace) -> int:
 
 
 def cmd_weekly(args: argparse.Namespace) -> int:
-    """Generate and send weekly digest.
+    """Generate and send weekly digest to subscribers.
 
     Summarizes the past week's newsletters using narrative context.
+    Fetches active subscribers from database and sends to them.
     """
+    import asyncio
     from datetime import timedelta
 
+    from behind_bars_pulse.db.repository import SubscriberRepository
+    from behind_bars_pulse.db.session import get_session
     from behind_bars_pulse.email.sender import EmailSender
     from behind_bars_pulse.newsletter.weekly import WeeklyDigestGenerator
+    from behind_bars_pulse.services.subscriber_service import SubscriberService
 
     log = structlog.get_logger()
     log.info("cmd_weekly_start")
 
     reference_date = date.fromisoformat(args.date) if args.date else date.today()
+
+    async def get_recipients() -> list[str]:
+        """Fetch active subscriber emails from database."""
+        async with get_session() as session:
+            repo = SubscriberRepository(session)
+            service = SubscriberService(repo)
+            return await service.get_active_emails()
+
+    async def get_recipients_with_timeout(timeout: float = 30.0) -> list[str]:
+        """Fetch recipients with timeout to prevent indefinite blocking."""
+        return await asyncio.wait_for(get_recipients(), timeout=timeout)
 
     try:
         generator = WeeklyDigestGenerator()
@@ -154,11 +166,25 @@ def cmd_weekly(args: argparse.Namespace) -> int:
         context = generator.build_context(content, week_start, week_end)
 
         if not args.dry_run:
+            # Fetch recipients from database (with 30s timeout)
+            recipients = asyncio.run(get_recipients_with_timeout())
+
+            if not recipients:
+                log.warning("no_active_subscribers")
+                print("\n⚠️  No active subscribers found in database.\n")
+                return 0
+
+            log.info("sending_to_subscribers", count=len(recipients))
             sender = EmailSender()
-            sender.send(context)
-            log.info("weekly_digest_sent")
+            sender.send(context, recipients=recipients)
+            log.info("weekly_digest_sent", recipient_count=len(recipients))
         else:
-            log.info("weekly_dry_run_complete", title=content.weekly_title)
+            # Preview mode - just show what would be sent
+            sender = EmailSender()
+            preview_path = sender.save_preview(context, issue_date=reference_date)
+            log.info(
+                "weekly_dry_run_complete", title=content.weekly_title, preview=str(preview_path)
+            )
 
         log.info("cmd_weekly_complete")
         return 0
@@ -248,12 +274,7 @@ def create_parser() -> argparse.ArgumentParser:
     # generate command
     generate_parser = subparsers.add_parser(
         "generate",
-        help="Generate and send weekly newsletter",
-    )
-    generate_parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Generate without sending email",
+        help="Generate and archive daily newsletter (does not send)",
     )
     generate_parser.add_argument(
         "--date",
@@ -305,8 +326,7 @@ def main() -> int:
     args = parser.parse_args()
 
     if args.command is None:
-        # Default behavior: run generate (backward compatible)
-        args.dry_run = False
+        # Default behavior: run generate (archive only)
         args.date = None
         args.days_back = 7
         args.first_issue = False
