@@ -18,6 +18,7 @@ from tenacity import (
 )
 
 from behind_bars_pulse.ai.prompts import (
+    CAPACITY_EXTRACTION_PROMPT,
     ENTITY_EXTRACTION_PROMPT,
     EVENT_EXTRACTION_PROMPT,
     EXTRACT_INFO_PROMPT,
@@ -653,9 +654,9 @@ class AIService:
         articles: dict[str, EnrichedArticle],
         existing_events: list[dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
-        """Extract structured prison events from articles.
+        """Extract structured prison incidents from articles.
 
-        Extracts events of types: suicide, protest, overcrowding.
+        Extracts incidents: suicide, self_harm, assault, protest, natural_death.
 
         Args:
             articles: Dictionary of enriched articles.
@@ -663,7 +664,7 @@ class AIService:
                 Each dict should have: event_type, event_date, facility, source_url.
 
         Returns:
-            Dictionary with 'events' list containing extracted events.
+            Dictionary with 'events' list containing extracted incidents.
         """
         log.info("extracting_prison_events", article_count=len(articles))
 
@@ -683,6 +684,45 @@ class AIService:
         response = self._generate(
             prompt=json.dumps(prompt_data, indent=2, ensure_ascii=False),
             system_prompt=EVENT_EXTRACTION_PROMPT,
+        )
+
+        return self._parse_json_response(response)
+
+    def extract_capacity_snapshots(
+        self,
+        articles: dict[str, EnrichedArticle],
+        existing_snapshots: list[dict[str, Any]] | None = None,
+    ) -> dict[str, Any]:
+        """Extract facility capacity snapshots from articles.
+
+        Extracts occupancy data: inmates, capacity, occupancy rates.
+
+        Args:
+            articles: Dictionary of enriched articles.
+            existing_snapshots: List of existing snapshot dicts for deduplication.
+                Each dict should have: facility, snapshot_date, source_url.
+
+        Returns:
+            Dictionary with 'snapshots' list containing capacity data.
+        """
+        log.info("extracting_capacity_snapshots", article_count=len(articles))
+
+        prompt_data = {
+            "articles": {
+                url: {
+                    "title": a.title,
+                    "link": str(a.link),
+                    "content": a.content[:2000],
+                    "source": a.source,
+                }
+                for url, a in articles.items()
+            },
+            "existing_snapshots": existing_snapshots or [],
+        }
+
+        response = self._generate(
+            prompt=json.dumps(prompt_data, indent=2, ensure_ascii=False),
+            system_prompt=CAPACITY_EXTRACTION_PROMPT,
         )
 
         return self._parse_json_response(response)

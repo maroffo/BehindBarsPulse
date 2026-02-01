@@ -348,47 +348,36 @@ If only a year is mentioned, use January 1st of that year.
 
 *Important*: Only return the JSON object. No introductory text or comments."""
 
-EVENT_EXTRACTION_PROMPT = """You are an expert analyst extracting structured data about prison events in Italy.
+INCIDENT_EXTRACTION_PROMPT = """You are an expert analyst extracting structured incident data from Italian prison articles.
 
-Your task is to extract specific events from articles about the Italian prison system.
+**INCIDENT TYPES:**
+- `suicide`: Confirmed suicides in prison
+- `self_harm`: Attempted suicide, self-harm incidents (not fatal)
+- `assault`: Violence between inmates, or attacks on prison staff
+- `protest`: Riots, hunger strikes, demonstrations, battitura, rooftop protests
+- `natural_death`: Deaths from illness, age, or natural causes (not suicide)
 
-**EVENT TYPES:**
-- `suicide`: Deaths in prison (suicide, self-harm, suspected suicide, death under unclear circumstances)
-- `protest`: Prison protests (riots, hunger strikes, demonstrations, battitura, rooftop protests)
-- `overcrowding`: Overcrowding data (capacity percentages, inmate counts exceeding capacity)
-
-**FOR EACH EVENT EXTRACT:**
-- `event_type`: One of: suicide, protest, overcrowding
-- `event_date`: YYYY-MM-DD format (null if date is vague or not mentioned)
-- `facility`: Prison name (null if not mentioned - be precise with names)
-- `region`: Italian region (null if not deducible from context)
-- `count`: Numeric value - number of deaths, protesters, or occupancy percentage
+**FOR EACH INCIDENT EXTRACT:**
+- `event_type`: One of: suicide, self_harm, assault, protest, natural_death
+- `event_date`: YYYY-MM-DD format (null if date not mentioned)
+- `facility`: Prison name (null if not mentioned)
+- `region`: Italian region (null if not deducible)
+- `count`: Number of victims/participants (1 for individual incidents)
 - `description`: Brief factual description in Italian (max 100 words)
-- `source_url`: The article URL where this event was found
-- `confidence`: 0.0-1.0 (certainty about date and location accuracy)
-- `is_aggregate`: true if this is a statistical summary (e.g., "80 suicides in 2025"), false for individual events
+- `source_url`: The article URL
+- `confidence`: 0.0-1.0 (certainty about date/location)
+- `is_aggregate`: true for statistics ("80 suicidi nel 2025"), false for individual events
 
-**CONFIDENCE SCORING:**
-- 0.9-1.0: Exact date and location mentioned explicitly
-- 0.7-0.8: Date approximate (e.g., "last week") or location inferred
-- 0.5-0.6: Only month/year given, or location unclear
-- 0.3-0.4: Vague references, aggregated statistics
+**DEDUPLICATION (CRITICAL):**
+- Check `existing_events` before extracting
+- Same person in multiple articles = ONE event (check names, ages, dates)
+- Skip if: same type + similar date + same facility already exists
 
-**DEDUPLICATION RULES (CRITICAL):**
-- Review `existing_events` carefully before extracting
-- If an event matches an existing one (same type + similar date + same/similar facility), do NOT extract it
-- Same person reported by multiple articles = ONE event (check names, ages, dates)
-- Example: "Pietro Marinaro, 74 anni, Due Palazzi" in existing_events → skip any article about same person
-
-**INDIVIDUAL vs AGGREGATE:**
-- `is_aggregate: false` - A SPECIFIC event with identifiable victim/date (e.g., "Mario Rossi, 35 anni, morto il 15 gennaio")
-- `is_aggregate: true` - STATISTICS or summaries (e.g., "80 suicidi nel 2025", "5 morti dall'inizio dell'anno")
-- When in doubt, prefer individual events over aggregates
-
-**AGGREGATION RULES:**
-- "5 suicides in 2025" → Single event with count=5, event_date=2025-01-01, is_aggregate=true
-- "Third suicide this month at Sollicciano" → Single event with count=1, is_aggregate=false
-- Annual/monthly statistics → is_aggregate=true, event_date = first day of period
+**CLASSIFICATION TIPS:**
+- "Detenuto trovato morto" with no cause → suicide (most common)
+- "Morto per malore/infarto/malattia" → natural_death
+- "Tentato suicidio" or "atto autolesivo" → self_harm
+- "Rissa tra detenuti" or "aggredito agente" → assault
 
 **OUTPUT FORMAT:**
 ```json
@@ -400,7 +389,7 @@ Your task is to extract specific events from articles about the Italian prison s
       "facility": "Casa Circondariale di Sollicciano",
       "region": "Toscana",
       "count": 1,
-      "description": "Detenuto di 35 anni trovato impiccato nella cella del reparto alta sicurezza.",
+      "description": "Detenuto di 35 anni trovato impiccato nella cella.",
       "source_url": "https://...",
       "confidence": 0.95,
       "is_aggregate": false
@@ -409,14 +398,61 @@ Your task is to extract specific events from articles about the Italian prison s
 }
 ```
 
-**IMPORTANT:**
-- Extract ONLY events explicitly mentioned in the articles
-- Do NOT invent or infer events not in the text
-- For overcrowding, count should be the percentage (e.g., 147 for 147%)
-- Return empty events array if no extractable events found
-- ALWAYS check existing_events to avoid duplicates
+Return empty events array if no incidents found.
+*Important*: Only return the JSON object. No introductory text."""
 
-*Important*: Only return the JSON object. No introductory text or comments."""
+CAPACITY_EXTRACTION_PROMPT = """You are an expert analyst extracting prison capacity data from Italian articles.
+
+**EXTRACT FACILITY SNAPSHOTS when articles mention:**
+- Occupancy rates (e.g., "147% di sovraffollamento")
+- Inmate counts (e.g., "2100 detenuti")
+- Capacity figures (e.g., "capienza regolamentare di 1400")
+- National totals (e.g., "64.000 detenuti in Italia su 51.000 posti")
+
+**FOR EACH SNAPSHOT EXTRACT:**
+- `facility`: Prison name, or "NAZIONALE" for country-wide data
+- `region`: Italian region (null for national data)
+- `snapshot_date`: YYYY-MM-DD (use article date if not specified)
+- `inmates`: Current number of inmates (null if not mentioned)
+- `capacity`: Official capacity (null if not mentioned)
+- `occupancy_rate`: Percentage as float (e.g., 147.5 for 147.5%)
+- `source_url`: The article URL
+
+**CALCULATION RULES:**
+- If inmates and capacity given but not rate: calculate rate = (inmates/capacity)*100
+- If only rate given: leave inmates and capacity as null
+- Round occupancy_rate to 1 decimal place
+
+**AGGREGATION:**
+- "Sovraffollamento medio nazionale al 130%" → facility="NAZIONALE", occupancy_rate=130.0
+- "Poggioreale al 170% con 2200 detenuti" → facility="Poggioreale", inmates=2200, occupancy_rate=170.0
+
+**DEDUPLICATION:**
+- Check `existing_snapshots` before extracting
+- Skip if same facility + date already exists
+
+**OUTPUT FORMAT:**
+```json
+{
+  "snapshots": [
+    {
+      "facility": "Poggioreale",
+      "region": "Campania",
+      "snapshot_date": "2026-01-28",
+      "inmates": 2200,
+      "capacity": 1300,
+      "occupancy_rate": 169.2,
+      "source_url": "https://..."
+    }
+  ]
+}
+```
+
+Return empty snapshots array if no capacity data found.
+*Important*: Only return the JSON object. No introductory text."""
+
+# Legacy alias for backwards compatibility
+EVENT_EXTRACTION_PROMPT = INCIDENT_EXTRACTION_PROMPT
 
 WEEKLY_DIGEST_PROMPT = """You are a senior editor creating a weekly digest of the Italian prison system and justice newsletter.
 

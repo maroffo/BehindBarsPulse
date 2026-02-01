@@ -25,6 +25,26 @@
     line-height: 1.6;
 }
 
+.stats-section {
+    margin-bottom: 3rem;
+}
+
+.section-title {
+    font-size: 1.5rem;
+    color: #1a1a2e;
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 3px solid #1a1a2e;
+}
+
+.stat-card h3 {
+    font-size: 1rem;
+    margin-bottom: 1rem;
+    color: #1a1a2e;
+    border-bottom: 2px solid #f0f0f0;
+    padding-bottom: 0.5rem;
+}
+
 .stats-filters {
     display: flex;
     gap: 1rem;
@@ -169,14 +189,24 @@
     color: #dc3545;
 }
 
+.timeline-event-self_harm .timeline-badge {
+    background: rgba(253, 126, 20, 0.15);
+    color: #fd7e14;
+}
+
+.timeline-event-assault .timeline-badge {
+    background: rgba(111, 66, 193, 0.15);
+    color: #6f42c1;
+}
+
 .timeline-event-protest .timeline-badge {
     background: rgba(255, 193, 7, 0.2);
     color: #856404;
 }
 
-.timeline-event-overcrowding .timeline-badge {
-    background: rgba(23, 162, 184, 0.15);
-    color: #17a2b8;
+.timeline-event-natural_death .timeline-badge {
+    background: rgba(108, 117, 125, 0.15);
+    color: #6c757d;
 }
 
 .timeline-content {
@@ -218,6 +248,69 @@
 
 .error {
     color: #dc3545;
+}
+
+/* Capacity table */
+.table-container {
+    overflow-x: auto;
+}
+
+.capacity-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.capacity-table th,
+.capacity-table td {
+    padding: 0.75rem 0.5rem;
+    text-align: left;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.capacity-table th {
+    background: #f8f9fa;
+    font-weight: 600;
+    color: #495057;
+    position: sticky;
+    top: 0;
+}
+
+.capacity-table tbody tr:hover {
+    background: #f8f9fa;
+}
+
+/* Occupancy status colors */
+.capacity-table tr.status-critical {
+    background: rgba(220, 53, 69, 0.1);
+}
+
+.capacity-table tr.status-critical:hover {
+    background: rgba(220, 53, 69, 0.15);
+}
+
+.capacity-table tr.status-high {
+    background: rgba(253, 126, 20, 0.1);
+}
+
+.capacity-table tr.status-high:hover {
+    background: rgba(253, 126, 20, 0.15);
+}
+
+.capacity-table tr.status-over {
+    background: rgba(255, 193, 7, 0.1);
+}
+
+.capacity-table tr.status-over:hover {
+    background: rgba(255, 193, 7, 0.15);
+}
+
+.capacity-table tr.status-ok {
+    background: rgba(40, 167, 69, 0.08);
+}
+
+.capacity-table tr.status-ok:hover {
+    background: rgba(40, 167, 69, 0.12);
 }
 
 @media (max-width: 600px) {

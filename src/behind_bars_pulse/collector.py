@@ -135,6 +135,89 @@ def _get_existing_events_for_dedup() -> list[dict[str, Any]]:
         return []
 
 
+def _save_capacity_snapshots_to_db(snapshots: list[dict], article_url_to_id: dict[str, int]) -> int:
+    """Save facility capacity snapshots to database.
+
+    Args:
+        snapshots: List of snapshot dicts from AI extraction.
+        article_url_to_id: Mapping of article URLs to DB article IDs.
+
+    Returns:
+        Number of snapshots saved. Returns 0 if DB is not available.
+    """
+    try:
+        from behind_bars_pulse.db.models import FacilitySnapshot
+        from behind_bars_pulse.db.repository import FacilitySnapshotRepository
+        from behind_bars_pulse.db.session import get_session
+
+        async def _save():
+            saved_count = 0
+            skipped_count = 0
+
+            async with get_session() as session:
+                repo = FacilitySnapshotRepository(session)
+
+                for snap_data in snapshots:
+                    source_url = snap_data.get("source_url", "")
+
+                    # Normalize facility name
+                    raw_facility = snap_data.get("facility", "")
+                    facility = normalize_facility_name(raw_facility) or raw_facility
+
+                    # Infer region if not provided
+                    region = snap_data.get("region")
+                    if not region and facility:
+                        region = get_facility_region(facility)
+
+                    # Parse snapshot date
+                    snapshot_date = None
+                    if snap_data.get("snapshot_date"):
+                        try:
+                            snapshot_date = date.fromisoformat(snap_data["snapshot_date"])
+                        except ValueError:
+                            log.warning(
+                                "invalid_snapshot_date",
+                                date=snap_data["snapshot_date"],
+                            )
+                            continue
+
+                    if not snapshot_date:
+                        continue  # Skip snapshots without dates
+
+                    # Check for duplicate
+                    if await repo.exists_by_key(facility, snapshot_date, source_url):
+                        skipped_count += 1
+                        continue
+
+                    # Get article ID if available
+                    article_id = article_url_to_id.get(source_url)
+
+                    snapshot = FacilitySnapshot(
+                        facility=facility,
+                        region=region,
+                        snapshot_date=snapshot_date,
+                        inmates=snap_data.get("inmates"),
+                        capacity=snap_data.get("capacity"),
+                        occupancy_rate=snap_data.get("occupancy_rate"),
+                        source_url=source_url,
+                        article_id=article_id,
+                        extracted_at=datetime.utcnow(),
+                    )
+                    await repo.save(snapshot)
+                    saved_count += 1
+
+                await session.commit()
+
+            log.info("capacity_snapshots_saved", saved=saved_count, skipped=skipped_count)
+            return saved_count
+
+        return asyncio.run(_save())
+
+    except Exception as e:
+        log.debug("capacity_snapshots_save_skipped", error=str(e))
+        return 0
+
+
 def _save_articles_to_db(
     articles: dict[str, EnrichedArticle], collection_date: date
 ) -> tuple[int, dict[str, int]]:
@@ -274,8 +357,11 @@ class ArticleCollector:
         if db_saved > 0:
             log.info("articles_saved_to_db", count=db_saved)
 
-        # Extract and save prison events
+        # Extract and save prison incidents
         self._extract_and_save_events(enriched, url_to_id)
+
+        # Extract and save capacity snapshots
+        self._extract_and_save_capacity(enriched, url_to_id)
 
         log.info("collection_complete", date=collection_date.isoformat(), count=len(enriched))
         return enriched
@@ -470,7 +556,7 @@ class ArticleCollector:
         articles: dict[str, EnrichedArticle],
         url_to_id: dict[str, int],
     ) -> None:
-        """Extract prison events from articles and save to database.
+        """Extract prison incidents from articles and save to database.
 
         Args:
             articles: Enriched articles to process.
@@ -502,3 +588,37 @@ class ArticleCollector:
         saved = _save_prison_events_to_db(events, url_to_id)
         if saved > 0:
             log.info("prison_events_saved_to_db", count=saved)
+
+    def _extract_and_save_capacity(
+        self,
+        articles: dict[str, EnrichedArticle],
+        url_to_id: dict[str, int],
+    ) -> None:
+        """Extract facility capacity data from articles and save to database.
+
+        Args:
+            articles: Enriched articles to process.
+            url_to_id: Mapping of article URLs to database IDs.
+        """
+        if not articles:
+            return
+
+        log.info("extracting_capacity_snapshots", article_count=len(articles))
+
+        try:
+            result = self.ai_service.extract_capacity_snapshots(articles)
+        except Exception:
+            log.exception("capacity_extraction_failed")
+            return
+
+        snapshots = result.get("snapshots", [])
+        if not snapshots:
+            log.info("no_capacity_snapshots_extracted")
+            return
+
+        log.info("capacity_snapshots_extracted", count=len(snapshots))
+
+        # Save to database
+        saved = _save_capacity_snapshots_to_db(snapshots, url_to_id)
+        if saved > 0:
+            log.info("capacity_snapshots_saved_to_db", count=saved)

@@ -1,5 +1,5 @@
 # ABOUTME: Stats dashboard and API routes for prison event visualization.
-# ABOUTME: Provides Chart.js dashboard and JSON endpoints for timeline, by-type, by-region data.
+# ABOUTME: Provides Chart.js dashboard and JSON endpoints for incidents and capacity data.
 
 from datetime import date, timedelta
 
@@ -8,7 +8,7 @@ from fastapi import APIRouter, Query, Request
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 
-from behind_bars_pulse.db.repository import PrisonEventRepository
+from behind_bars_pulse.db.repository import FacilitySnapshotRepository, PrisonEventRepository
 from behind_bars_pulse.db.session import get_session
 
 router = APIRouter(tags=["stats"])
@@ -189,3 +189,122 @@ async def api_by_month(
         )
 
     return MonthlyResponse(data=[MonthlyCount(month=m, count=c) for m, c in counts])
+
+
+# --- Capacity API Models ---
+
+
+class FacilityCapacity(BaseModel):
+    """Capacity data for a single facility."""
+
+    facility: str
+    region: str | None
+    inmates: int | None
+    capacity: int | None
+    occupancy_rate: float | None
+    snapshot_date: str
+
+
+class CapacityLatestResponse(BaseModel):
+    """Latest capacity data for all facilities."""
+
+    facilities: list[FacilityCapacity]
+
+
+class CapacityTrendPoint(BaseModel):
+    """Single point in capacity trend."""
+
+    date: str
+    total_inmates: int
+    total_capacity: int
+    avg_occupancy: float
+
+
+class CapacityTrendResponse(BaseModel):
+    """National capacity trend over time."""
+
+    data: list[CapacityTrendPoint]
+
+
+class RegionalCapacity(BaseModel):
+    """Capacity summary for a region."""
+
+    region: str
+    total_inmates: int
+    total_capacity: int
+    avg_occupancy: float
+
+
+class CapacityByRegionResponse(BaseModel):
+    """Capacity summary by region."""
+
+    regions: list[RegionalCapacity]
+
+
+# --- Capacity API Endpoints ---
+
+
+@router.get("/stats/api/capacity/latest", response_model=CapacityLatestResponse)
+async def api_capacity_latest():
+    """Get latest capacity snapshot for each facility."""
+    async with get_session() as session:
+        repo = FacilitySnapshotRepository(session)
+        snapshots = await repo.get_latest_by_facility()
+
+    return CapacityLatestResponse(
+        facilities=[
+            FacilityCapacity(
+                facility=s.facility,
+                region=s.region,
+                inmates=s.inmates,
+                capacity=s.capacity,
+                occupancy_rate=s.occupancy_rate,
+                snapshot_date=s.snapshot_date.isoformat() if s.snapshot_date else "",
+            )
+            for s in snapshots
+        ]
+    )
+
+
+@router.get("/stats/api/capacity/trend", response_model=CapacityTrendResponse)
+async def api_capacity_trend(
+    days: int = Query(365, ge=30, le=730, description="Number of days to include"),
+):
+    """Get national capacity trend over time."""
+    date_from = date.today() - timedelta(days=days)
+
+    async with get_session() as session:
+        repo = FacilitySnapshotRepository(session)
+        trend = await repo.get_national_trend(date_from=date_from)
+
+    return CapacityTrendResponse(
+        data=[
+            CapacityTrendPoint(
+                date=d.isoformat(),
+                total_inmates=inmates,
+                total_capacity=cap,
+                avg_occupancy=round(occ, 1),
+            )
+            for d, inmates, cap, occ in trend
+        ]
+    )
+
+
+@router.get("/stats/api/capacity/by-region", response_model=CapacityByRegionResponse)
+async def api_capacity_by_region():
+    """Get capacity summary by region (latest data)."""
+    async with get_session() as session:
+        repo = FacilitySnapshotRepository(session)
+        summary = await repo.get_regional_summary()
+
+    return CapacityByRegionResponse(
+        regions=[
+            RegionalCapacity(
+                region=region,
+                total_inmates=inmates,
+                total_capacity=cap,
+                avg_occupancy=round(occ, 1),
+            )
+            for region, inmates, cap, occ in summary
+        ]
+    )

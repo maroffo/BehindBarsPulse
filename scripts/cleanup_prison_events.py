@@ -130,7 +130,9 @@ async def cleanup():
                 if victim_id:
                     if victim_id in seen_victims:
                         # This is a duplicate - delete it
-                        print(f"  Duplicate found: {victim_id} (keeping event {seen_victims[victim_id]}, removing {event.id})")
+                        print(
+                            f"  Duplicate found: {victim_id} (keeping event {seen_victims[victim_id]}, removing {event.id})"
+                        )
                         await session.delete(event)
                         duplicates_removed += 1
                         continue  # Don't add to session

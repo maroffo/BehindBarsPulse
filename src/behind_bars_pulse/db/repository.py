@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from behind_bars_pulse.db.models import (
     Article,
     CharacterPosition,
+    FacilitySnapshot,
     FollowUp,
     KeyCharacter,
     Newsletter,
@@ -666,3 +667,186 @@ class PrisonEventRepository:
             }
             for e in events
         ]
+
+
+class FacilitySnapshotRepository:
+    """Repository for FacilitySnapshot CRUD and analytics operations."""
+
+    def __init__(self, session: AsyncSession):
+        self.session = session
+
+    async def save(self, snapshot: FacilitySnapshot) -> FacilitySnapshot:
+        """Save a facility snapshot."""
+        self.session.add(snapshot)
+        await self.session.flush()
+        return snapshot
+
+    async def save_batch(self, snapshots: list[FacilitySnapshot]) -> list[FacilitySnapshot]:
+        """Save multiple snapshots in batch."""
+        self.session.add_all(snapshots)
+        await self.session.flush()
+        return snapshots
+
+    async def get_by_id(self, snapshot_id: int) -> FacilitySnapshot | None:
+        """Get snapshot by ID."""
+        return await self.session.get(FacilitySnapshot, snapshot_id)
+
+    async def exists_by_key(
+        self,
+        facility: str,
+        snapshot_date: date,
+        source_url: str,
+    ) -> bool:
+        """Check if a snapshot with the same key exists."""
+        result = await self.session.execute(
+            select(func.count(FacilitySnapshot.id)).where(
+                FacilitySnapshot.facility == facility,
+                FacilitySnapshot.snapshot_date == snapshot_date,
+                FacilitySnapshot.source_url == source_url,
+            )
+        )
+        return result.scalar_one() > 0
+
+    async def list_by_facility(
+        self,
+        facility: str,
+        limit: int = 100,
+    ) -> Sequence[FacilitySnapshot]:
+        """List snapshots for a specific facility, ordered by date."""
+        result = await self.session.execute(
+            select(FacilitySnapshot)
+            .where(FacilitySnapshot.facility == facility)
+            .order_by(FacilitySnapshot.snapshot_date.desc())
+            .limit(limit)
+        )
+        return result.scalars().all()
+
+    async def list_by_region(
+        self,
+        region: str,
+        date_from: date | None = None,
+        date_to: date | None = None,
+    ) -> Sequence[FacilitySnapshot]:
+        """List snapshots for a region."""
+        query = select(FacilitySnapshot).where(FacilitySnapshot.region == region)
+        if date_from:
+            query = query.where(FacilitySnapshot.snapshot_date >= date_from)
+        if date_to:
+            query = query.where(FacilitySnapshot.snapshot_date <= date_to)
+        query = query.order_by(FacilitySnapshot.snapshot_date.desc())
+        result = await self.session.execute(query)
+        return result.scalars().all()
+
+    async def get_latest_by_facility(self) -> Sequence[FacilitySnapshot]:
+        """Get the latest snapshot for each facility.
+
+        Uses a subquery to find max date per facility, then joins.
+        """
+        # Subquery: max date per facility
+        subq = (
+            select(
+                FacilitySnapshot.facility,
+                func.max(FacilitySnapshot.snapshot_date).label("max_date"),
+            )
+            .group_by(FacilitySnapshot.facility)
+            .subquery()
+        )
+
+        # Join to get full records
+        result = await self.session.execute(
+            select(FacilitySnapshot)
+            .join(
+                subq,
+                (FacilitySnapshot.facility == subq.c.facility)
+                & (FacilitySnapshot.snapshot_date == subq.c.max_date),
+            )
+            .order_by(FacilitySnapshot.occupancy_rate.desc().nulls_last())
+        )
+        return result.scalars().all()
+
+    async def get_national_trend(
+        self,
+        date_from: date | None = None,
+        date_to: date | None = None,
+    ) -> list[tuple[date, int, int, float]]:
+        """Get national aggregate trend (total inmates, capacity, avg occupancy).
+
+        Returns list of (date, total_inmates, total_capacity, avg_occupancy_rate).
+        """
+        query = select(
+            FacilitySnapshot.snapshot_date,
+            func.sum(FacilitySnapshot.inmates).label("total_inmates"),
+            func.sum(FacilitySnapshot.capacity).label("total_capacity"),
+            func.avg(FacilitySnapshot.occupancy_rate).label("avg_occupancy"),
+        ).where(FacilitySnapshot.inmates.isnot(None))
+
+        if date_from:
+            query = query.where(FacilitySnapshot.snapshot_date >= date_from)
+        if date_to:
+            query = query.where(FacilitySnapshot.snapshot_date <= date_to)
+
+        query = query.group_by(FacilitySnapshot.snapshot_date).order_by(
+            FacilitySnapshot.snapshot_date
+        )
+        result = await self.session.execute(query)
+        return [
+            (
+                row.snapshot_date,
+                row.total_inmates or 0,
+                row.total_capacity or 0,
+                row.avg_occupancy or 0,
+            )
+            for row in result.all()
+        ]
+
+    async def get_regional_summary(
+        self,
+        snapshot_date: date | None = None,
+    ) -> list[tuple[str, int, int, float]]:
+        """Get summary by region for a specific date (or latest).
+
+        Returns list of (region, total_inmates, total_capacity, avg_occupancy).
+        """
+        # If no date specified, use the latest date with data
+        if snapshot_date is None:
+            max_date_result = await self.session.execute(
+                select(func.max(FacilitySnapshot.snapshot_date))
+            )
+            snapshot_date = max_date_result.scalar_one_or_none()
+            if not snapshot_date:
+                return []
+
+        query = (
+            select(
+                FacilitySnapshot.region,
+                func.sum(FacilitySnapshot.inmates).label("total_inmates"),
+                func.sum(FacilitySnapshot.capacity).label("total_capacity"),
+                func.avg(FacilitySnapshot.occupancy_rate).label("avg_occupancy"),
+            )
+            .where(FacilitySnapshot.snapshot_date == snapshot_date)
+            .where(FacilitySnapshot.region.isnot(None))
+            .group_by(FacilitySnapshot.region)
+            .order_by(func.avg(FacilitySnapshot.occupancy_rate).desc())
+        )
+        result = await self.session.execute(query)
+        return [
+            (row.region, row.total_inmates or 0, row.total_capacity or 0, row.avg_occupancy or 0)
+            for row in result.all()
+        ]
+
+    async def list_distinct_facilities(self) -> Sequence[str]:
+        """List all distinct facility names."""
+        result = await self.session.execute(
+            select(FacilitySnapshot.facility).distinct().order_by(FacilitySnapshot.facility)
+        )
+        return result.scalars().all()
+
+    async def list_distinct_regions(self) -> Sequence[str]:
+        """List all distinct region names."""
+        result = await self.session.execute(
+            select(FacilitySnapshot.region)
+            .where(FacilitySnapshot.region.isnot(None))
+            .distinct()
+            .order_by(FacilitySnapshot.region)
+        )
+        return result.scalars().all()

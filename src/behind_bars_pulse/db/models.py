@@ -225,7 +225,15 @@ class Subscriber(Base):
 
 
 class PrisonEvent(Base):
-    """A structured event extracted from articles (suicide, protest, overcrowding)."""
+    """A structured incident extracted from articles.
+
+    Event types:
+    - suicide: Deaths by suicide in prison
+    - self_harm: Attempted suicide, self-harm incidents
+    - assault: Violence between inmates or toward staff
+    - protest: Riots, hunger strikes, demonstrations
+    - natural_death: Deaths from illness or natural causes
+    """
 
     __tablename__ = "prison_events"
 
@@ -258,3 +266,40 @@ class PrisonEvent(Base):
     def __repr__(self) -> str:
         date_str = self.event_date.isoformat() if self.event_date else "unknown"
         return f"<PrisonEvent {self.event_type} @ {date_str}>"
+
+
+class FacilitySnapshot(Base):
+    """Point-in-time capacity data for a prison facility.
+
+    Tracks inmate counts and occupancy rates over time to enable
+    trend analysis and correlation with incidents.
+    """
+
+    __tablename__ = "facility_snapshots"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    facility: Mapped[str] = mapped_column(String(200), nullable=False)
+    region: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    snapshot_date: Mapped[date] = mapped_column(Date, nullable=False)
+    inmates: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    capacity: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    occupancy_rate: Mapped[float | None] = mapped_column(Float, nullable=True)
+    source_url: Mapped[str] = mapped_column(String(2000), nullable=False)
+    article_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("articles.id", ondelete="SET NULL"), nullable=True
+    )
+    extracted_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, nullable=False
+    )
+
+    article: Mapped[Article | None] = relationship("Article")
+
+    __table_args__ = (
+        Index("ix_facility_snapshots_facility", "facility"),
+        Index("ix_facility_snapshots_region", "region"),
+        Index("ix_facility_snapshots_date", snapshot_date.desc()),
+        UniqueConstraint("facility", "snapshot_date", "source_url", name="uq_facility_snapshot"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<FacilitySnapshot {self.facility} @ {self.snapshot_date}: {self.occupancy_rate}%>"

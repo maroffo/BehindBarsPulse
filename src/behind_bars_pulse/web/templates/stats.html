@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block title %}Statistiche - BehindBars{% endblock %}
-{% block description %}Visualizzazione dati su suicidi, proteste e sovraffollamento nelle carceri italiane{% endblock %}
+{% block description %}Visualizzazione dati su incidenti e sovraffollamento nelle carceri italiane{% endblock %}
 
 {% block head %}
 <link rel="stylesheet" href="/static/css/stats.css">
@@ -14,75 +14,102 @@
         <h1>Statistiche Sistema Carcerario</h1>
         <p class="stats-intro">
             Dati estratti automaticamente dagli articoli raccolti dalla newsletter.
-            I grafici mostrano eventi di suicidi, proteste e sovraffollamento nelle carceri italiane.
+            Incidenti (suicidi, aggressioni, proteste) e dati sul sovraffollamento.
         </p>
     </header>
 
-    <div class="stats-filters">
-        <div class="filter-group">
-            <label for="days-filter">Periodo:</label>
-            <select id="days-filter">
-                <option value="90">Ultimi 3 mesi</option>
-                <option value="180">Ultimi 6 mesi</option>
-                <option value="365" selected>Ultimo anno</option>
-            </select>
-        </div>
-        <div class="filter-group">
-            <label for="type-filter">Tipo evento:</label>
-            <select id="type-filter">
-                <option value="">Tutti</option>
-                <option value="suicide">Suicidi</option>
-                <option value="protest">Proteste</option>
-                <option value="overcrowding">Sovraffollamento</option>
-            </select>
-        </div>
-        <button id="refresh-btn" class="btn btn-primary">Aggiorna</button>
-    </div>
+    <!-- Incidents Section -->
+    <section class="stats-section">
+        <h2 class="section-title">Incidenti</h2>
 
-    <div class="stats-grid">
-        <div class="stat-card stat-card-wide">
-            <h2>Eventi per Tipo</h2>
-            <div class="chart-container">
-                <canvas id="by-type-chart"></canvas>
+        <div class="stats-filters">
+            <div class="filter-group">
+                <label for="days-filter">Periodo:</label>
+                <select id="days-filter">
+                    <option value="90">Ultimi 3 mesi</option>
+                    <option value="180">Ultimi 6 mesi</option>
+                    <option value="365" selected>Ultimo anno</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="type-filter">Tipo:</label>
+                <select id="type-filter">
+                    <option value="">Tutti</option>
+                    <option value="suicide">Suicidi</option>
+                    <option value="self_harm">Autolesionismo</option>
+                    <option value="assault">Aggressioni</option>
+                    <option value="protest">Proteste</option>
+                    <option value="natural_death">Morti naturali</option>
+                </select>
+            </div>
+            <button id="refresh-btn" class="btn btn-primary">Aggiorna</button>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card stat-card-wide">
+                <h3>Incidenti per Tipo</h3>
+                <div class="chart-container">
+                    <canvas id="by-type-chart"></canvas>
+                </div>
+            </div>
+
+            <div class="stat-card stat-card-wide">
+                <h3>Andamento Mensile</h3>
+                <div class="chart-container chart-container-large">
+                    <canvas id="monthly-chart"></canvas>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <h3>Per Regione</h3>
+                <div class="chart-container chart-container-tall">
+                    <canvas id="by-region-chart"></canvas>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <h3>Per Istituto (Top 15)</h3>
+                <div class="chart-container chart-container-tall">
+                    <canvas id="by-facility-chart"></canvas>
+                </div>
             </div>
         </div>
 
-        <div class="stat-card stat-card-wide">
-            <h2>Andamento Mensile</h2>
-            <div class="chart-container chart-container-large">
-                <canvas id="monthly-chart"></canvas>
+        <div class="stats-grid">
+            <div class="stat-card stat-card-full">
+                <h3>Timeline Incidenti Recenti</h3>
+                <div id="timeline-container" class="timeline-container">
+                    <p class="loading">Caricamento timeline...</p>
+                </div>
             </div>
         </div>
+    </section>
 
-        <div class="stat-card">
-            <h2>Per Regione</h2>
-            <div class="chart-container chart-container-tall">
-                <canvas id="by-region-chart"></canvas>
-            </div>
-        </div>
+    <!-- Capacity Section -->
+    <section class="stats-section">
+        <h2 class="section-title">Sovraffollamento</h2>
 
-        <div class="stat-card">
-            <h2>Per Istituto (Top 15)</h2>
-            <div class="chart-container chart-container-tall">
-                <canvas id="by-facility-chart"></canvas>
+        <div class="stats-grid">
+            <div class="stat-card stat-card-wide">
+                <h3>Tasso di Occupazione per Regione</h3>
+                <div class="chart-container chart-container-large">
+                    <canvas id="capacity-region-chart"></canvas>
+                </div>
             </div>
-        </div>
-    </div>
 
-    <div class="stats-grid">
-        <div class="stat-card stat-card-full">
-            <h2>Timeline Eventi Recenti</h2>
-            <div id="timeline-container" class="timeline-container">
-                <p class="loading">Caricamento timeline...</p>
+            <div class="stat-card stat-card-full">
+                <h3>Situazione Istituti</h3>
+                <div id="capacity-table-container" class="table-container">
+                    <p class="loading">Caricamento dati...</p>
+                </div>
             </div>
         </div>
-    </div>
+    </section>
 
     <div class="stats-note">
         <p>
             <strong>Nota:</strong> I dati sono estratti automaticamente dagli articoli usando intelligenza artificiale.
-            Possono contenere imprecisioni o duplicati. I numeri rappresentano gli eventi menzionati negli articoli,
-            non statistiche ufficiali.
+            I numeri rappresentano gli eventi menzionati negli articoli, non statistiche ufficiali.
         </p>
     </div>
 </div>
@@ -92,17 +119,21 @@
 <script>
 const COLORS = {
     suicide: 'rgba(220, 53, 69, 0.8)',
+    self_harm: 'rgba(253, 126, 20, 0.8)',
+    assault: 'rgba(111, 66, 193, 0.8)',
     protest: 'rgba(255, 193, 7, 0.8)',
-    overcrowding: 'rgba(23, 162, 184, 0.8)',
+    natural_death: 'rgba(108, 117, 125, 0.8)',
 };
 
 const LABELS = {
     suicide: 'Suicidi',
+    self_harm: 'Autolesionismo',
+    assault: 'Aggressioni',
     protest: 'Proteste',
-    overcrowding: 'Sovraffollamento',
+    natural_death: 'Morti naturali',
 };
 
-let byTypeChart, monthlyChart, byRegionChart, byFacilityChart;
+let byTypeChart, monthlyChart, byRegionChart, byFacilityChart, capacityRegionChart;
 
 function getFilters() {
     const days = document.getElementById('days-filter').value;
@@ -127,15 +158,20 @@ async function loadByTypeChart() {
 
     if (byTypeChart) byTypeChart.destroy();
 
+    const types = ['suicide', 'self_harm', 'assault', 'protest', 'natural_death'];
+    const labels = types.map(t => LABELS[t]);
+    const values = types.map(t => data[t] || 0);
+    const colors = types.map(t => COLORS[t]);
+
     byTypeChart = new Chart(ctx, {
         type: 'bar',
         data: {
-            labels: ['Suicidi', 'Proteste', 'Sovraffollamento'],
+            labels: labels,
             datasets: [{
-                label: 'Numero Eventi',
-                data: [data.suicide, data.protest, data.overcrowding],
-                backgroundColor: [COLORS.suicide, COLORS.protest, COLORS.overcrowding],
-                borderColor: [COLORS.suicide, COLORS.protest, COLORS.overcrowding],
+                label: 'Numero Incidenti',
+                data: values,
+                backgroundColor: colors,
+                borderColor: colors,
                 borderWidth: 1
             }]
         },
@@ -169,7 +205,7 @@ async function loadMonthlyChart() {
         data: {
             labels: data.data.map(d => d.month),
             datasets: [{
-                label: eventType ? LABELS[eventType] : 'Tutti gli eventi',
+                label: eventType ? LABELS[eventType] : 'Tutti gli incidenti',
                 data: data.data.map(d => d.count),
                 borderColor: eventType ? COLORS[eventType] : 'rgba(108, 117, 125, 0.8)',
                 backgroundColor: eventType ? COLORS[eventType].replace('0.8', '0.2') : 'rgba(108, 117, 125, 0.2)',
@@ -208,7 +244,7 @@ async function loadByRegionChart() {
         data: {
             labels: regions.map(r => r.region),
             datasets: [{
-                label: 'Eventi',
+                label: 'Incidenti',
                 data: regions.map(r => r.count),
                 backgroundColor: 'rgba(108, 117, 125, 0.7)',
                 borderColor: 'rgba(108, 117, 125, 1)',
@@ -245,7 +281,7 @@ async function loadByFacilityChart() {
         data: {
             labels: data.facilities.map(f => f.facility.length > 25 ? f.facility.substring(0, 25) + '...' : f.facility),
             datasets: [{
-                label: 'Eventi',
+                label: 'Incidenti',
                 data: data.facilities.map(f => f.count),
                 backgroundColor: 'rgba(52, 58, 64, 0.7)',
                 borderColor: 'rgba(52, 58, 64, 1)',
@@ -277,7 +313,7 @@ async function loadTimeline() {
         });
 
         if (data.events.length === 0) {
-            container.innerHTML = '<p class="no-data">Nessun evento trovato nel periodo selezionato.</p>';
+            container.innerHTML = '<p class="no-data">Nessun incidente trovato nel periodo selezionato.</p>';
             return;
         }
 
@@ -288,7 +324,7 @@ async function loadTimeline() {
                 <div class="timeline-content">
                     ${e.facility ? `<strong>${e.facility}</strong><br>` : ''}
                     ${e.description}
-                    ${e.count ? `<span class="timeline-count">(${e.count})</span>` : ''}
+                    ${e.count && e.count > 1 ? `<span class="timeline-count">(${e.count})</span>` : ''}
                 </div>
             </div>
         `).join('');
@@ -300,13 +336,131 @@ async function loadTimeline() {
     }
 }
 
+async function loadCapacityByRegion() {
+    const ctx = document.getElementById('capacity-region-chart').getContext('2d');
+
+    try {
+        const data = await fetchData('/stats/api/capacity/by-region');
+
+        if (capacityRegionChart) capacityRegionChart.destroy();
+
+        if (data.regions.length === 0) {
+            ctx.canvas.parentElement.innerHTML = '<p class="no-data">Nessun dato sul sovraffollamento disponibile.</p>';
+            return;
+        }
+
+        // Color based on occupancy rate
+        const getColor = (rate) => {
+            if (rate >= 150) return 'rgba(220, 53, 69, 0.8)';  // Red - critical
+            if (rate >= 120) return 'rgba(253, 126, 20, 0.8)'; // Orange - high
+            if (rate >= 100) return 'rgba(255, 193, 7, 0.8)';  // Yellow - over
+            return 'rgba(40, 167, 69, 0.8)';                    // Green - ok
+        };
+
+        capacityRegionChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: data.regions.map(r => r.region),
+                datasets: [{
+                    label: 'Tasso occupazione %',
+                    data: data.regions.map(r => r.avg_occupancy),
+                    backgroundColor: data.regions.map(r => getColor(r.avg_occupancy)),
+                    borderColor: data.regions.map(r => getColor(r.avg_occupancy).replace('0.8', '1')),
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: (ctx) => {
+                                const r = data.regions[ctx.dataIndex];
+                                return `${r.avg_occupancy.toFixed(1)}% (${r.total_inmates}/${r.total_capacity})`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        max: 200,
+                        ticks: { callback: (v) => v + '%' }
+                    }
+                }
+            }
+        });
+    } catch (error) {
+        ctx.canvas.parentElement.innerHTML = '<p class="error">Errore nel caricamento dei dati.</p>';
+        console.error('Capacity chart error:', error);
+    }
+}
+
+async function loadCapacityTable() {
+    const container = document.getElementById('capacity-table-container');
+
+    try {
+        const data = await fetchData('/stats/api/capacity/latest');
+
+        if (data.facilities.length === 0) {
+            container.innerHTML = '<p class="no-data">Nessun dato disponibile.</p>';
+            return;
+        }
+
+        const getStatusClass = (rate) => {
+            if (!rate) return '';
+            if (rate >= 150) return 'status-critical';
+            if (rate >= 120) return 'status-high';
+            if (rate >= 100) return 'status-over';
+            return 'status-ok';
+        };
+
+        const html = `
+            <table class="capacity-table">
+                <thead>
+                    <tr>
+                        <th>Istituto</th>
+                        <th>Regione</th>
+                        <th>Detenuti</th>
+                        <th>Capienza</th>
+                        <th>Occupazione</th>
+                        <th>Data</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${data.facilities.slice(0, 20).map(f => `
+                        <tr class="${getStatusClass(f.occupancy_rate)}">
+                            <td>${f.facility}</td>
+                            <td>${f.region || '-'}</td>
+                            <td>${f.inmates || '-'}</td>
+                            <td>${f.capacity || '-'}</td>
+                            <td>${f.occupancy_rate ? f.occupancy_rate.toFixed(1) + '%' : '-'}</td>
+                            <td>${f.snapshot_date || '-'}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+
+        container.innerHTML = html;
+    } catch (error) {
+        container.innerHTML = '<p class="error">Errore nel caricamento dei dati.</p>';
+        console.error('Capacity table error:', error);
+    }
+}
+
 async function loadAllCharts() {
     await Promise.all([
         loadByTypeChart(),
         loadMonthlyChart(),
         loadByRegionChart(),
         loadByFacilityChart(),
-        loadTimeline()
+        loadTimeline(),
+        loadCapacityByRegion(),
+        loadCapacityTable()
     ]);
 }
 
