@@ -17,9 +17,8 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    # AI / Vertex AI
-    gcp_project: str = "wishew-gemini-test"
-    gcp_location: str = "global"
+    # AI / Gemini
+    gemini_api_key: SecretStr | None = None
     gemini_model: str = "gemini-3-flash-preview"
     gemini_fallback_model: str = "gemini-3-flash-preview"
     ai_sleep_between_calls: int = 30

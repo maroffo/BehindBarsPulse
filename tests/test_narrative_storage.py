@@ -16,8 +16,7 @@ from behind_bars_pulse.narrative.storage import NarrativeStorage
 def storage_settings(tmp_path: Path, mock_settings: Settings) -> Settings:
     """Create settings with temp data directory."""
     return Settings(
-        gcp_project=mock_settings.gcp_project,
-        gcp_location=mock_settings.gcp_location,
+        gemini_api_key=mock_settings.gemini_api_key,
         gemini_model=mock_settings.gemini_model,
         gemini_fallback_model=mock_settings.gemini_fallback_model,
         ai_sleep_between_calls=0,

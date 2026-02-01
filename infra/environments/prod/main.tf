@@ -35,6 +35,12 @@ variable "db_password" {
   sensitive   = true
 }
 
+variable "gemini_api_key" {
+  description = "Gemini API key"
+  type        = string
+  sensitive   = true
+}
+
 variable "ses_username" {
   description = "AWS SES SMTP username"
   type        = string
@@ -78,7 +84,6 @@ resource "google_project_service" "apis" {
     "secretmanager.googleapis.com",
     "vpcaccess.googleapis.com",
     "servicenetworking.googleapis.com",
-    "aiplatform.googleapis.com",
     "cloudscheduler.googleapis.com",
   ])
 
@@ -112,11 +117,12 @@ module "networking" {
 module "secrets" {
   source = "../../modules/secrets"
 
-  project_id   = var.project_id
-  environment  = local.environment
-  db_password  = var.db_password
-  ses_username = var.ses_username
-  ses_password = var.ses_password
+  project_id     = var.project_id
+  environment    = local.environment
+  db_password    = var.db_password
+  gemini_api_key = var.gemini_api_key
+  ses_username   = var.ses_username
+  ses_password   = var.ses_password
 
   depends_on = [google_project_service.apis]
 }
@@ -139,17 +145,18 @@ module "cloud_sql" {
 module "cloud_run" {
   source = "../../modules/cloud_run"
 
-  project_id                = var.project_id
-  region                    = var.region
-  environment               = local.environment
-  image                     = var.container_image
-  vpc_connector_id          = module.networking.vpc_connector_id
-  cloud_sql_connection_name = module.cloud_sql.instance_connection_name
-  db_host                   = module.cloud_sql.private_ip
-  db_name                   = module.cloud_sql.database_name
-  db_user                   = module.cloud_sql.database_user
-  db_password_secret_name   = module.secrets.db_password_secret_name
-  custom_domain             = var.custom_domain
+  project_id                 = var.project_id
+  region                     = var.region
+  environment                = local.environment
+  image                      = var.container_image
+  vpc_connector_id           = module.networking.vpc_connector_id
+  cloud_sql_connection_name  = module.cloud_sql.instance_connection_name
+  db_host                    = module.cloud_sql.private_ip
+  db_name                    = module.cloud_sql.database_name
+  db_user                    = module.cloud_sql.database_user
+  db_password_secret_name    = module.secrets.db_password_secret_name
+  gemini_api_key_secret_name = module.secrets.gemini_api_key_secret_name
+  custom_domain              = var.custom_domain
 
   min_instances = 0  # Scale to zero (cost optimization)
   max_instances = 3

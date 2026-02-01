@@ -17,8 +17,7 @@ from behind_bars_pulse.models import Article, EnrichedArticle
 def collector_settings(tmp_path: Path) -> Settings:
     """Create settings for collector testing."""
     return Settings(
-        gcp_project="test-project",
-        gcp_location="global",
+        gemini_api_key=SecretStr("test-api-key"),
         gemini_model="gemini-test",
         gemini_fallback_model="gemini-fallback",
         ai_sleep_between_calls=0,

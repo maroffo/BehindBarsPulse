@@ -51,6 +51,11 @@ variable "db_password_secret_name" {
   type        = string
 }
 
+variable "gemini_api_key_secret_name" {
+  description = "Secret Manager secret name for Gemini API key"
+  type        = string
+}
+
 variable "custom_domain" {
   description = "Custom domain for the service (optional)"
   type        = string
@@ -85,10 +90,18 @@ resource "google_service_account" "cloud_run" {
   display_name = "BehindBars ${var.environment} Cloud Run Service Account"
 }
 
-# Grant Secret Manager access
+# Grant Secret Manager access for DB password
 resource "google_secret_manager_secret_iam_member" "db_password_access" {
   project   = var.project_id
   secret_id = var.db_password_secret_name
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.cloud_run.email}"
+}
+
+# Grant Secret Manager access for Gemini API key
+resource "google_secret_manager_secret_iam_member" "gemini_api_key_access" {
+  project   = var.project_id
+  secret_id = var.gemini_api_key_secret_name
   role      = "roles/secretmanager.secretAccessor"
   member    = "serviceAccount:${google_service_account.cloud_run.email}"
 }
@@ -97,13 +110,6 @@ resource "google_secret_manager_secret_iam_member" "db_password_access" {
 resource "google_project_iam_member" "cloudsql_client" {
   project = var.project_id
   role    = "roles/cloudsql.client"
-  member  = "serviceAccount:${google_service_account.cloud_run.email}"
-}
-
-# Grant Vertex AI access (for embeddings)
-resource "google_project_iam_member" "vertex_ai_user" {
-  project = var.project_id
-  role    = "roles/aiplatform.user"
   member  = "serviceAccount:${google_service_account.cloud_run.email}"
 }
 
@@ -164,13 +170,13 @@ resource "google_cloud_run_v2_service" "main" {
       }
 
       env {
-        name  = "GCP_PROJECT"
-        value = var.project_id
-      }
-
-      env {
-        name  = "GCP_LOCATION"
-        value = var.region
+        name = "GEMINI_API_KEY"
+        value_source {
+          secret_key_ref {
+            secret  = var.gemini_api_key_secret_name
+            version = "latest"
+          }
+        }
       }
 
       # Web / API settings for subscription flow and OIDC

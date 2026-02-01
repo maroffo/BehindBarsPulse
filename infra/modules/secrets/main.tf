@@ -1,5 +1,5 @@
 # ABOUTME: Secret Manager module for sensitive credentials.
-# ABOUTME: Stores database password and SES credentials.
+# ABOUTME: Stores database password, Gemini API key, and SES credentials.
 
 variable "project_id" {
   description = "GCP project ID"
@@ -13,6 +13,12 @@ variable "environment" {
 
 variable "db_password" {
   description = "Database password to store"
+  type        = string
+  sensitive   = true
+}
+
+variable "gemini_api_key" {
+  description = "Gemini API key"
   type        = string
   sensitive   = true
 }
@@ -44,6 +50,21 @@ resource "google_secret_manager_secret" "db_password" {
 resource "google_secret_manager_secret_version" "db_password" {
   secret      = google_secret_manager_secret.db_password.id
   secret_data = var.db_password
+}
+
+# Gemini API key secret
+resource "google_secret_manager_secret" "gemini_api_key" {
+  project   = var.project_id
+  secret_id = "behindbars-${var.environment}-gemini-api-key"
+
+  replication {
+    auto {}
+  }
+}
+
+resource "google_secret_manager_secret_version" "gemini_api_key" {
+  secret      = google_secret_manager_secret.gemini_api_key.id
+  secret_data = var.gemini_api_key
 }
 
 # SES username secret (optional)
@@ -86,6 +107,10 @@ output "db_password_secret_id" {
 
 output "db_password_secret_name" {
   value = google_secret_manager_secret.db_password.name
+}
+
+output "gemini_api_key_secret_name" {
+  value = google_secret_manager_secret.gemini_api_key.name
 }
 
 output "ses_username_secret_id" {

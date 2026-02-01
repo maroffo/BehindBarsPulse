@@ -1,5 +1,5 @@
 # ABOUTME: Service for persisting newsletters and articles to the database.
-# ABOUTME: Integrates with Vertex AI for embedding generation.
+# ABOUTME: Integrates with Gemini API for embedding generation.
 
 import asyncio
 from datetime import date, datetime
@@ -31,10 +31,10 @@ class NewsletterService:
         """Lazy-init Gemini client."""
         if self._genai_client is None:
             settings = get_settings()
+            if not settings.gemini_api_key:
+                raise ValueError("GEMINI_API_KEY is required for embeddings")
             self._genai_client = genai.Client(
-                vertexai=True,
-                project=settings.gcp_project,
-                location=settings.gcp_location,
+                api_key=settings.gemini_api_key.get_secret_value(),
             )
         return self._genai_client
 

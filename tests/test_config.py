@@ -14,13 +14,14 @@ class TestSettings:
     def test_settings_with_required_fields(self, tmp_path: Path) -> None:
         """Settings should load with required fields provided."""
         settings = Settings(
+            gemini_api_key=SecretStr("test-api-key"),
             ses_usr=SecretStr("test-user"),
             ses_pwd=SecretStr("test-password"),
             previous_issues_dir=tmp_path,
         )
 
-        assert settings.gcp_project == "wishew-gemini-test"
-        assert settings.gcp_location == "global"
+        assert settings.gemini_api_key is not None
+        assert settings.gemini_api_key.get_secret_value() == "test-api-key"
         assert settings.gemini_model == "gemini-3-flash-preview"
         assert settings.ses_usr.get_secret_value() == "test-user"
 

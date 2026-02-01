@@ -26,8 +26,7 @@ def weekly_settings(tmp_path: Path) -> Settings:
     issues_dir.mkdir()
 
     return Settings(
-        gcp_project="test-project",
-        gcp_location="global",
+        gemini_api_key=SecretStr("test-api-key"),
         gemini_model="gemini-test",
         gemini_fallback_model="gemini-fallback",
         ai_sleep_between_calls=0,

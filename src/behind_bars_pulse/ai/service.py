@@ -1,4 +1,4 @@
-# ABOUTME: Google Gemini AI service for content generation via Vertex AI.
+# ABOUTME: Google Gemini AI service for content generation.
 # ABOUTME: Handles all LLM interactions for newsletter generation pipeline.
 
 import html
@@ -50,10 +50,10 @@ class AIService:
     def client(self) -> genai.Client:
         """Lazy-initialized Gemini client."""
         if self._client is None:
+            if not self.settings.gemini_api_key:
+                raise ValueError("GEMINI_API_KEY is required")
             self._client = genai.Client(
-                vertexai=True,
-                project=self.settings.gcp_project,
-                location=self.settings.gcp_location,
+                api_key=self.settings.gemini_api_key.get_secret_value(),
             )
         return self._client
 

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-BehindBarsPulse is an automated Italian-language newsletter about the Italian prison system and justice reform. It combines RSS feed processing with LLM-based content generation (Google Gemini via Vertex AI) to produce daily and weekly newsletters with narrative continuity, distributed via AWS SES.
+BehindBarsPulse is an automated Italian-language newsletter about the Italian prison system and justice reform. It combines RSS feed processing with LLM-based content generation (Google Gemini API) to produce daily and weekly newsletters with narrative continuity, distributed via AWS SES.
 
 ## Running the Project
 
@@ -15,12 +15,15 @@ uv sync
 # Collect and enrich articles (updates narrative context)
 uv run python -m behind_bars_pulse collect
 
-# Generate newsletter (daily)
+# Generate newsletter (daily, archives without sending)
 uv run python -m behind_bars_pulse generate
-uv run python -m behind_bars_pulse generate --dry-run  # Preview without sending
 
-# Generate for a specific date range (weekly newsletter)
-uv run python -m behind_bars_pulse generate --date 2026-01-07 --days-back 7 --first-issue
+# Generate for a specific date
+uv run python -m behind_bars_pulse generate --date 2026-01-07 --days-back 7
+
+# Send weekly digest to subscribers
+uv run python -m behind_bars_pulse weekly
+uv run python -m behind_bars_pulse weekly --dry-run  # Preview without sending
 
 # Run tests
 uv run pytest
@@ -33,7 +36,7 @@ uvx ty check src/
 
 **Prerequisites:**
 - Python 3.13+
-- Google Cloud credentials configured for Vertex AI (project: `iungo-ai`, region: `us-central1`)
+- `.env` file with `GEMINI_API_KEY` for AI features
 - `.env` file with `ses_usr` and `ses_pwd` for AWS SES SMTP authentication
 
 ## Architecture
@@ -134,8 +137,7 @@ All settings via Pydantic Settings, loaded from `.env`:
 
 | Setting | Default | Description |
 |---------|---------|-------------|
-| `gcp_project` | `iungo-ai` | Vertex AI project |
-| `gcp_location` | `us-central1` | Vertex AI region |
+| `gemini_api_key` | (required) | Gemini API key |
 | `gemini_model` | `gemini-3-flash-preview` | Primary model |
 | `embedding_model` | `text-multilingual-embedding-002` | Embedding model (768d) |
 | `ai_sleep_between_calls` | `30` | Rate limiting (seconds) |
