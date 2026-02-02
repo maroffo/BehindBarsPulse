@@ -29,12 +29,6 @@ variable "region" {
   default     = "us-central1"
 }
 
-variable "db_password" {
-  description = "Database password"
-  type        = string
-  sensitive   = true
-}
-
 variable "gemini_api_key" {
   description = "Gemini API key"
   type        = string
@@ -113,13 +107,12 @@ module "networking" {
   depends_on = [google_project_service.apis]
 }
 
-# Secrets
+# Secrets (generates db_password automatically)
 module "secrets" {
   source = "../../modules/secrets"
 
   project_id     = var.project_id
   environment    = local.environment
-  db_password    = var.db_password
   gemini_api_key = var.gemini_api_key
   ses_username   = var.ses_username
   ses_password   = var.ses_password
@@ -136,9 +129,9 @@ module "cloud_sql" {
   environment            = local.environment
   vpc_id                 = module.networking.vpc_id
   private_vpc_connection = module.networking.private_vpc_connection
-  db_password            = var.db_password
+  db_password            = module.secrets.db_password
 
-  depends_on = [module.networking]
+  depends_on = [module.networking, module.secrets]
 }
 
 # Cloud Run
@@ -158,7 +151,7 @@ module "cloud_run" {
   gemini_api_key_secret_name = module.secrets.gemini_api_key_secret_name
   custom_domain              = var.custom_domain
 
-  min_instances = 0  # Scale to zero (cost optimization)
+  min_instances = 0 # Scale to zero (cost optimization)
   max_instances = 3
 
   depends_on = [module.cloud_sql, module.secrets]

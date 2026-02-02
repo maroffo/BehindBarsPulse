@@ -29,10 +29,11 @@ variable "region" {
   default     = "us-central1"
 }
 
-variable "db_password" {
-  description = "Database password"
+variable "gemini_api_key" {
+  description = "Gemini API key"
   type        = string
   sensitive   = true
+  default     = ""
 }
 
 variable "container_image" {
@@ -88,13 +89,13 @@ module "networking" {
   depends_on = [google_project_service.apis]
 }
 
-# Secrets
+# Secrets (generates db_password automatically)
 module "secrets" {
   source = "../../modules/secrets"
 
-  project_id  = var.project_id
-  environment = local.environment
-  db_password = var.db_password
+  project_id     = var.project_id
+  environment    = local.environment
+  gemini_api_key = var.gemini_api_key
 
   depends_on = [google_project_service.apis]
 }
@@ -108,9 +109,9 @@ module "cloud_sql" {
   environment            = local.environment
   vpc_id                 = module.networking.vpc_id
   private_vpc_connection = module.networking.private_vpc_connection
-  db_password            = var.db_password
+  db_password            = module.secrets.db_password
 
-  depends_on = [module.networking]
+  depends_on = [module.networking, module.secrets]
 }
 
 # Cloud Run (only if image provided)
@@ -129,7 +130,7 @@ module "cloud_run" {
   db_user                   = module.cloud_sql.database_user
   db_password_secret_name   = module.secrets.db_password_secret_name
 
-  min_instances = 0  # Scale to zero in dev
+  min_instances = 0 # Scale to zero in dev
   max_instances = 2
 
   depends_on = [module.cloud_sql, module.secrets]

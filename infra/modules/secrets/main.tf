@@ -1,6 +1,15 @@
 # ABOUTME: Secret Manager module for sensitive credentials.
 # ABOUTME: Stores database password, Gemini API key, and SES credentials.
 
+terraform {
+  required_providers {
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.0"
+    }
+  }
+}
+
 variable "project_id" {
   description = "GCP project ID"
   type        = string
@@ -11,10 +20,11 @@ variable "environment" {
   type        = string
 }
 
-variable "db_password" {
-  description = "Database password to store"
-  type        = string
-  sensitive   = true
+# Generate random password for database
+resource "random_password" "db_password" {
+  length           = 32
+  special          = true
+  override_special = "!#$%&*()-_=+[]{}<>:?"
 }
 
 variable "gemini_api_key" {
@@ -49,7 +59,7 @@ resource "google_secret_manager_secret" "db_password" {
 
 resource "google_secret_manager_secret_version" "db_password" {
   secret      = google_secret_manager_secret.db_password.id
-  secret_data = var.db_password
+  secret_data = random_password.db_password.result
 }
 
 # Gemini API key secret
@@ -99,6 +109,11 @@ resource "google_secret_manager_secret_version" "ses_password" {
   count       = var.ses_password != "" ? 1 : 0
   secret      = google_secret_manager_secret.ses_password[0].id
   secret_data = var.ses_password
+}
+
+output "db_password" {
+  value     = random_password.db_password.result
+  sensitive = true
 }
 
 output "db_password_secret_id" {

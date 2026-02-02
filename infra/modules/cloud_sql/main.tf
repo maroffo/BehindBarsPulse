@@ -85,7 +85,7 @@ resource "google_sql_database_instance" "main" {
     }
 
     maintenance_window {
-      day  = 7  # Sunday
+      day  = 7 # Sunday
       hour = 4
     }
   }
