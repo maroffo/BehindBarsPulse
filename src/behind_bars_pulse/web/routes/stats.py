@@ -35,8 +35,10 @@ class ByTypeResponse(BaseModel):
     """Count by event type response."""
 
     suicide: int
+    self_harm: int
+    assault: int
     protest: int
-    overcrowding: int
+    natural_death: int
 
 
 class RegionCount(BaseModel):
@@ -131,8 +133,10 @@ async def api_by_type(
 
     return ByTypeResponse(
         suicide=counts.get("suicide", 0),
+        self_harm=counts.get("self_harm", 0),
+        assault=counts.get("assault", 0),
         protest=counts.get("protest", 0),
-        overcrowding=counts.get("overcrowding", 0),
+        natural_death=counts.get("natural_death", 0),
     )
 
 

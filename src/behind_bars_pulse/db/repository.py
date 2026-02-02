@@ -803,36 +803,40 @@ class FacilitySnapshotRepository:
         self,
         snapshot_date: date | None = None,
     ) -> list[tuple[str, int, int, float]]:
-        """Get summary by region for a specific date (or latest).
+        """Get summary by region using latest snapshot per facility.
 
         Returns list of (region, total_inmates, total_capacity, avg_occupancy).
         """
-        # If no date specified, use the latest date with data
-        if snapshot_date is None:
-            max_date_result = await self.session.execute(
-                select(func.max(FacilitySnapshot.snapshot_date))
-            )
-            snapshot_date = max_date_result.scalar_one_or_none()
-            if not snapshot_date:
-                return []
+        # Get latest snapshots per facility (uses get_latest_by_facility logic)
+        latest_snapshots = await self.get_latest_by_facility()
 
-        query = (
-            select(
-                FacilitySnapshot.region,
-                func.sum(FacilitySnapshot.inmates).label("total_inmates"),
-                func.sum(FacilitySnapshot.capacity).label("total_capacity"),
-                func.avg(FacilitySnapshot.occupancy_rate).label("avg_occupancy"),
-            )
-            .where(FacilitySnapshot.snapshot_date == snapshot_date)
-            .where(FacilitySnapshot.region.isnot(None))
-            .group_by(FacilitySnapshot.region)
-            .order_by(func.avg(FacilitySnapshot.occupancy_rate).desc())
-        )
-        result = await self.session.execute(query)
-        return [
-            (row.region, row.total_inmates or 0, row.total_capacity or 0, row.avg_occupancy or 0)
-            for row in result.all()
-        ]
+        # Aggregate by region
+        region_data: dict[str, dict] = {}
+        for snap in latest_snapshots:
+            if not snap.region:
+                continue
+            if snap.region not in region_data:
+                region_data[snap.region] = {
+                    "inmates": 0,
+                    "capacity": 0,
+                    "occupancy_rates": [],
+                }
+            if snap.inmates:
+                region_data[snap.region]["inmates"] += snap.inmates
+            if snap.capacity:
+                region_data[snap.region]["capacity"] += snap.capacity
+            if snap.occupancy_rate:
+                region_data[snap.region]["occupancy_rates"].append(snap.occupancy_rate)
+
+        # Build result
+        result = []
+        for region, data in region_data.items():
+            avg_occ = sum(data["occupancy_rates"]) / len(data["occupancy_rates"]) if data["occupancy_rates"] else 0
+            result.append((region, data["inmates"], data["capacity"], avg_occ))
+
+        # Sort by avg occupancy descending
+        result.sort(key=lambda x: x[3], reverse=True)
+        return result
 
     async def list_distinct_facilities(self) -> Sequence[str]:
         """List all distinct facility names."""
