@@ -55,7 +55,13 @@ variable "container_image" {
 }
 
 variable "custom_domain" {
-  description = "Custom domain (e.g., behindbars.org)"
+  description = "Custom domain (e.g., behindbars.news)"
+  type        = string
+  default     = ""
+}
+
+variable "dns_zone_name" {
+  description = "Existing Cloud DNS zone name"
   type        = string
   default     = ""
 }
@@ -79,6 +85,13 @@ resource "google_project_service" "apis" {
     "vpcaccess.googleapis.com",
     "servicenetworking.googleapis.com",
     "cloudscheduler.googleapis.com",
+    "dns.googleapis.com",
+    "cloudfunctions.googleapis.com",
+    "cloudbuild.googleapis.com",
+    "eventarc.googleapis.com",
+    "pubsub.googleapis.com",
+    "logging.googleapis.com",
+    "aiplatform.googleapis.com",
   ])
 
   project = var.project_id
@@ -153,8 +166,22 @@ module "cloud_run" {
 
   min_instances = 0 # Scale to zero (cost optimization)
   max_instances = 3
+  gcs_bucket    = module.storage.assets_bucket
 
   depends_on = [module.cloud_sql, module.secrets]
+}
+
+# DNS (Cloud DNS records for existing zone)
+module "dns" {
+  count  = var.custom_domain != "" ? 1 : 0
+  source = "../../modules/dns"
+
+  project_id  = var.project_id
+  domain      = var.custom_domain
+  zone_name   = var.dns_zone_name
+  environment = local.environment
+
+  depends_on = [google_project_service.apis]
 }
 
 # Cloud Scheduler
@@ -165,9 +192,28 @@ module "cloud_scheduler" {
   region                    = var.region
   environment               = local.environment
   cloud_run_service_url     = module.cloud_run.service_url
+  cloud_run_service_name    = module.cloud_run.service_name
   cloud_run_service_account = module.cloud_run.service_account_email
 
   depends_on = [google_project_service.apis, module.cloud_run]
+}
+
+# Cloud Function for batch job processing
+module "cloud_function" {
+  source = "../../modules/cloud_function"
+
+  project_id              = var.project_id
+  region                  = var.region
+  environment             = local.environment
+  gcs_bucket              = module.storage.assets_bucket
+  db_host                 = module.cloud_sql.private_ip
+  db_name                 = module.cloud_sql.database_name
+  db_user                 = module.cloud_sql.database_user
+  db_password_secret_name = module.secrets.db_password_secret_name
+  vpc_connector_id        = module.networking.vpc_connector_id
+  function_source_bucket  = module.storage.assets_bucket
+
+  depends_on = [google_project_service.apis, module.cloud_sql, module.secrets, module.networking]
 }
 
 output "cloud_sql_instance" {
@@ -189,4 +235,13 @@ output "tfstate_bucket" {
 
 output "scheduler_service_account" {
   value = module.cloud_scheduler.scheduler_service_account
+}
+
+output "dns_name_servers" {
+  description = "Set these name servers at your domain registrar"
+  value       = var.custom_domain != "" ? module.dns[0].name_servers : null
+}
+
+output "batch_function_name" {
+  value = module.cloud_function.function_name
 }

@@ -86,7 +86,10 @@ def cmd_generate(args: argparse.Namespace) -> int:
     Uses collected articles if available, otherwise fetches fresh.
     Integrates narrative context when available.
     Always archives without sending - use 'weekly' command to send.
+    Saves to database when configured.
     """
+    import asyncio
+
     from behind_bars_pulse.email.sender import EmailSender
     from behind_bars_pulse.newsletter.generator import NewsletterGenerator
 
@@ -100,7 +103,7 @@ def cmd_generate(args: argparse.Namespace) -> int:
 
     try:
         with NewsletterGenerator() as generator:
-            newsletter_content, press_review, _ = generator.generate(
+            newsletter_content, press_review, enriched_articles = generator.generate(
                 collection_date=collection_date,
                 days_back=days_back,
                 first_issue=first_issue,
@@ -115,6 +118,31 @@ def cmd_generate(args: argparse.Namespace) -> int:
             log.info(
                 "newsletter_archived", title=newsletter_content.title, preview=str(preview_path)
             )
+
+            # Save to database if configured
+            settings = get_settings()
+            if settings.database_url:
+                from behind_bars_pulse.services.newsletter_service import NewsletterService
+
+                html_content = (
+                    preview_path.read_text(encoding="utf-8") if preview_path.exists() else None
+                )
+                txt_path = preview_path.with_name(preview_path.name.replace(".html", ".txt"))
+                txt_content = txt_path.read_text(encoding="utf-8") if txt_path.exists() else None
+
+                newsletter_service = NewsletterService()
+                asyncio.run(
+                    newsletter_service.save_newsletter(
+                        context=context,
+                        enriched_articles=list(enriched_articles.values()),
+                        press_review=press_review,
+                        html_content=html_content,
+                        txt_content=txt_content,
+                        issue_date=collection_date,
+                        generate_embeddings=False,
+                    )
+                )
+                log.info("newsletter_saved_to_db", date=collection_date.isoformat())
 
         log.info("cmd_generate_complete")
         return 0

@@ -9,14 +9,13 @@
 
 ## Soluzione: Batch Inference + Collect Multipli
 
-### 1. Collect 4x/giorno
+### 1. Collect ogni 30 minuti
 
 ```
-07:00 → /api/collect (articoli notturni)
-12:00 → /api/collect (batch mattutino ~10:40)
-18:00 → /api/collect (aggiunte pomeridiane)
-23:00 → /api/collect (articoli serali)
+*/30 * * * * → /api/collect (48x/giorno)
 ```
+
+Con RSS feed limitato a 15 articoli e batch pubblicati ~10:40, collect ogni 30 min garantisce di non perdere nulla anche nei giorni più intensi.
 
 Deduplicazione già implementata in `collector.py:249-254` (skip se URL esiste in DB).
 
@@ -53,7 +52,7 @@ job = client.batches.create(
 │                        DAILY FLOW                                │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                  │
-│  Cloud Scheduler (4x/day: 07, 12, 18, 23)                       │
+│  Cloud Scheduler (every 30 min)                                 │
 │         │                                                        │
 │         ▼                                                        │
 │  /api/collect (real-time, ~30s)                                 │
@@ -81,10 +80,13 @@ job = client.batches.create(
 │                                                                  │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                  │
-│  Cloud Function (triggered by Batch Job completion)             │
+│  Vertex AI Batch Job completes                                  │
 │         │                                                        │
 │         ▼                                                        │
-│  process-batch-results                                          │
+│  Writes .jsonl to GCS (batch_jobs/*/output/)                    │
+│         │                                                        │
+│         ▼                                                        │
+│  Cloud Function (triggered by GCS Object Finalize)              │
 │    1. Download results from GCS                                 │
 │    2. Parse responses                                           │
 │    3. Render HTML/TXT                                           │
@@ -97,25 +99,45 @@ job = client.batches.create(
 ## Tasks
 
 ### Phase 1: Multi-Collect (quick win)
-- [ ] Aggiungere 3 scheduler aggiuntivi in Terraform (12:00, 18:00, 23:00)
+- [x] Cambiare scheduler a `*/30 * * * *` in Terraform
 - [ ] Verificare che dedup funzioni correttamente
+- [ ] Deploy e monitorare per qualche giorno
 
 ### Phase 2: Batch Inference
-- [ ] Installare `google-genai` SDK
-- [ ] Creare `BatchInferenceService` in `src/behind_bars_pulse/ai/batch.py`
-- [ ] Implementare `/api/generate-batch` endpoint
-- [ ] Creare JSONL builder per tutti i prompt
-- [ ] Testare con un batch piccolo
+- [x] `google-genai` SDK già installato
+- [x] Creare `BatchInferenceService` in `src/behind_bars_pulse/ai/batch.py`
+  - `build_jsonl_request()` - costruisce singola request JSONL
+  - `build_newsletter_batch()` - assembla tutti i prompt per newsletter
+  - `upload_batch_input()` - carica JSONL su GCS
+  - `submit_batch_job()` - invia job a Vertex AI
+  - `get_job_status()` - controlla stato job
+  - `download_batch_results()` - scarica risultati
+  - `parse_batch_results()` - parse in NewsletterContent e PressReview
+- [x] Implementare `/api/generate-batch` endpoint
+  - Query articoli da DB (ultimi N giorni)
+  - Costruisce JSONL con prompt (content, press_review)
+  - Upload a GCS e submit job
+  - Ritorna job_id per tracking
+- [x] Implementare `/api/batch-job/{job_name}` per check status
+- [ ] Testare con batch piccolo
 
 ### Phase 3: Cloud Function Callback
-- [ ] Creare Cloud Function `process-batch-results`
-- [ ] Configurare trigger su completamento batch job
-- [ ] Implementare parsing risultati e save to DB
+- [x] Creare `functions/process-batch/main.py`
+  - Triggered by GCS Object Finalize (`batch_jobs/*/output/*.jsonl`)
+  - Download risultati da GCS
+  - Parse JSON responses
+  - Render HTML/TXT con `html.escape()` (XSS prevention)
+  - Save newsletter to DB + GCS
+  - Global DB engine per connection reuse
+- [x] Terraform per Cloud Function
+  - `infra/modules/cloud_function/main.tf`
+  - Service account con permessi GCS + Cloud SQL + Secret Manager
+  - GCS Object Finalize trigger (più affidabile di audit logs)
 
-### Phase 4: Cleanup
-- [ ] Rimuovere vecchio `/api/generate` real-time (o tenerlo per debug)
-- [ ] Aggiornare documentazione
-- [ ] Monitoring e alerting
+### Phase 4: Cleanup & Scheduler Update
+- [x] Aggiornare scheduler per chiamare `/api/generate-batch` invece di `/api/generate`
+- [x] Tenere `/api/generate` per debug/regenerate manuale
+- [ ] Monitoring: alert se batch job fallisce
 
 ## References
 

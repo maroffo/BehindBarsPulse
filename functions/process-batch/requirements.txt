@@ -1,0 +1,8 @@
+# ABOUTME: Dependencies for process-batch Cloud Function.
+# ABOUTME: Minimal deps for batch result processing and DB save.
+
+functions-framework==3.*
+cloudevents==1.*
+google-cloud-storage==2.*
+sqlalchemy==2.*
+psycopg2-binary==2.*

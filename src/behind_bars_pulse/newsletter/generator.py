@@ -1,7 +1,6 @@
 # ABOUTME: Newsletter generation orchestrator.
 # ABOUTME: Coordinates feed fetching, AI processing, and content assembly.
 
-import asyncio
 from datetime import date
 from pathlib import Path
 
@@ -25,6 +24,9 @@ log = structlog.get_logger()
 def _load_articles_from_db(end_date: date, days_back: int = 7) -> dict[str, EnrichedArticle] | None:
     """Load articles from database for a date range.
 
+    Uses sync database access to avoid event loop conflicts when called
+    from background tasks.
+
     Args:
         end_date: The end date of the range (typically today or newsletter date).
         days_back: Number of days to look back (default 7 for weekly newsletter).
@@ -34,19 +36,38 @@ def _load_articles_from_db(end_date: date, days_back: int = 7) -> dict[str, Enri
     from datetime import timedelta
 
     try:
-        from behind_bars_pulse.db.repository import ArticleRepository
-        from behind_bars_pulse.db.session import get_session
+        from sqlalchemy import create_engine, select
+        from sqlalchemy.orm import sessionmaker
+
+        from behind_bars_pulse.config import get_settings
+        from behind_bars_pulse.db.models import Article
+
+        settings = get_settings()
+        if not settings.database_url:
+            return None
+
+        # Use sync database connection to avoid event loop issues
+        sync_url = settings.database_url.replace("+asyncpg", "").replace(
+            "postgresql+", "postgresql://"
+        )
+        if sync_url.startswith("postgresql://"):
+            sync_url = sync_url.replace("postgresql://", "postgresql+psycopg2://", 1)
+
+        engine = create_engine(sync_url)
+        SessionLocal = sessionmaker(bind=engine)
 
         start_date = end_date - timedelta(days=days_back - 1)
 
-        async def _fetch():
-            async with get_session() as session:
-                repo = ArticleRepository(session)
-                articles = await repo.list_by_date_range(start_date, end_date)
-                return articles
+        with SessionLocal() as session:
+            stmt = (
+                select(Article)
+                .where(Article.published_date >= start_date)
+                .where(Article.published_date <= end_date)
+                .order_by(Article.published_date.desc())
+            )
+            articles = session.execute(stmt).scalars().all()
 
-        # Run async code synchronously
-        articles = asyncio.run(_fetch())
+        engine.dispose()
 
         if not articles:
             return None
@@ -64,6 +85,7 @@ def _load_articles_from_db(end_date: date, days_back: int = 7) -> dict[str, Enri
                 published_date=article.published_date,
             )
 
+        log.info("db_articles_loaded", count=len(enriched), start=start_date, end=end_date)
         return enriched
 
     except Exception as e:
@@ -93,21 +115,41 @@ class NewsletterGenerator:
     def read_previous_issues(self) -> list[str]:
         """Read previous newsletter issues for context.
 
+        Tries local filesystem first, falls back to GCS if configured.
+
         Returns:
             List of previous newsletter texts.
         """
         issues: list[str] = []
         issues_dir = Path(self.settings.previous_issues_dir)
 
-        if not issues_dir.exists():
-            log.warning("previous_issues_dir_missing", path=str(issues_dir))
-            return issues
+        # Try local filesystem first
+        if issues_dir.exists():
+            for file_path in sorted(issues_dir.glob("*.txt")):
+                log.debug("reading_previous_issue", file=file_path.name)
+                issues.append(file_path.read_text(encoding="utf-8"))
 
-        for file_path in sorted(issues_dir.glob("*.txt")):
-            log.debug("reading_previous_issue", file=file_path.name)
-            issues.append(file_path.read_text(encoding="utf-8"))
+        # If no local issues and GCS is configured, try GCS
+        if not issues and self.settings.gcs_bucket:
+            try:
+                from behind_bars_pulse.services.storage import StorageService
+                storage = StorageService(self.settings.gcs_bucket)
+                if storage.is_enabled:
+                    gcs_files = storage.list_files("previous_issues/")
+                    txt_files = sorted([f for f in gcs_files if f.endswith(".txt")])
+                    for gcs_path in txt_files:
+                        content = storage.download_content(gcs_path)
+                        if content:
+                            log.debug("reading_previous_issue_from_gcs", file=gcs_path)
+                            issues.append(content)
+            except Exception:
+                log.exception("gcs_previous_issues_read_failed")
 
-        log.info("loaded_previous_issues", count=len(issues))
+        if not issues:
+            log.warning("no_previous_issues_found")
+        else:
+            log.info("loaded_previous_issues", count=len(issues))
+
         return issues
 
     def load_narrative_context(self) -> NarrativeMemory | None:

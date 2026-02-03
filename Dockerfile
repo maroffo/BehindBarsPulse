@@ -39,6 +39,9 @@ COPY --from=builder /app/.venv /app/.venv
 COPY --from=builder /app/src ./src
 COPY --from=builder /app/alembic.ini ./
 
+# Create data directories (writable by app user)
+RUN mkdir -p /app/data /app/previous_issues && chown -R app:app /app/data /app/previous_issues
+
 # Set environment variables
 ENV PATH="/app/.venv/bin:$PATH"
 ENV PYTHONUNBUFFERED=1

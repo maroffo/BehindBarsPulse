@@ -21,6 +21,8 @@ class Settings(BaseSettings):
     gemini_api_key: SecretStr | None = None
     gemini_model: str = "gemini-3-flash-preview"
     gemini_fallback_model: str = "gemini-3-flash-preview"
+    google_project_id: str | None = None
+    google_region: str = "us-central1"
     ai_sleep_between_calls: int = 30
     ai_temperature: float = 1.0
     ai_top_p: float = 0.95
@@ -74,6 +76,9 @@ class Settings(BaseSettings):
     previous_issues_dir: Path = Path("previous_issues")
     templates_dir: Path = Path("src/behind_bars_pulse/email/templates")
     data_dir: Path = Path("data")
+
+    # GCS Storage (optional - for production persistence)
+    gcs_bucket: str | None = None  # e.g., "playground-maroffo-behindbars-prod-assets"
 
     # Narrative memory
     narrative_context_file: str = "narrative_context.json"

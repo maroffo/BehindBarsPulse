@@ -21,6 +21,11 @@ variable "cloud_run_service_url" {
   type        = string
 }
 
+variable "cloud_run_service_name" {
+  description = "Cloud Run service name"
+  type        = string
+}
+
 variable "cloud_run_service_account" {
   description = "Cloud Run service account email"
   type        = string
@@ -47,18 +52,19 @@ resource "google_service_account" "scheduler" {
 resource "google_cloud_run_v2_service_iam_member" "scheduler_invoker" {
   project  = var.project_id
   location = var.region
-  name     = split("/", var.cloud_run_service_url)[length(split("/", var.cloud_run_service_url)) - 1]
+  name     = var.cloud_run_service_name
   role     = "roles/run.invoker"
   member   = "serviceAccount:${google_service_account.scheduler.email}"
 }
 
-# Daily article collection job (6:00 AM Europe/Rome)
+# Article collection job (every 30 minutes)
+# RSS feed limited to 15 articles, frequent collection prevents missing articles
 resource "google_cloud_scheduler_job" "collect" {
   name        = "${local.scheduler_name_prefix}-collect"
-  description = "Daily article collection from RSS feeds"
+  description = "Article collection from RSS feeds (every 30 min, dedup by URL)"
   project     = var.project_id
   region      = var.region
-  schedule    = "0 6 * * *"
+  schedule    = "*/30 * * * *"
   time_zone   = var.timezone
 
   http_target {
@@ -81,17 +87,19 @@ resource "google_cloud_scheduler_job" "collect" {
   attempt_deadline = "600s"
 }
 
-# Daily newsletter generation job (7:00 AM Europe/Rome)
+# Daily newsletter batch job submission (8:00 AM Europe/Rome)
+# Submits Vertex AI batch job for newsletter generation
+# Results processed by Cloud Function when job completes
 resource "google_cloud_scheduler_job" "generate" {
-  name        = "${local.scheduler_name_prefix}-generate"
-  description = "Daily newsletter generation (archive only, no send)"
+  name        = "${local.scheduler_name_prefix}-generate-batch"
+  description = "Submit batch job for daily newsletter generation"
   project     = var.project_id
   region      = var.region
-  schedule    = "0 7 * * *"
+  schedule    = "0 8 * * *"
   time_zone   = var.timezone
 
   http_target {
-    uri         = "${var.cloud_run_service_url}/api/generate"
+    uri         = "${var.cloud_run_service_url}/api/generate-batch"
     http_method = "POST"
 
     oidc_token {
@@ -107,7 +115,8 @@ resource "google_cloud_scheduler_job" "generate" {
     max_doublings        = 3
   }
 
-  attempt_deadline = "1200s"
+  # Batch job submission is fast, processing happens async
+  attempt_deadline = "120s"
 }
 
 # Weekly digest job (Sunday 8:00 AM Europe/Rome)

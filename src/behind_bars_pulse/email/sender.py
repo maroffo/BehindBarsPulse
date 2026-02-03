@@ -26,6 +26,15 @@ class EmailSender:
     def __init__(self, settings: Settings | None = None) -> None:
         self.settings = settings or get_settings()
         self._jinja_env: Environment | None = None
+        self._storage: "StorageService | None" = None
+
+    @property
+    def storage(self) -> "StorageService | None":
+        """Lazy-initialized GCS storage service."""
+        if self._storage is None and self.settings.gcs_bucket:
+            from behind_bars_pulse.services.storage import StorageService
+            self._storage = StorageService(self.settings.gcs_bucket)
+        return self._storage
 
     @property
     def jinja_env(self) -> Environment:
@@ -146,6 +155,13 @@ class EmailSender:
         file_path.write_text(content, encoding="utf-8")
 
         log.info("newsletter_archived", file=str(file_path))
+
+        # Also upload to GCS if configured
+        if self.storage and self.storage.is_enabled:
+            content_type = "text/html" if extension == "html" else "text/plain"
+            gcs_path = f"previous_issues/{filename}"
+            self.storage.upload_content(content, gcs_path, content_type)
+
         return file_path
 
     def save_preview(self, context: NewsletterContext, issue_date: date | None = None) -> Path:

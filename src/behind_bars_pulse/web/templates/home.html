@@ -50,6 +50,16 @@
         </div>
         {% endfor %}
     </section>
+    {% elif newsletter.html_content %}
+    {# Fallback: show original HTML in iframe for imported newsletters without structured data #}
+    <section class="press-review imported-content">
+        <iframe
+            srcdoc="{{ newsletter.html_content | e }}"
+            class="newsletter-iframe"
+            title="Newsletter {{ newsletter.issue_date }}"
+            sandbox="allow-popups allow-popups-to-escape-sandbox"
+        ></iframe>
+    </section>
     {% endif %}
 
     <section class="newsletter-closing">

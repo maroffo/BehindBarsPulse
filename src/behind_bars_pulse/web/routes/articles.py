@@ -61,7 +61,7 @@ async def article_detail(
 
     # Find related articles using embedding similarity
     related_articles = []
-    if article.embedding:
+    if article.embedding is not None:
         try:
             similar = await article_repo.search_by_embedding(
                 embedding=article.embedding,

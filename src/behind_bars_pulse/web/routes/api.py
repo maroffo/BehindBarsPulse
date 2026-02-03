@@ -21,6 +21,25 @@ class TaskResponse(BaseModel):
     message: str
 
 
+class BatchJobResponse(BaseModel):
+    """Response model for batch job submission."""
+
+    status: str
+    job_name: str
+    input_uri: str
+    output_uri: str
+    message: str
+
+
+class BatchJobStatusResponse(BaseModel):
+    """Response model for batch job status."""
+
+    name: str
+    state: str
+    create_time: str | None
+    update_time: str | None
+
+
 class HealthResponse(BaseModel):
     """Response model for health check."""
 
@@ -178,6 +197,217 @@ async def api_generate(
     )
 
 
+def _load_articles_for_batch(end_date: date, days_back: int = 7) -> dict:
+    """Load articles from database for batch job.
+
+    Args:
+        end_date: The end date of the range.
+        days_back: Number of days to look back.
+
+    Returns:
+        Dictionary mapping URLs to EnrichedArticle objects.
+
+    Raises:
+        ValueError: If DB not configured or no articles found.
+    """
+    from datetime import timedelta
+
+    from sqlalchemy import create_engine, select
+    from sqlalchemy.orm import sessionmaker
+
+    from behind_bars_pulse.config import get_settings
+    from behind_bars_pulse.db.models import Article
+    from behind_bars_pulse.models import EnrichedArticle
+
+    settings = get_settings()
+    if not settings.database_url:
+        raise ValueError("Database not configured")
+
+    # Use sync database connection
+    sync_url = settings.database_url.replace("+asyncpg", "").replace("postgresql+", "postgresql://")
+    if sync_url.startswith("postgresql://"):
+        sync_url = sync_url.replace("postgresql://", "postgresql+psycopg2://", 1)
+
+    engine = create_engine(sync_url)
+    SessionLocal = sessionmaker(bind=engine)
+
+    start_date = end_date - timedelta(days=days_back - 1)
+
+    with SessionLocal() as session:
+        stmt = (
+            select(Article)
+            .where(Article.published_date >= start_date)
+            .where(Article.published_date <= end_date)
+            .order_by(Article.published_date.desc())
+        )
+        articles = session.execute(stmt).scalars().all()
+
+    engine.dispose()
+
+    if not articles:
+        raise ValueError(f"No articles found for {start_date} to {end_date}")
+
+    # Convert DB models to EnrichedArticle
+    enriched: dict[str, EnrichedArticle] = {}
+    for article in articles:
+        enriched[article.link] = EnrichedArticle(
+            title=article.title,
+            link=article.link,
+            content=article.content,
+            author=article.author,
+            source=article.source,
+            summary=article.summary,
+            published_date=article.published_date,
+        )
+
+    return enriched
+
+
+def _run_batch_job_sync(
+    target_date: date,
+    days_back: int,
+    first_issue: bool,
+) -> dict:
+    """Run batch job submission synchronously (for run_in_executor).
+
+    All blocking I/O operations are contained here.
+    """
+    from behind_bars_pulse.ai.batch import BatchInferenceService
+    from behind_bars_pulse.narrative.storage import NarrativeStorage
+    from behind_bars_pulse.newsletter.generator import NewsletterGenerator
+
+    # Load articles from DB (sync)
+    articles = _load_articles_for_batch(target_date, days_back)
+    log.info("batch_articles_loaded", count=len(articles))
+
+    # Load previous issues (sync file I/O)
+    with NewsletterGenerator() as generator:
+        previous_issues = generator.read_previous_issues()
+
+    # Load narrative context (sync)
+    narrative_context = None
+    try:
+        storage = NarrativeStorage()
+        context = storage.load_context()
+        if context.ongoing_storylines or context.key_characters:
+            narrative_context = context
+    except Exception as e:
+        log.warning("narrative_context_load_failed", error=str(e))
+
+    # Build and submit batch job (sync GCS + API calls)
+    batch_service = BatchInferenceService()
+    requests = batch_service.build_newsletter_batch(
+        articles=articles,
+        previous_issues=previous_issues,
+        narrative_context=narrative_context,
+        first_issue=first_issue,
+    )
+
+    input_uri = batch_service.upload_batch_input(requests, target_date)
+    result = batch_service.submit_batch_job(input_uri, target_date)
+
+    return {
+        "job_name": result.job_name,
+        "input_uri": result.input_uri,
+        "output_uri": result.output_uri,
+        "article_count": len(articles),
+    }
+
+
+@router.post("/generate-batch", response_model=BatchJobResponse)
+async def api_generate_batch(
+    _verified: OIDCVerified,
+    collection_date: str | None = None,
+    days_back: int = 7,
+    first_issue: bool = False,
+):
+    """Submit batch job for newsletter generation.
+
+    This endpoint submits a Vertex AI batch job for newsletter generation.
+    The job runs asynchronously and results are processed by a Cloud Function.
+
+    Args:
+        collection_date: End date for article collection (YYYY-MM-DD).
+        days_back: Number of days to look back for articles.
+        first_issue: Include introductory text for first edition.
+
+    Returns:
+        BatchJobResponse with job details for tracking.
+    """
+    import asyncio
+    from concurrent.futures import ThreadPoolExecutor
+
+    target_date = date.fromisoformat(collection_date) if collection_date else date.today()
+
+    log.info(
+        "api_generate_batch_triggered",
+        date=target_date.isoformat(),
+        days_back=days_back,
+        first_issue=first_issue,
+    )
+
+    try:
+        # Run blocking I/O in thread pool to avoid blocking event loop
+        loop = asyncio.get_running_loop()
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            result = await loop.run_in_executor(
+                executor,
+                _run_batch_job_sync,
+                target_date,
+                days_back,
+                first_issue,
+            )
+
+        return BatchJobResponse(
+            status="submitted",
+            job_name=result["job_name"],
+            input_uri=result["input_uri"],
+            output_uri=result["output_uri"],
+            message=f"Batch job submitted for {target_date.isoformat()} with {result['article_count']} articles",
+        )
+
+    except Exception as e:
+        log.exception("api_generate_batch_failed")
+        from fastapi import HTTPException
+
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@router.get("/batch-job/{job_name:path}", response_model=BatchJobStatusResponse)
+async def api_batch_job_status(
+    job_name: str,
+    _verified: OIDCVerified,
+):
+    """Get status of a batch job.
+
+    Args:
+        job_name: The job name returned from /api/generate-batch.
+
+    Returns:
+        BatchJobStatusResponse with current job status.
+    """
+    from behind_bars_pulse.ai.batch import BatchInferenceService
+
+    log.info("api_batch_job_status", job_name=job_name)
+
+    try:
+        batch_service = BatchInferenceService()
+        status = batch_service.get_job_status(job_name)
+
+        return BatchJobStatusResponse(
+            name=status["name"],
+            state=status["state"],
+            create_time=status.get("create_time"),
+            update_time=status.get("update_time"),
+        )
+
+    except Exception as e:
+        log.exception("api_batch_job_status_failed")
+        from fastapi import HTTPException
+
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
 @router.post("/import-newsletters", response_model=TaskResponse)
 async def api_import_newsletters(
     background_tasks: BackgroundTasks,
@@ -195,6 +425,7 @@ async def api_import_newsletters(
 
     if not admin_token or admin_token != expected_token:
         from fastapi import HTTPException
+
         raise HTTPException(status_code=403, detail="Invalid admin token")
 
     log.info("api_import_newsletters_triggered")

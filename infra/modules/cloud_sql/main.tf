@@ -1,4 +1,4 @@
-# ABOUTME: Cloud SQL PostgreSQL module with pgvector support.
+# ABOUTME: Cloud SQL PostgreSQL module for BehindBars database.
 # ABOUTME: Creates db-f1-micro instance with private IP and daily backups.
 
 variable "project_id" {
@@ -77,11 +77,6 @@ resource "google_sql_database_instance" "main" {
       backup_retention_settings {
         retained_backups = 7
       }
-    }
-
-    database_flags {
-      name  = "cloudsql.enable_pgvector"
-      value = "on"
     }
 
     maintenance_window {

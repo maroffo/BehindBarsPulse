@@ -837,3 +837,16 @@ img {
     opacity: 0.5;
     pointer-events: none;
 }
+
+/* === Newsletter Iframe (for imported newsletters) === */
+.imported-content {
+    margin: var(--spacing-lg) 0;
+}
+
+.newsletter-iframe {
+    width: 100%;
+    min-height: 800px;
+    height: auto;
+    border: none;
+    background-color: var(--color-bg-white);
+}

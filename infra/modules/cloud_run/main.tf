@@ -62,6 +62,12 @@ variable "custom_domain" {
   default     = ""
 }
 
+variable "gcs_bucket" {
+  description = "GCS bucket for persistent storage (optional)"
+  type        = string
+  default     = ""
+}
+
 variable "min_instances" {
   description = "Minimum number of instances (0 for scale to zero)"
   type        = number
@@ -113,6 +119,14 @@ resource "google_project_iam_member" "cloudsql_client" {
   member  = "serviceAccount:${google_service_account.cloud_run.email}"
 }
 
+# Grant GCS bucket access (if configured)
+resource "google_storage_bucket_iam_member" "assets_access" {
+  count  = var.gcs_bucket != "" ? 1 : 0
+  bucket = var.gcs_bucket
+  role   = "roles/storage.objectAdmin"
+  member = "serviceAccount:${google_service_account.cloud_run.email}"
+}
+
 # Cloud Run service
 resource "google_cloud_run_v2_service" "main" {
   name     = local.service_name
@@ -122,6 +136,7 @@ resource "google_cloud_run_v2_service" "main" {
 
   template {
     service_account = google_service_account.cloud_run.email
+    timeout         = "900s" # 15 minutes for newsletter generation
 
     scaling {
       min_instance_count = var.min_instances
@@ -139,7 +154,7 @@ resource "google_cloud_run_v2_service" "main" {
       resources {
         limits = {
           cpu    = "1"
-          memory = "512Mi"
+          memory = "1Gi"
         }
         cpu_idle = true
       }
@@ -190,6 +205,12 @@ resource "google_cloud_run_v2_service" "main" {
       env {
         name  = "SCHEDULER_AUDIENCE"
         value = var.custom_domain != "" ? "https://${var.custom_domain}" : "https://${local.service_name}-${data.google_project.project.number}.${var.region}.run.app"
+      }
+
+      # GCS bucket for persistent storage
+      env {
+        name  = "GCS_BUCKET"
+        value = var.gcs_bucket
       }
 
       ports {
