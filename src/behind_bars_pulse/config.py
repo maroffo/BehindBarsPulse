@@ -39,13 +39,13 @@ class Settings(BaseSettings):
     )
 
     # Email / SES (optional - only required for send commands)
-    smtp_host: str = "email-smtp.eu-west-1.amazonaws.com"
+    smtp_host: str = "email-smtp.us-east-1.amazonaws.com"
     smtp_port: int = 587
     ses_usr: SecretStr | None = None
     ses_pwd: SecretStr | None = None
-    sender_email: str = "behindbars@iungomail.com"
-    sender_name: str = "Behind Bars Pulse"
-    bounce_email: str = "bounces@iungomail.com"
+    sender_email: str = "info@behindbars.news"
+    sender_name: str = "BehindBars"
+    bounce_email: str = "info@behindbars.news"
     confirmation_email_subject: str = "Conferma la tua iscrizione a BehindBars"
     default_recipient: str = "maroffo@gmail.com"
 

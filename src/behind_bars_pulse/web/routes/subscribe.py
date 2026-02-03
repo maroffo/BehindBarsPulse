@@ -28,7 +28,11 @@ async def subscribe(
     settings = get_settings()
 
     # Generic success message to prevent user enumeration attacks
-    success_msg = "Se l'indirizzo è valido, riceverai un'email di conferma."
+    success_msg = (
+        "Ti abbiamo inviato un'email di conferma. "
+        "Controlla anche la cartella spam! "
+        "Per non perdere le prossime newsletter, aggiungi info@behindbars.news ai tuoi contatti."
+    )
 
     try:
         subscriber = await service.create_subscriber(email)

@@ -212,86 +212,91 @@ img {
 }
 
 /* === Newsletter === */
+.newsletter {
+    max-width: 680px;
+    margin: 0 auto;
+}
+
 .newsletter-header {
-    margin-bottom: var(--spacing-xl);
+    margin-bottom: 32px;
 }
 
 .newsletter-date {
     display: block;
     font-size: 13px;
-    color: var(--color-text-muted);
+    color: #999999;
     text-transform: uppercase;
     letter-spacing: 1px;
-    margin-bottom: var(--spacing-md);
+    margin-bottom: 16px;
 }
 
 .newsletter-title {
-    font-family: var(--font-serif);
-    font-size: 36px;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 32px;
     font-weight: 700;
+    color: #1a1a1a;
+    margin: 0 0 12px 0;
     line-height: 1.2;
-    color: var(--color-text);
-    margin: 0 0 var(--spacing-md) 0;
+    letter-spacing: -0.5px;
 }
 
 .newsletter-subtitle {
-    font-family: var(--font-serif);
+    font-family: Georgia, 'Times New Roman', serif;
     font-size: 20px;
     font-weight: 400;
+    color: #4a4a4a;
+    margin: 0 0 32px 0;
+    line-height: 1.4;
     font-style: italic;
-    color: var(--color-text-light);
-    margin: 0;
 }
 
 .editorial {
     font-size: 17px;
-    color: var(--color-text);
+    color: #2a2a2a;
     line-height: 1.7;
+    margin-bottom: 32px;
 }
 
 .editorial p {
-    margin: 0 0 var(--spacing-md) 0;
+    margin: 0 0 16px 0;
 }
 
 /* === Dividers === */
 .divider-strong {
     border: none;
-    border-top: 2px solid var(--color-accent);
-    margin: var(--spacing-xl) 0;
+    border-top: 2px solid #c0392b;
+    margin: 40px 0;
 }
 
 /* === Press Review === */
 .section-title {
-    font-family: var(--font-serif);
+    font-family: Georgia, 'Times New Roman', serif;
     font-size: 24px;
     font-weight: 700;
-    color: var(--color-text);
-    margin: 0 0 var(--spacing-lg) 0;
-    padding-bottom: var(--spacing-md);
-    border-bottom: 1px solid var(--color-border);
+    color: #1a1a1a;
+    margin: 0 0 24px 0;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #e0e0e0;
 }
 
 .category {
-    margin-bottom: var(--spacing-xl);
+    margin-bottom: 40px;
 }
 
 .category-title {
     font-size: 13px;
     font-weight: 700;
-    color: var(--color-accent);
+    color: #c0392b;
     text-transform: uppercase;
     letter-spacing: 1.5px;
-    margin: 0 0 var(--spacing-sm) 0;
+    margin: 0 0 16px 0;
 }
 
 .category-comment {
     font-size: 16px;
-    color: var(--color-text-light);
-    line-height: 1.6;
-    margin: 0 0 var(--spacing-lg) 0;
-    font-style: italic;
-    padding-left: var(--spacing-md);
-    border-left: 3px solid var(--color-border);
+    color: #2a2a2a;
+    line-height: 1.7;
+    margin: 0 0 24px 0;
 }
 
 /* === Article Cards === */
@@ -340,6 +345,46 @@ img {
     margin: 0;
 }
 
+/* === Article Links (press review format) === */
+.article-links {
+    border-top: 1px solid #e8e8e8;
+    padding-top: 16px;
+}
+
+.article-link {
+    margin-bottom: 12px;
+    padding-left: 16px;
+    border-left: 2px solid #e0e0e0;
+}
+
+.article-link:last-child {
+    margin-bottom: 0;
+}
+
+.article-link-title {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 15px;
+    font-weight: 600;
+    margin: 0 0 4px 0;
+    line-height: 1.3;
+}
+
+.article-link-title a {
+    color: #1a1a1a;
+    text-decoration: none;
+}
+
+.article-link-title a:hover {
+    color: #c0392b;
+    text-decoration: underline;
+}
+
+.article-link-meta {
+    font-size: 12px;
+    color: #888888;
+    margin: 0;
+}
+
 /* === Full Article Cards === */
 .article-card-full {
     padding: var(--spacing-lg);
@@ -368,7 +413,7 @@ img {
     color: var(--color-text-muted);
 }
 
-.article-link {
+.article-card-full .article-link-btn {
     display: inline-block;
     margin-top: var(--spacing-md);
     font-size: 14px;
@@ -376,20 +421,23 @@ img {
 
 /* === Newsletter Closing === */
 .newsletter-closing {
-    margin-top: var(--spacing-xl);
+    margin-top: 40px;
 }
 
 .closing-box {
-    background-color: var(--color-bg);
-    padding: var(--spacing-lg);
-    border-left: 4px solid var(--color-border);
-    font-size: 16px;
-    color: var(--color-text-light);
-    line-height: 1.7;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 15px;
+    font-style: italic;
+    color: #4a4a4a;
+    text-align: left;
+    padding: 32px 48px;
+    margin: 0;
+    border-top: 1px solid #e0e0e0;
+    background-color: #fafafa;
 }
 
 .closing-box p {
-    margin: 0 0 var(--spacing-md) 0;
+    margin: 0 0 16px 0;
 }
 
 .closing-box p:last-child {
@@ -778,10 +826,6 @@ img {
         gap: var(--spacing-md);
     }
 
-    .newsletter-title {
-        font-size: 28px;
-    }
-
     .page-title {
         font-size: 26px;
     }
@@ -796,6 +840,21 @@ img {
 
     .article-single .article-title {
         font-size: 26px;
+    }
+}
+
+@media (max-width: 680px) {
+    .newsletter-title {
+        font-size: 26px !important;
+    }
+
+    .newsletter-subtitle {
+        font-size: 18px !important;
+    }
+
+    .closing-box {
+        padding-left: 24px !important;
+        padding-right: 24px !important;
     }
 }
 
