@@ -153,6 +153,32 @@ All settings via Pydantic Settings, loaded from `.env`:
 - **Auto DB Save**: Collector saves to DB with embeddings when configured, gracefully skips if not
 - **Issue Date in Filenames**: Previews use issue date to avoid overwriting (e.g., `20260107_issue_preview.html`)
 
+## Deployment
+
+### Docker Build (Mac → Cloud Run)
+
+On Mac, use `docker buildx` for cross-platform builds targeting linux/amd64:
+
+```bash
+# Build and push to GCR (use buildx on Mac for linux/amd64)
+docker buildx build --platform linux/amd64 \
+  -t gcr.io/playground-maroffo/behindbars:latest \
+  --push .
+
+# Deploy to Cloud Run
+gcloud run deploy behindbars-prod \
+  --image gcr.io/playground-maroffo/behindbars:latest \
+  --region europe-west1 \
+  --project playground-maroffo
+```
+
+### Admin API Endpoints
+
+Protected by `admin_token` (= GEMINI_API_KEY):
+
+- `POST /api/regenerate?admin_token=...&collection_date=2026-01-07&days_back=3&first_issue=true`
+- `POST /api/import-newsletters?admin_token=...`
+
 ## Language Note
 
 All generated content (prompts and outputs) is in Italian. Comments and code are in English.
