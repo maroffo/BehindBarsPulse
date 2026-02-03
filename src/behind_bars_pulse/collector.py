@@ -1,7 +1,6 @@
 # ABOUTME: Daily article collector for narrative-aware newsletter pipeline.
 # ABOUTME: Fetches, enriches articles, updates narrative context, and extracts prison events.
 
-import asyncio
 import uuid
 from datetime import date, datetime
 from typing import Any
@@ -25,6 +24,29 @@ from behind_bars_pulse.utils.facilities import get_facility_region, normalize_fa
 log = structlog.get_logger()
 
 
+def _get_sync_db_session():
+    """Create a sync database session for BackgroundTask compatibility.
+
+    Creates a fresh sync engine with psycopg2 driver to avoid asyncio event loop
+    conflicts when running in FastAPI BackgroundTasks.
+    """
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+
+    settings = get_settings()
+    if not settings.database_url:
+        return None
+
+    # Convert async URL to sync psycopg2 URL
+    sync_url = settings.database_url.replace("+asyncpg", "").replace("postgresql+", "postgresql://")
+    if sync_url.startswith("postgresql://"):
+        sync_url = sync_url.replace("postgresql://", "postgresql+psycopg2://", 1)
+
+    engine = create_engine(sync_url)
+    Session = sessionmaker(bind=engine)
+    return Session(), engine
+
+
 def _save_prison_events_to_db(events: list[dict], article_url_to_id: dict[str, int]) -> int:
     """Save extracted prison events to database.
 
@@ -36,77 +58,88 @@ def _save_prison_events_to_db(events: list[dict], article_url_to_id: dict[str, i
         Number of events saved. Returns 0 if DB is not available.
     """
     try:
+        result = _get_sync_db_session()
+        if not result:
+            log.debug("prison_events_save_skipped", error="DB not configured")
+            return 0
+
+        session, engine = result
+
+        from sqlalchemy import select
+
         from behind_bars_pulse.db.models import PrisonEvent
-        from behind_bars_pulse.db.repository import PrisonEventRepository
-        from behind_bars_pulse.db.session import get_session
 
-        async def _save():
-            saved_count = 0
-            skipped_count = 0
+        saved_count = 0
+        skipped_count = 0
 
-            async with get_session() as session:
-                repo = PrisonEventRepository(session)
+        try:
+            for event_data in events:
+                source_url = event_data.get("source_url", "")
+                event_type = event_data.get("event_type", "unknown")
 
-                for event_data in events:
-                    source_url = event_data.get("source_url", "")
-                    event_type = event_data.get("event_type", "unknown")
+                # Normalize facility name for consistency
+                raw_facility = event_data.get("facility")
+                facility = normalize_facility_name(raw_facility)
 
-                    # Normalize facility name for consistency
-                    raw_facility = event_data.get("facility")
-                    facility = normalize_facility_name(raw_facility)
+                # Infer region from facility if not provided
+                region = event_data.get("region")
+                if not region and facility:
+                    region = get_facility_region(facility)
 
-                    # Infer region from facility if not provided
-                    region = event_data.get("region")
-                    if not region and facility:
-                        region = get_facility_region(facility)
+                # Parse event date
+                event_date = None
+                if event_data.get("event_date"):
+                    try:
+                        event_date = date.fromisoformat(event_data["event_date"])
+                    except ValueError:
+                        log.warning(
+                            "invalid_event_date",
+                            date=event_data["event_date"],
+                        )
 
-                    # Parse event date
-                    event_date = None
-                    if event_data.get("event_date"):
-                        try:
-                            event_date = date.fromisoformat(event_data["event_date"])
-                        except ValueError:
-                            log.warning(
-                                "invalid_event_date",
-                                date=event_data["event_date"],
-                            )
-
-                    # Check for duplicate by composite key (url + type + date + normalized facility)
-                    # This allows multiple different events from the same article
-                    if await repo.exists_by_composite_key(
-                        source_url, event_type, event_date, facility
-                    ):
-                        skipped_count += 1
-                        continue
-
-                    # Get article ID if available
-                    article_id = article_url_to_id.get(source_url)
-
-                    # Determine if this is an aggregate statistic
-                    is_aggregate = event_data.get("is_aggregate", False)
-
-                    event = PrisonEvent(
-                        event_type=event_type,
-                        event_date=event_date,
-                        facility=facility,
-                        region=region,
-                        count=event_data.get("count"),
-                        description=event_data.get("description", ""),
-                        source_url=source_url,
-                        article_id=article_id,
-                        confidence=float(event_data.get("confidence", 1.0)),
-                        is_aggregate=is_aggregate,
-                        extracted_at=datetime.utcnow(),
+                # Check for duplicate by composite key (url + type + date + normalized facility)
+                existing = session.execute(
+                    select(PrisonEvent).where(
+                        PrisonEvent.source_url == source_url,
+                        PrisonEvent.event_type == event_type,
+                        PrisonEvent.event_date == event_date,
+                        PrisonEvent.facility == facility,
                     )
-                    await repo.save(event)
-                    saved_count += 1
+                ).scalar_one_or_none()
 
-                await session.commit()
+                if existing:
+                    skipped_count += 1
+                    continue
 
+                # Get article ID if available
+                article_id = article_url_to_id.get(source_url)
+
+                # Determine if this is an aggregate statistic
+                is_aggregate = event_data.get("is_aggregate", False)
+
+                event = PrisonEvent(
+                    event_type=event_type,
+                    event_date=event_date,
+                    facility=facility,
+                    region=region,
+                    count=event_data.get("count"),
+                    description=event_data.get("description", ""),
+                    source_url=source_url,
+                    article_id=article_id,
+                    confidence=float(event_data.get("confidence", 1.0)),
+                    is_aggregate=is_aggregate,
+                    extracted_at=datetime.utcnow(),
+                )
+                session.add(event)
+                saved_count += 1
+
+            session.commit()
             log.info("prison_events_saved", saved=saved_count, skipped=skipped_count)
             return saved_count
 
-        return asyncio.run(_save())
+        finally:
+            session.close()
+            engine.dispose()
 
     except Exception as e:
         log.debug("prison_events_save_skipped", error=str(e))
@@ -120,15 +153,44 @@ def _get_existing_events_for_dedup() -> list[dict[str, Any]]:
         List of event dicts, or empty list if DB not available.
     """
     try:
-        from behind_bars_pulse.db.repository import PrisonEventRepository
-        from behind_bars_pulse.db.session import get_session
+        result = _get_sync_db_session()
+        if not result:
+            log.debug("existing_events_fetch_skipped", error="DB not configured")
+            return []
 
-        async def _fetch():
-            async with get_session() as session:
-                repo = PrisonEventRepository(session)
-                return await repo.list_recent_for_dedup(days=90)
+        session, engine = result
 
-        return asyncio.run(_fetch())
+        from datetime import timedelta
+
+        from sqlalchemy import select
+
+        from behind_bars_pulse.db.models import PrisonEvent
+
+        try:
+            cutoff = datetime.utcnow() - timedelta(days=90)
+            stmt = (
+                select(PrisonEvent)
+                .where(PrisonEvent.extracted_at >= cutoff)
+                .order_by(PrisonEvent.extracted_at.desc())
+            )
+            events = session.execute(stmt).scalars().all()
+
+            return [
+                {
+                    "event_type": e.event_type,
+                    "event_date": e.event_date.isoformat() if e.event_date else None,
+                    "facility": e.facility,
+                    "region": e.region,
+                    "count": e.count,
+                    "description": e.description,
+                    "source_url": e.source_url,
+                }
+                for e in events
+            ]
+
+        finally:
+            session.close()
+            engine.dispose()
 
     except Exception as e:
         log.debug("existing_events_fetch_skipped", error=str(e))
@@ -146,72 +208,85 @@ def _save_capacity_snapshots_to_db(snapshots: list[dict], article_url_to_id: dic
         Number of snapshots saved. Returns 0 if DB is not available.
     """
     try:
+        result = _get_sync_db_session()
+        if not result:
+            log.debug("capacity_snapshots_save_skipped", error="DB not configured")
+            return 0
+
+        session, engine = result
+
+        from sqlalchemy import select
+
         from behind_bars_pulse.db.models import FacilitySnapshot
-        from behind_bars_pulse.db.repository import FacilitySnapshotRepository
-        from behind_bars_pulse.db.session import get_session
 
-        async def _save():
-            saved_count = 0
-            skipped_count = 0
+        saved_count = 0
+        skipped_count = 0
 
-            async with get_session() as session:
-                repo = FacilitySnapshotRepository(session)
+        try:
+            for snap_data in snapshots:
+                source_url = snap_data.get("source_url", "")
 
-                for snap_data in snapshots:
-                    source_url = snap_data.get("source_url", "")
+                # Normalize facility name
+                raw_facility = snap_data.get("facility", "")
+                facility = normalize_facility_name(raw_facility) or raw_facility
 
-                    # Normalize facility name
-                    raw_facility = snap_data.get("facility", "")
-                    facility = normalize_facility_name(raw_facility) or raw_facility
+                # Infer region if not provided
+                region = snap_data.get("region")
+                if not region and facility:
+                    region = get_facility_region(facility)
 
-                    # Infer region if not provided
-                    region = snap_data.get("region")
-                    if not region and facility:
-                        region = get_facility_region(facility)
-
-                    # Parse snapshot date
-                    snapshot_date = None
-                    if snap_data.get("snapshot_date"):
-                        try:
-                            snapshot_date = date.fromisoformat(snap_data["snapshot_date"])
-                        except ValueError:
-                            log.warning(
-                                "invalid_snapshot_date",
-                                date=snap_data["snapshot_date"],
-                            )
-                            continue
-
-                    if not snapshot_date:
-                        continue  # Skip snapshots without dates
-
-                    # Check for duplicate
-                    if await repo.exists_by_key(facility, snapshot_date, source_url):
-                        skipped_count += 1
+                # Parse snapshot date
+                snapshot_date = None
+                if snap_data.get("snapshot_date"):
+                    try:
+                        snapshot_date = date.fromisoformat(snap_data["snapshot_date"])
+                    except ValueError:
+                        log.warning(
+                            "invalid_snapshot_date",
+                            date=snap_data["snapshot_date"],
+                        )
                         continue
 
-                    # Get article ID if available
-                    article_id = article_url_to_id.get(source_url)
+                if not snapshot_date:
+                    continue  # Skip snapshots without dates
 
-                    snapshot = FacilitySnapshot(
-                        facility=facility,
-                        region=region,
-                        snapshot_date=snapshot_date,
-                        inmates=snap_data.get("inmates"),
-                        capacity=snap_data.get("capacity"),
-                        occupancy_rate=snap_data.get("occupancy_rate"),
-                        source_url=source_url,
-                        article_id=article_id,
-                        extracted_at=datetime.utcnow(),
+                # Check for duplicate
+                existing = session.execute(
+                    select(FacilitySnapshot).where(
+                        FacilitySnapshot.facility == facility,
+                        FacilitySnapshot.snapshot_date == snapshot_date,
+                        FacilitySnapshot.source_url == source_url,
                     )
-                    await repo.save(snapshot)
-                    saved_count += 1
+                ).scalar_one_or_none()
 
-                await session.commit()
+                if existing:
+                    skipped_count += 1
+                    continue
 
+                # Get article ID if available
+                article_id = article_url_to_id.get(source_url)
+
+                snapshot = FacilitySnapshot(
+                    facility=facility,
+                    region=region,
+                    snapshot_date=snapshot_date,
+                    inmates=snap_data.get("inmates"),
+                    capacity=snap_data.get("capacity"),
+                    occupancy_rate=snap_data.get("occupancy_rate"),
+                    source_url=source_url,
+                    article_id=article_id,
+                    extracted_at=datetime.utcnow(),
+                )
+                session.add(snapshot)
+                saved_count += 1
+
+            session.commit()
             log.info("capacity_snapshots_saved", saved=saved_count, skipped=skipped_count)
             return saved_count
 
-        return asyncio.run(_save())
+        finally:
+            session.close()
+            engine.dispose()
 
     except Exception as e:
         log.debug("capacity_snapshots_save_skipped", error=str(e))
@@ -231,61 +306,71 @@ def _save_articles_to_db(
         Tuple of (articles saved count, URL-to-article-ID mapping).
     """
     try:
+        result = _get_sync_db_session()
+        if not result:
+            log.debug("db_save_skipped", error="DB not configured")
+            return 0, {}
+
+        session, engine = result
+
+        from sqlalchemy import select
+
         from behind_bars_pulse.db.models import Article as DbArticle
-        from behind_bars_pulse.db.session import get_session
         from behind_bars_pulse.services.newsletter_service import NewsletterService
 
-        async def _save():
+        saved_count = 0
+        skipped_count = 0
+        url_to_id: dict[str, int] = {}
+
+        try:
             svc = NewsletterService()
-            saved_count = 0
-            skipped_count = 0
-            url_to_id: dict[str, int] = {}
 
-            async with get_session() as session:
-                for url, article in articles.items():
-                    # Check if article already exists
-                    from sqlalchemy import select
+            for url, article in articles.items():
+                # Check if article already exists
+                existing = session.execute(
+                    select(DbArticle).where(DbArticle.link == url)
+                ).scalar_one_or_none()
 
-                    existing = await session.execute(select(DbArticle).where(DbArticle.link == url))
-                    existing_article = existing.scalar_one_or_none()
-                    if existing_article:
-                        skipped_count += 1
-                        url_to_id[url] = existing_article.id
-                        continue
+                if existing:
+                    skipped_count += 1
+                    url_to_id[url] = existing.id
+                    continue
 
-                    # Generate embedding
-                    text = article.title
-                    if article.summary:
-                        text = f"{article.title}. {article.summary}"
+                # Generate embedding (sync)
+                text = article.title
+                if article.summary:
+                    text = f"{article.title}. {article.summary}"
 
-                    try:
-                        embedding = await svc.generate_embedding(text)
-                    except Exception as e:
-                        log.warning("embedding_generation_failed", url=url[:50], error=str(e))
-                        embedding = None
+                try:
+                    embedding = svc._embed_query(text)
+                except Exception as e:
+                    log.warning("embedding_generation_failed", url=url[:50], error=str(e))
+                    embedding = None
 
-                    # Create DB article
-                    db_article = DbArticle(
-                        title=article.title,
-                        link=url,
-                        content=article.content,
-                        author=article.author or None,
-                        source=article.source or None,
-                        summary=article.summary or None,
-                        published_date=collection_date,
-                        embedding=embedding,
-                    )
-                    session.add(db_article)
-                    await session.flush()  # Get the ID
-                    url_to_id[url] = db_article.id
-                    saved_count += 1
+                # Create DB article
+                # Use article's published_date if available, else fall back to collection_date
+                db_article = DbArticle(
+                    title=article.title,
+                    link=url,
+                    content=article.content,
+                    author=article.author or None,
+                    source=article.source or None,
+                    summary=article.summary or None,
+                    published_date=article.published_date or collection_date,
+                    embedding=embedding,
+                )
+                session.add(db_article)
+                session.flush()  # Get the ID
+                url_to_id[url] = db_article.id
+                saved_count += 1
 
-                await session.commit()
-
+            session.commit()
             log.info("db_save_complete", saved=saved_count, skipped=skipped_count)
             return saved_count, url_to_id
 
-        return asyncio.run(_save())
+        finally:
+            session.close()
+            engine.dispose()
 
     except Exception as e:
         log.debug("db_save_skipped", error=str(e), hint="DB not configured or unavailable")
