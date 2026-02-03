@@ -31,6 +31,12 @@ variable "cloud_run_service_account" {
   type        = string
 }
 
+variable "oidc_audience" {
+  description = "OIDC token audience (custom domain URL or Cloud Run URL)"
+  type        = string
+  default     = ""
+}
+
 variable "timezone" {
   description = "Timezone for scheduler jobs"
   type        = string
@@ -39,6 +45,8 @@ variable "timezone" {
 
 locals {
   scheduler_name_prefix = "behindbars-${var.environment}"
+  # Use custom domain as audience if provided, otherwise fall back to Cloud Run URL
+  effective_audience = var.oidc_audience != "" ? var.oidc_audience : var.cloud_run_service_url
 }
 
 # Service account for Cloud Scheduler
@@ -73,7 +81,7 @@ resource "google_cloud_scheduler_job" "collect" {
 
     oidc_token {
       service_account_email = google_service_account.scheduler.email
-      audience              = var.cloud_run_service_url
+      audience              = local.effective_audience
     }
   }
 
@@ -104,7 +112,7 @@ resource "google_cloud_scheduler_job" "generate" {
 
     oidc_token {
       service_account_email = google_service_account.scheduler.email
-      audience              = var.cloud_run_service_url
+      audience              = local.effective_audience
     }
   }
 
@@ -134,7 +142,7 @@ resource "google_cloud_scheduler_job" "weekly" {
 
     oidc_token {
       service_account_email = google_service_account.scheduler.email
-      audience              = var.cloud_run_service_url
+      audience              = local.effective_audience
     }
   }
 

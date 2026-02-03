@@ -129,9 +129,9 @@ output "gemini_api_key_secret_name" {
 }
 
 output "ses_username_secret_id" {
-  value = var.ses_username != "" ? google_secret_manager_secret.ses_username[0].id : null
+  value = var.ses_username != "" ? google_secret_manager_secret.ses_username[0].secret_id : null
 }
 
 output "ses_password_secret_id" {
-  value = var.ses_password != "" ? google_secret_manager_secret.ses_password[0].id : null
+  value = var.ses_password != "" ? google_secret_manager_secret.ses_password[0].secret_id : null
 }

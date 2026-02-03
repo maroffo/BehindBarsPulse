@@ -70,6 +70,39 @@ resource "google_storage_bucket_iam_member" "function_gcs" {
   member = "serviceAccount:${google_service_account.function.email}"
 }
 
+# Grant Cloud Build service account access to function source bucket
+resource "google_storage_bucket_iam_member" "cloudbuild_gcs" {
+  bucket = var.gcs_bucket
+  role   = "roles/storage.objectViewer"
+  member = "serviceAccount:${data.google_project.project.number}@cloudbuild.gserviceaccount.com"
+}
+
+# Grant Cloud Build service account Artifact Registry write access
+resource "google_project_iam_member" "cloudbuild_artifact_registry" {
+  project = var.project_id
+  role    = "roles/artifactregistry.writer"
+  member  = "serviceAccount:${data.google_project.project.number}@cloudbuild.gserviceaccount.com"
+}
+
+# Grant default compute SA Cloud Build permissions (required for Gen 2 functions)
+resource "google_project_iam_member" "compute_cloudbuild" {
+  project = var.project_id
+  role    = "roles/cloudbuild.builds.builder"
+  member  = "serviceAccount:${data.google_project.project.number}-compute@developer.gserviceaccount.com"
+}
+
+resource "google_project_iam_member" "compute_logs" {
+  project = var.project_id
+  role    = "roles/logging.logWriter"
+  member  = "serviceAccount:${data.google_project.project.number}-compute@developer.gserviceaccount.com"
+}
+
+resource "google_project_iam_member" "compute_storage" {
+  project = var.project_id
+  role    = "roles/storage.objectAdmin"
+  member  = "serviceAccount:${data.google_project.project.number}-compute@developer.gserviceaccount.com"
+}
+
 # Grant function SA access to Secret Manager
 resource "google_secret_manager_secret_iam_member" "function_db_password" {
   project   = var.project_id
@@ -84,6 +117,19 @@ resource "google_project_iam_member" "eventarc_gcs" {
   project = var.project_id
   role    = "roles/eventarc.eventReceiver"
   member  = "serviceAccount:${google_service_account.function.email}"
+}
+
+# Get project number for service agent references
+data "google_project" "project" {
+  project_id = var.project_id
+}
+
+# Grant GCS service agent Pub/Sub publisher role (required for Eventarc GCS triggers)
+# GCS service agent format: service-{PROJECT_NUMBER}@gs-project-accounts.iam.gserviceaccount.com
+resource "google_project_iam_member" "gcs_pubsub_publisher" {
+  project = var.project_id
+  role    = "roles/pubsub.publisher"
+  member  = "serviceAccount:service-${data.google_project.project.number}@gs-project-accounts.iam.gserviceaccount.com"
 }
 
 # Upload function source to GCS
@@ -107,6 +153,17 @@ resource "google_cloudfunctions2_function" "process_batch" {
   project  = var.project_id
   location = var.region
 
+  depends_on = [
+    google_project_iam_member.gcs_pubsub_publisher,
+    google_project_iam_member.eventarc_gcs,
+    google_secret_manager_secret_iam_member.function_db_password,
+    google_storage_bucket_iam_member.cloudbuild_gcs,
+    google_project_iam_member.cloudbuild_artifact_registry,
+    google_project_iam_member.compute_cloudbuild,
+    google_project_iam_member.compute_logs,
+    google_project_iam_member.compute_storage,
+  ]
+
   build_config {
     runtime     = "python312"
     entry_point = "process_batch_results"
@@ -127,17 +184,11 @@ resource "google_cloudfunctions2_function" "process_batch" {
     service_account_email = google_service_account.function.email
 
     environment_variables = {
-      GCS_BUCKET = var.gcs_bucket
-      DB_HOST    = var.db_host
-      DB_NAME    = var.db_name
-      DB_USER    = var.db_user
-    }
-
-    secret_environment_variables {
-      key        = "DB_PASSWORD"
-      project_id = var.project_id
-      secret     = var.db_password_secret_name
-      version    = "latest"
+      GCS_BUCKET          = var.gcs_bucket
+      DB_HOST             = var.db_host
+      DB_NAME             = var.db_name
+      DB_USER             = var.db_user
+      DB_PASSWORD_SECRET  = "${var.db_password_secret_name}/versions/latest"
     }
 
     vpc_connector                 = var.vpc_connector_id
@@ -145,21 +196,17 @@ resource "google_cloudfunctions2_function" "process_batch" {
   }
 
   event_trigger {
-    trigger_region = var.region
-    event_type     = "google.cloud.storage.object.v1.finalized"
-    retry_policy   = "RETRY_POLICY_RETRY"
+    trigger_region        = var.region
+    event_type            = "google.cloud.storage.object.v1.finalized"
+    retry_policy          = "RETRY_POLICY_RETRY"
+    service_account_email = google_service_account.function.email
 
     event_filters {
       attribute = "bucket"
       value     = var.gcs_bucket
     }
-
-    # Only trigger on batch job output files (JSONL results)
-    event_filters {
-      attribute = "name"
-      value     = "batch_jobs/*/output/*.jsonl"
-      operator  = "match-path-pattern"
-    }
+    # Note: Path filtering done in function code (lines 282-285)
+    # GCS triggers don't support match-path-pattern operator
   }
 }
 

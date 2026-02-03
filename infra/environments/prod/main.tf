@@ -9,6 +9,10 @@ terraform {
       source  = "hashicorp/google"
       version = "~> 5.0"
     }
+    google-beta = {
+      source  = "hashicorp/google-beta"
+      version = "~> 5.0"
+    }
   }
 
   # Configure backend after first apply
@@ -75,6 +79,11 @@ provider "google" {
   region  = var.region
 }
 
+provider "google-beta" {
+  project = var.project_id
+  region  = var.region
+}
+
 # Enable required APIs
 resource "google_project_service" "apis" {
   for_each = toset([
@@ -92,6 +101,7 @@ resource "google_project_service" "apis" {
     "pubsub.googleapis.com",
     "logging.googleapis.com",
     "aiplatform.googleapis.com",
+    "artifactregistry.googleapis.com",
   ])
 
   project = var.project_id
@@ -162,6 +172,8 @@ module "cloud_run" {
   db_user                    = module.cloud_sql.database_user
   db_password_secret_name    = module.secrets.db_password_secret_name
   gemini_api_key_secret_name = module.secrets.gemini_api_key_secret_name
+  ses_username_secret_name   = module.secrets.ses_username_secret_id
+  ses_password_secret_name   = module.secrets.ses_password_secret_id
   custom_domain              = var.custom_domain
 
   min_instances = 0 # Scale to zero (cost optimization)
@@ -194,6 +206,7 @@ module "cloud_scheduler" {
   cloud_run_service_url     = module.cloud_run.service_url
   cloud_run_service_name    = module.cloud_run.service_name
   cloud_run_service_account = module.cloud_run.service_account_email
+  oidc_audience             = var.custom_domain != "" ? "https://${var.custom_domain}" : ""
 
   depends_on = [google_project_service.apis, module.cloud_run]
 }

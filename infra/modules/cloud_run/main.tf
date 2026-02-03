@@ -56,6 +56,18 @@ variable "gemini_api_key_secret_name" {
   type        = string
 }
 
+variable "ses_username_secret_name" {
+  description = "Secret Manager secret name for SES username (optional)"
+  type        = string
+  default     = ""
+}
+
+variable "ses_password_secret_name" {
+  description = "Secret Manager secret name for SES password (optional)"
+  type        = string
+  default     = ""
+}
+
 variable "custom_domain" {
   description = "Custom domain for the service (optional)"
   type        = string
@@ -108,6 +120,24 @@ resource "google_secret_manager_secret_iam_member" "db_password_access" {
 resource "google_secret_manager_secret_iam_member" "gemini_api_key_access" {
   project   = var.project_id
   secret_id = var.gemini_api_key_secret_name
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.cloud_run.email}"
+}
+
+# Grant Secret Manager access for SES username (optional)
+resource "google_secret_manager_secret_iam_member" "ses_username_access" {
+  count     = var.ses_username_secret_name != "" ? 1 : 0
+  project   = var.project_id
+  secret_id = var.ses_username_secret_name
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.cloud_run.email}"
+}
+
+# Grant Secret Manager access for SES password (optional)
+resource "google_secret_manager_secret_iam_member" "ses_password_access" {
+  count     = var.ses_password_secret_name != "" ? 1 : 0
+  project   = var.project_id
+  secret_id = var.ses_password_secret_name
   role      = "roles/secretmanager.secretAccessor"
   member    = "serviceAccount:${google_service_account.cloud_run.email}"
 }
@@ -211,6 +241,33 @@ resource "google_cloud_run_v2_service" "main" {
       env {
         name  = "GCS_BUCKET"
         value = var.gcs_bucket
+      }
+
+      # SES credentials for email sending (optional)
+      dynamic "env" {
+        for_each = var.ses_username_secret_name != "" ? [1] : []
+        content {
+          name = "SES_USR"
+          value_source {
+            secret_key_ref {
+              secret  = var.ses_username_secret_name
+              version = "latest"
+            }
+          }
+        }
+      }
+
+      dynamic "env" {
+        for_each = var.ses_password_secret_name != "" ? [1] : []
+        content {
+          name = "SES_PWD"
+          value_source {
+            secret_key_ref {
+              secret  = var.ses_password_secret_name
+              version = "latest"
+            }
+          }
+        }
       }
 
       ports {
