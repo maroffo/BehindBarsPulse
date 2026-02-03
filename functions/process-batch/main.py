@@ -9,7 +9,7 @@ from datetime import date
 
 import functions_framework
 from cloudevents.http import CloudEvent
-from google.cloud import storage
+from google.cloud import secretmanager, storage
 from sqlalchemy import Column, Date, Integer, String, Text, create_engine, delete
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import declarative_base, sessionmaker
@@ -37,6 +37,16 @@ class Newsletter(Base):
 # Global engine for connection reuse (warm starts)
 _engine = None
 _session_factory = None
+_sm_client = None
+
+
+def _get_secret(secret_resource_name: str) -> str:
+    """Get secret value from Secret Manager."""
+    global _sm_client
+    if _sm_client is None:
+        _sm_client = secretmanager.SecretManagerServiceClient()
+    response = _sm_client.access_secret_version(name=secret_resource_name)
+    return response.payload.data.decode("UTF-8")
 
 
 def get_db_session():
@@ -48,7 +58,13 @@ def get_db_session():
         db_port = os.environ.get("DB_PORT", "5432")
         db_name = os.environ.get("DB_NAME", "behindbars")
         db_user = os.environ.get("DB_USER", "behindbars")
-        db_password = os.environ.get("DB_PASSWORD", "")
+
+        # Get password from Secret Manager using the full resource name
+        db_password_secret = os.environ.get("DB_PASSWORD_SECRET", "")
+        if db_password_secret:
+            db_password = _get_secret(db_password_secret)
+        else:
+            db_password = os.environ.get("DB_PASSWORD", "")
 
         db_url = f"postgresql+psycopg2://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
         _engine = create_engine(db_url, pool_pre_ping=True, pool_size=1)

@@ -273,7 +273,9 @@ class NewsletterGenerator:
         from behind_bars_pulse.models import Article
 
         articles_for_review = {
-            url: Article(title=a.title, link=a.link, content=a.content)
+            url: Article(
+                title=a.title, link=a.link, content=a.content, published_date=a.published_date
+            )
             for url, a in enriched_articles.items()
         }
         press_review = self.ai_service.generate_press_review(articles_for_review)

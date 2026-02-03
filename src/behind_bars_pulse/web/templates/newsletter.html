@@ -33,21 +33,20 @@
             <p class="category-comment">{{ category.comment }}</p>
             {% endif %}
 
-            <div class="articles">
+            <div class="article-links">
                 {% for article in category.articles %}
-                <article class="article-card">
-                    <h4 class="article-title">
+                <div class="article-link">
+                    <p class="article-link-title">
                         <a href="{{ article.link }}" target="_blank" rel="noopener">{{ article.title }}</a>
-                    </h4>
-                    <p class="article-meta">
-                        {% if article.author %}<span class="author">{{ article.author }}</span>{% endif %}
-                        {% if article.author and article.source %} · {% endif %}
-                        {% if article.source %}<span class="source">{{ article.source }}</span>{% endif %}
                     </p>
-                    {% if article.summary %}
-                    <p class="article-summary">{{ article.summary }}</p>
-                    {% endif %}
-                </article>
+                    <p class="article-link-meta">
+                        {% if article.author %}{{ article.author }}{% endif %}
+                        {% if article.author and article.source %} · {% endif %}
+                        {% if article.source %}{{ article.source }}{% endif %}
+                        {% if (article.author or article.source) and article.published_date %} · {% endif %}
+                        {% if article.published_date %}{{ article.published_date | format_date }}{% endif %}
+                    </p>
+                </div>
                 {% endfor %}
             </div>
         </div>

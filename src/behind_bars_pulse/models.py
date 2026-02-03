@@ -21,6 +21,7 @@ class Article(BaseModel):
     title: str
     link: str
     content: str
+    published_date: date | None = None
 
 
 class ArticleInfo(BaseModel):

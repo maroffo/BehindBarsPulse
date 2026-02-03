@@ -3,6 +3,7 @@
 
 import asyncio
 from datetime import date
+from typing import Any
 
 import structlog
 from fastapi import APIRouter, BackgroundTasks
@@ -619,14 +620,31 @@ def _run_regenerate(collection_date: date, days_back: int, first_issue: bool) ->
                 if press_review:
                     press_review_data = [cat.model_dump(mode="json") for cat in press_review]
 
+                # Sanitize strings to remove NUL characters (PostgreSQL doesn't accept them)
+                def sanitize_str(s: str | None) -> str | None:
+                    return s.replace("\x00", "") if s else s
+
+                def sanitize_json(obj: Any) -> Any:
+                    """Recursively sanitize NUL chars from JSON-serializable data."""
+                    if isinstance(obj, str):
+                        return obj.replace("\x00", "")
+                    elif isinstance(obj, dict):
+                        return {k: sanitize_json(v) for k, v in obj.items()}
+                    elif isinstance(obj, list):
+                        return [sanitize_json(item) for item in obj]
+                    return obj
+
+                if press_review_data:
+                    press_review_data = sanitize_json(press_review_data)
+
                 newsletter = NewsletterModel(
                     issue_date=collection_date,
-                    title=newsletter_content.title,
-                    subtitle=newsletter_content.subtitle,
-                    opening=newsletter_content.opening,
-                    closing=newsletter_content.closing,
-                    html_content=html_content,
-                    txt_content=txt_content,
+                    title=sanitize_str(newsletter_content.title),
+                    subtitle=sanitize_str(newsletter_content.subtitle),
+                    opening=sanitize_str(newsletter_content.opening),
+                    closing=sanitize_str(newsletter_content.closing),
+                    html_content=sanitize_str(html_content),
+                    txt_content=sanitize_str(txt_content),
                     press_review=press_review_data,
                 )
                 session.add(newsletter)

@@ -3,6 +3,7 @@
 
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from datetime import date
 from pathlib import Path
 
 import bleach
@@ -43,6 +44,18 @@ def sanitize_html(value: str) -> Markup:
     return Markup(clean)
 
 
+def format_date(value: str | date | None, fmt: str = "%d %b") -> str:
+    """Format a date value (string or date object) for display."""
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        try:
+            value = date.fromisoformat(value)
+        except ValueError:
+            return value  # Return as-is if parsing fails
+    return value.strftime(fmt)
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncGenerator[None]:
     """Application lifespan context for database setup/teardown."""
@@ -65,6 +78,7 @@ def create_app() -> FastAPI:
     # Configure templates with custom filters
     templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
     templates.env.filters["sanitize"] = sanitize_html
+    templates.env.filters["format_date"] = format_date
     app.state.templates = templates
 
     # Mount static files

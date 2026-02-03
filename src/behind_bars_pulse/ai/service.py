@@ -520,6 +520,7 @@ class AIService:
                 author=author,
                 source=source,
                 summary=summary,
+                published_date=article.published_date,
             )
 
         if failed_count > 0:

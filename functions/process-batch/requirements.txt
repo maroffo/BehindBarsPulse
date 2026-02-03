@@ -4,5 +4,6 @@
 functions-framework==3.*
 cloudevents==1.*
 google-cloud-storage==2.*
+google-cloud-secret-manager==2.*
 sqlalchemy==2.*
 psycopg2-binary==2.*
