@@ -1,7 +1,7 @@
 # ABOUTME: SQLAlchemy ORM models for newsletter database persistence.
 # ABOUTME: Defines Newsletter, Article, StoryThread, KeyCharacter, FollowUp tables with pgvector support.
 
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
@@ -48,7 +48,9 @@ class Newsletter(Base):
     html_content: Mapped[str | None] = mapped_column(Text, nullable=True)
     txt_content: Mapped[str | None] = mapped_column(Text, nullable=True)
     press_review: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=lambda: datetime.now(UTC)
+    )
 
     articles: Mapped[list["Article"]] = relationship(
         "Article", back_populates="newsletter", cascade="all, delete-orphan"
@@ -81,7 +83,9 @@ class Article(Base):
     embedding: Mapped[list[float] | None] = mapped_column(
         Vector(EMBEDDING_DIMENSION), nullable=True
     )
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=lambda: datetime.now(UTC)
+    )
 
     newsletter_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("newsletters.id", ondelete="SET NULL"), nullable=True
@@ -123,7 +127,9 @@ class StoryThread(Base):
     mention_count: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     impact_score: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     weekly_highlight: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=lambda: datetime.now(UTC)
+    )
 
     followups: Mapped[list["FollowUp"]] = relationship(
         "FollowUp", back_populates="story", cascade="all, delete-orphan"
@@ -144,7 +150,9 @@ class KeyCharacter(Base):
     name: Mapped[str] = mapped_column(String(200), nullable=False, unique=True)
     role: Mapped[str] = mapped_column(String(500), nullable=False)
     aliases: Mapped[list[str] | None] = mapped_column(JSONB, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=lambda: datetime.now(UTC)
+    )
 
     positions: Mapped[list["CharacterPosition"]] = relationship(
         "CharacterPosition", back_populates="character", cascade="all, delete-orphan"
@@ -166,7 +174,9 @@ class CharacterPosition(Base):
     position_date: Mapped[date] = mapped_column(Date, nullable=False)
     stance: Mapped[str] = mapped_column(Text, nullable=False)
     source_url: Mapped[str | None] = mapped_column(String(2000), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=lambda: datetime.now(UTC)
+    )
 
     character: Mapped[KeyCharacter] = relationship("KeyCharacter", back_populates="positions")
 
@@ -210,7 +220,7 @@ class Subscriber(Base):
     token: Mapped[str] = mapped_column(String(64), unique=True, nullable=False, index=True)
     confirmed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     subscribed_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow, nullable=False
+        DateTime, default=lambda: datetime.now(UTC), nullable=False
     )
     confirmed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     unsubscribed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
@@ -251,7 +261,7 @@ class PrisonEvent(Base):
     confidence: Mapped[float] = mapped_column(Float, default=1.0, nullable=False)
     is_aggregate: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     extracted_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow, nullable=False
+        DateTime, default=lambda: datetime.now(UTC), nullable=False
     )
 
     article: Mapped[Article | None] = relationship("Article")
@@ -289,7 +299,7 @@ class FacilitySnapshot(Base):
         Integer, ForeignKey("articles.id", ondelete="SET NULL"), nullable=True
     )
     extracted_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow, nullable=False
+        DateTime, default=lambda: datetime.now(UTC), nullable=False
     )
 
     article: Mapped[Article | None] = relationship("Article")
@@ -319,7 +329,9 @@ class Bulletin(Base):
         Vector(EMBEDDING_DIMENSION), nullable=True
     )
     articles_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=lambda: datetime.now(UTC)
+    )
 
     __table_args__ = (
         Index("ix_bulletins_issue_date_desc", issue_date.desc()),
@@ -350,7 +362,9 @@ class EditorialComment(Base):
     embedding: Mapped[list[float] | None] = mapped_column(
         Vector(EMBEDDING_DIMENSION), nullable=True
     )
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=lambda: datetime.now(UTC)
+    )
 
     __table_args__ = (
         Index("ix_editorial_comments_source_type", "source_type"),

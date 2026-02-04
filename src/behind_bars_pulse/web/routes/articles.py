@@ -75,13 +75,13 @@ async def article_detail(
     related_articles = []
     if article.embedding is not None:
         try:
-            similar = await article_repo.search_by_embedding(
+            similar_results, _ = await article_repo.search_by_embedding(
                 embedding=article.embedding,
                 limit=4,  # Get one extra since current article might be included
                 threshold=0.5,
             )
             # Filter out the current article
-            related_articles = [art for art, _ in similar if art.id != article_id][:3]
+            related_articles = [art for art, _ in similar_results if art.id != article_id][:3]
         except Exception:
             # Fallback to no related articles if search fails
             pass

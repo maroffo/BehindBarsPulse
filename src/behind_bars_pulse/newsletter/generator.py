@@ -79,9 +79,9 @@ def _load_articles_from_db(end_date: date, days_back: int = 7) -> dict[str, Enri
                 title=article.title,
                 link=article.link,
                 content=article.content,
-                author=article.author,
-                source=article.source,
-                summary=article.summary,
+                author=article.author or "",
+                source=article.source or "",
+                summary=article.summary or "",
                 published_date=article.published_date,
             )
 

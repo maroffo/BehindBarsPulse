@@ -332,7 +332,7 @@ class BatchInferenceService:
         )
 
         result = BatchJobResult(
-            job_name=job.name,
+            job_name=job.name or "",
             input_uri=input_uri,
             output_uri=output_uri,
             status=str(job.state),

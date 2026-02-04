@@ -255,9 +255,9 @@ def _load_articles_for_batch(end_date: date, days_back: int = 7) -> dict:
             title=article.title,
             link=article.link,
             content=article.content,
-            author=article.author,
-            source=article.source,
-            summary=article.summary,
+            author=article.author or "",
+            source=article.source or "",
+            summary=article.summary or "",
             published_date=article.published_date,
         )
 
@@ -786,7 +786,7 @@ def _run_bulletin(issue_date: date) -> None:
             # Generate embedding for bulletin
             try:
                 newsletter_service = NewsletterService()
-                embedding = newsletter_service._generate_embedding(bulletin.content)
+                embedding = newsletter_service._embed_text(bulletin.content)
                 if embedding:
                     db_bulletin.embedding = embedding
             except Exception as e:
@@ -808,7 +808,7 @@ def _run_bulletin(issue_date: date) -> None:
 
                 # Generate embedding for comment
                 try:
-                    embedding = newsletter_service._generate_embedding(chunk.content)
+                    embedding = newsletter_service._embed_text(chunk.content)
                     if embedding:
                         db_comment.embedding = embedding
                 except Exception as e:

@@ -2,7 +2,7 @@
 # ABOUTME: Handles subscriber creation, confirmation, unsubscription with double opt-in.
 
 import secrets
-from datetime import datetime
+from datetime import UTC, datetime
 
 import structlog
 
@@ -56,7 +56,7 @@ class SubscriberService:
             email=email,
             token=self._generate_token(),
             confirmed=False,
-            subscribed_at=datetime.utcnow(),
+            subscribed_at=datetime.now(UTC),
         )
         saved = await self.repo.save(subscriber)
         log.info("subscriber_created", email=email, id=saved.id)
@@ -82,7 +82,7 @@ class SubscriberService:
             return subscriber
 
         subscriber.confirmed = True
-        subscriber.confirmed_at = datetime.utcnow()
+        subscriber.confirmed_at = datetime.now(UTC)
         await self.repo.save(subscriber)
 
         log.info("subscriber_confirmed", email=subscriber.email)
@@ -107,7 +107,7 @@ class SubscriberService:
             log.info("already_unsubscribed", email=subscriber.email)
             return subscriber
 
-        subscriber.unsubscribed_at = datetime.utcnow()
+        subscriber.unsubscribed_at = datetime.now(UTC)
         await self.repo.save(subscriber)
 
         log.info("subscriber_unsubscribed", email=subscriber.email)

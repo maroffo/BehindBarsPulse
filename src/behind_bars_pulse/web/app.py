@@ -51,9 +51,10 @@ def format_date(value: str | date | None, fmt: str = "%d %b") -> str:
         return ""
     if isinstance(value, str):
         try:
-            value = date.fromisoformat(value)
+            parsed = date.fromisoformat(value)
         except ValueError:
             return value  # Return as-is if parsing fails
+        return parsed.strftime(fmt)
     return value.strftime(fmt)
 
 

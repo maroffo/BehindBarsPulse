@@ -2,7 +2,7 @@
 # ABOUTME: Integrates with Gemini API for embedding generation.
 
 import asyncio
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 
 import structlog
 from google import genai
@@ -84,7 +84,7 @@ class NewsletterService:
                 html_content=html_content,
                 txt_content=txt_content,
                 press_review=[cat.model_dump() for cat in press_review],
-                created_at=datetime.utcnow(),
+                created_at=datetime.now(UTC),
             )
             newsletter = await newsletter_repo.save(newsletter)
             logger.info("newsletter_saved", id=newsletter.id, issue_date=issue_date)
@@ -115,7 +115,7 @@ class NewsletterService:
                     importance=metadata.get("importance"),
                     published_date=issue_date,
                     newsletter_id=newsletter.id,
-                    created_at=datetime.utcnow(),
+                    created_at=datetime.now(UTC),
                 )
                 articles_to_save.append(article)
 
@@ -183,7 +183,9 @@ class NewsletterService:
                 output_dimensionality=768,
             ),
         )
-        return response.embeddings[0].values
+        if not response.embeddings or not response.embeddings[0].values:
+            raise ValueError("No embeddings returned from API")
+        return list(response.embeddings[0].values)
 
     async def generate_embedding(self, text: str) -> list[float]:
         """Public method to generate embedding for search queries."""
@@ -202,4 +204,6 @@ class NewsletterService:
                 output_dimensionality=768,
             ),
         )
-        return response.embeddings[0].values
+        if not response.embeddings or not response.embeddings[0].values:
+            raise ValueError("No embeddings returned from API")
+        return list(response.embeddings[0].values)

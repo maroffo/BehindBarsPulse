@@ -2,7 +2,7 @@
 # ABOUTME: Fetches, enriches articles, updates narrative context, and extracts prison events.
 
 import uuid
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from typing import Any
 
 import structlog
@@ -128,7 +128,7 @@ def _save_prison_events_to_db(events: list[dict], article_url_to_id: dict[str, i
                     article_id=article_id,
                     confidence=float(event_data.get("confidence", 1.0)),
                     is_aggregate=is_aggregate,
-                    extracted_at=datetime.utcnow(),
+                    extracted_at=datetime.now(UTC),
                 )
                 session.add(event)
                 saved_count += 1
@@ -167,7 +167,7 @@ def _get_existing_events_for_dedup() -> list[dict[str, Any]]:
         from behind_bars_pulse.db.models import PrisonEvent
 
         try:
-            cutoff = datetime.utcnow() - timedelta(days=90)
+            cutoff = datetime.now(UTC) - timedelta(days=90)
             stmt = (
                 select(PrisonEvent)
                 .where(PrisonEvent.extracted_at >= cutoff)
@@ -275,7 +275,7 @@ def _save_capacity_snapshots_to_db(snapshots: list[dict], article_url_to_id: dic
                     occupancy_rate=snap_data.get("occupancy_rate"),
                     source_url=source_url,
                     article_id=article_id,
-                    extracted_at=datetime.utcnow(),
+                    extracted_at=datetime.now(UTC),
                 )
                 session.add(snapshot)
                 saved_count += 1
