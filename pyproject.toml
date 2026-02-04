@@ -35,6 +35,7 @@ dependencies = [
     "python-multipart>=0.0.22",
     "google-cloud-storage>=3.9.0",
     "psycopg2-binary>=2.9.11",
+    "markdown>=3.10.1",
 ]
 
 [dependency-groups]

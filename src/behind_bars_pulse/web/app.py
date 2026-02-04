@@ -7,6 +7,7 @@ from datetime import date
 from pathlib import Path
 
 import bleach
+import markdown as md
 import structlog
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
@@ -19,6 +20,7 @@ from behind_bars_pulse.web.routes import (
     archive,
     articles,
     bulletin,
+    edizioni,
     home,
     landing,
     pages,
@@ -58,6 +60,13 @@ def format_date(value: str | date | None, fmt: str = "%d %b") -> str:
     return value.strftime(fmt)
 
 
+def render_markdown(value: str) -> Markup:
+    """Convert markdown text to sanitized HTML."""
+    html = md.markdown(value, extensions=["nl2br"])
+    clean = bleach.clean(html, tags=ALLOWED_TAGS, attributes=ALLOWED_ATTRS, strip=True)
+    return Markup(clean)
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncGenerator[None]:
     """Application lifespan context for database setup/teardown."""
@@ -81,6 +90,7 @@ def create_app() -> FastAPI:
     templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
     templates.env.filters["sanitize"] = sanitize_html
     templates.env.filters["format_date"] = format_date
+    templates.env.filters["markdown"] = render_markdown
     app.state.templates = templates
 
     # Mount static files
@@ -91,6 +101,7 @@ def create_app() -> FastAPI:
     app.include_router(subscribe.router)
     app.include_router(pages.router)
     app.include_router(home.router)
+    app.include_router(edizioni.router)
     app.include_router(archive.router)
     app.include_router(articles.router)
     app.include_router(bulletin.router)

@@ -5,7 +5,7 @@
 {% block content %}
 <article class="bulletin">
     <nav class="breadcrumb">
-        <a href="/bollettino/archivio">&larr; Archivio Bollettini</a>
+        <a href="/edizioni/bollettino">&larr; Archivio Bollettini</a>
     </nav>
 
     <header class="bulletin-header">
@@ -19,16 +19,40 @@
         {% endif %}
     </header>
 
-    <section class="bulletin-content">
-        <p>{{ bulletin.content | replace('\n\n', '</p><p>') | replace('\n', '<br>') | sanitize }}</p>
+    <section class="bulletin-content editorial">
+        {{ bulletin.content | markdown }}
     </section>
 
-    {% if bulletin.articles_count %}
-    <footer class="bulletin-meta">
-        <p class="bulletin-stats">
-            Basato su {{ bulletin.articles_count }} articoli
-        </p>
-    </footer>
+    {% if categories %}
+    <hr class="divider-strong">
+
+    <section class="press-review">
+        <h2 class="section-header">Rassegna Stampa</h2>
+
+        {% for cat in categories %}
+        <div class="category">
+            <h3 class="category-title">{{ cat.category }}</h3>
+
+            <div class="article-links">
+                {% for article in cat.articles %}
+                <div class="article-link">
+                    <p class="article-link-title">
+                        <a href="{{ article.link }}" target="_blank" rel="noopener">{{ article.title }}</a>
+                    </p>
+                    <p class="article-link-meta">
+                        {% if article.author %}{{ article.author }}{% endif %}
+                        {% if article.author and article.source %} · {% endif %}
+                        {% if article.source %}{{ article.source }}{% endif %}
+                    </p>
+                    {% if article.summary %}
+                    <p class="article-summary">{{ article.summary }}</p>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+    </section>
     {% endif %}
 
     <nav class="bulletin-nav">

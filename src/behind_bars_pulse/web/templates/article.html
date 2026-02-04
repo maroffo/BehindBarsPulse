@@ -39,20 +39,16 @@
     </section>
     {% endif %}
 
-    <section class="article-content">
-        {{ article.content | replace('\n\n', '</p><p>') | replace('\n', '<br>') | sanitize }}
-    </section>
-
-    <footer class="article-footer">
-        <a href="{{ article.link }}" class="btn btn-primary" target="_blank" rel="noopener">
-            Leggi l'articolo originale →
+    <section class="article-cta">
+        <a href="{{ article.link }}" class="btn btn-primary btn-large" target="_blank" rel="noopener">
+            Leggi l'articolo completo su {{ article.source or 'fonte originale' }} →
         </a>
         {% if article.wayback_url %}
         <a href="{{ article.wayback_url }}" class="btn btn-outline" target="_blank" rel="noopener">
             Versione archiviata
         </a>
         {% endif %}
-    </footer>
+    </section>
 
     {% if related_articles %}
     <section class="related-articles">
@@ -60,8 +56,12 @@
         <div class="related-grid">
             {% for related in related_articles %}
             <a href="/article/{{ related.id }}" class="related-card">
+                <span class="related-category">{{ related.category or 'Altro' }}</span>
                 <h3>{{ related.title }}</h3>
-                <span class="related-meta">{{ related.source or 'Fonte sconosciuta' }}</span>
+                <span class="related-meta">
+                    {{ related.source or 'Fonte sconosciuta' }}
+                    {% if related.published_date %} · {{ related.published_date | format_date }}{% endif %}
+                </span>
             </a>
             {% endfor %}
         </div>

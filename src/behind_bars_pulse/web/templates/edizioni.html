@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}Edizioni - BehindBars{% endblock %}
+
+{% block content %}
+<section class="edizioni">
+    <header class="page-header">
+        <h1>Edizioni</h1>
+        <p class="page-subtitle">Tutti i contenuti editoriali di BehindBars</p>
+    </header>
+
+    <div class="edizioni-grid">
+        <!-- Bollettini quotidiani -->
+        <section class="edizioni-section">
+            <header class="edizioni-section-header">
+                <h2>Il Bollettino</h2>
+                <span class="edizioni-badge">Quotidiano</span>
+            </header>
+            <p class="edizioni-description">
+                Commento editoriale giornaliero sulle notizie delle carceri italiane,
+                pubblicato ogni mattina alle 8:00.
+            </p>
+
+            {% if bulletins %}
+            <ul class="edizioni-list">
+                {% for bulletin in bulletins %}
+                <li class="edizioni-item">
+                    <a href="/bollettino/{{ bulletin.issue_date.strftime('%Y-%m-%d') }}">
+                        <time>{{ bulletin.issue_date.strftime('%d %B %Y') }}</time>
+                        <span class="edizioni-item-title">{{ bulletin.title }}</span>
+                    </a>
+                </li>
+                {% endfor %}
+            </ul>
+            <a href="/edizioni/bollettino" class="edizioni-more">Tutti i bollettini &rarr;</a>
+            {% else %}
+            <p class="empty-message">Nessun bollettino disponibile.</p>
+            {% endif %}
+        </section>
+
+        <!-- Newsletter settimanali -->
+        <section class="edizioni-section">
+            <header class="edizioni-section-header">
+                <h2>Newsletter</h2>
+                <span class="edizioni-badge">Settimanale</span>
+            </header>
+            <p class="edizioni-description">
+                Rassegna stampa settimanale con commento editoriale,
+                inviata via email ogni domenica.
+            </p>
+
+            {% if newsletters %}
+            <ul class="edizioni-list">
+                {% for newsletter in newsletters %}
+                <li class="edizioni-item">
+                    <a href="/archive/{{ newsletter.issue_date.strftime('%Y-%m-%d') }}">
+                        <time>{{ newsletter.issue_date.strftime('%d %B %Y') }}</time>
+                        <span class="edizioni-item-title">{{ newsletter.title }}</span>
+                    </a>
+                </li>
+                {% endfor %}
+            </ul>
+            <a href="/edizioni/newsletter" class="edizioni-more">Tutte le newsletter &rarr;</a>
+            {% else %}
+            <p class="empty-message">Nessuna newsletter disponibile.</p>
+            {% endif %}
+        </section>
+    </div>
+
+    <section class="edizioni-cta">
+        <h3>Ricevi la newsletter nella tua casella email</h3>
+        <p>Iscriviti per ricevere la rassegna settimanale ogni domenica.</p>
+        <a href="/iscriviti" class="btn btn-primary">Iscriviti alla newsletter</a>
+    </section>
+</section>
+{% endblock %}

@@ -1,5 +1,5 @@
 # ABOUTME: Archive routes for browsing past newsletters.
-# ABOUTME: Provides list view and individual newsletter detail pages.
+# ABOUTME: Provides backwards-compatible redirects and individual newsletter detail pages.
 
 from datetime import datetime
 
@@ -10,36 +10,13 @@ from behind_bars_pulse.web.dependencies import NewsletterRepo, Templates
 
 router = APIRouter(prefix="/archive")
 
-ITEMS_PER_PAGE = 10
-
 
 @router.get("", response_class=HTMLResponse)
-async def archive_list(
-    request: Request,
-    templates: Templates,
-    newsletter_repo: NewsletterRepo,
-    page: int = Query(1, ge=1),
-):
-    """List all newsletters with pagination."""
-    offset = (page - 1) * ITEMS_PER_PAGE
-    newsletters = await newsletter_repo.list_recent(
-        limit=ITEMS_PER_PAGE + 1,  # Get one extra to check if there's more
-        offset=offset,
-    )
+async def archive_list(page: int = Query(1, ge=1)):
+    """Redirect to /edizioni/newsletter for backwards compatibility."""
+    from fastapi.responses import RedirectResponse
 
-    has_more = len(newsletters) > ITEMS_PER_PAGE
-    if has_more:
-        newsletters = newsletters[:ITEMS_PER_PAGE]
-
-    return templates.TemplateResponse(
-        request=request,
-        name="archive.html",
-        context={
-            "newsletters": newsletters,
-            "page": page,
-            "has_more": has_more,
-        },
-    )
+    return RedirectResponse(url=f"/edizioni/newsletter?page={page}", status_code=301)
 
 
 @router.get("/{date_str}", response_class=HTMLResponse)
