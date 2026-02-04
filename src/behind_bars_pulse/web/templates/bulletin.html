@@ -23,18 +23,21 @@
         {{ bulletin.content | markdown }}
     </section>
 
-    {% if categories %}
+    {% if bulletin.press_review %}
     <hr class="divider-strong">
 
     <section class="press-review">
-        <h2 class="section-header">Rassegna Stampa</h2>
+        <h2 class="section-title">Rassegna Stampa</h2>
 
-        {% for cat in categories %}
+        {% for category in bulletin.press_review %}
         <div class="category">
-            <h3 class="category-title">{{ cat.category }}</h3>
+            <h3 class="category-title">{{ category.category }}</h3>
+            {% if category.comment %}
+            <p class="category-comment">{{ category.comment }}</p>
+            {% endif %}
 
             <div class="article-links">
-                {% for article in cat.articles %}
+                {% for article in category.articles %}
                 <div class="article-link">
                     <p class="article-link-title">
                         <a href="{{ article.link }}" target="_blank" rel="noopener">{{ article.title }}</a>
@@ -43,10 +46,9 @@
                         {% if article.author %}{{ article.author }}{% endif %}
                         {% if article.author and article.source %} · {% endif %}
                         {% if article.source %}{{ article.source }}{% endif %}
+                        {% if (article.author or article.source) and article.published_date %} · {% endif %}
+                        {% if article.published_date %}{{ article.published_date | format_date }}{% endif %}
                     </p>
-                    {% if article.summary %}
-                    <p class="article-summary">{{ article.summary }}</p>
-                    {% endif %}
                 </div>
                 {% endfor %}
             </div>

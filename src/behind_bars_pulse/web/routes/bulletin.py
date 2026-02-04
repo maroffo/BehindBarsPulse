@@ -1,32 +1,14 @@
 # ABOUTME: Bulletin routes for viewing daily editorial commentaries.
 # ABOUTME: Provides latest, archive, and detail pages for bulletins.
 
-from collections import defaultdict
-from collections.abc import Sequence
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse
 
-from behind_bars_pulse.db.models import Article
-from behind_bars_pulse.web.dependencies import ArticleRepo, BulletinRepo, Templates
+from behind_bars_pulse.web.dependencies import BulletinRepo, Templates
 
 router = APIRouter(prefix="/bollettino")
-
-ITEMS_PER_PAGE = 10
-
-
-def _group_articles_by_category(
-    articles: Sequence[Article],
-) -> list[dict[str, str | list[Article]]]:
-    """Group articles by category, maintaining order."""
-    categories: dict[str, list[Article]] = defaultdict(list)
-    for article in articles:
-        cat = article.category or "Altro"
-        categories[cat].append(article)
-
-    # Convert to list of dicts for template
-    return [{"category": cat, "articles": arts} for cat, arts in categories.items()]
 
 
 @router.get("", response_class=HTMLResponse)
@@ -34,7 +16,6 @@ async def bulletin_latest(
     request: Request,
     templates: Templates,
     bulletin_repo: BulletinRepo,
-    article_repo: ArticleRepo,
 ):
     """Display the latest bulletin."""
     bulletin = await bulletin_repo.get_latest()
@@ -51,11 +32,6 @@ async def bulletin_latest(
     all_bulletins = await bulletin_repo.list_recent(limit=2)
     prev_bulletin = all_bulletins[1] if len(all_bulletins) > 1 else None
 
-    # Load articles from the day before the bulletin
-    articles_date = bulletin.issue_date - timedelta(days=1)
-    articles = await article_repo.list_by_published_date(articles_date)
-    categories = _group_articles_by_category(list(articles))
-
     return templates.TemplateResponse(
         request=request,
         name="bulletin.html",
@@ -63,7 +39,6 @@ async def bulletin_latest(
             "bulletin": bulletin,
             "prev_bulletin": prev_bulletin,
             "next_bulletin": None,
-            "categories": categories,
         },
     )
 
@@ -82,7 +57,6 @@ async def bulletin_detail(
     date_str: str,
     templates: Templates,
     bulletin_repo: BulletinRepo,
-    article_repo: ArticleRepo,
 ):
     """Display a specific bulletin by date."""
     try:
@@ -100,11 +74,6 @@ async def bulletin_detail(
     prev_bulletin = await bulletin_repo.get_previous(issue_date)
     next_bulletin = await bulletin_repo.get_next(issue_date)
 
-    # Load articles from the day before the bulletin
-    articles_date = issue_date - timedelta(days=1)
-    articles = await article_repo.list_by_published_date(articles_date)
-    categories = _group_articles_by_category(list(articles))
-
     return templates.TemplateResponse(
         request=request,
         name="bulletin.html",
@@ -112,6 +81,5 @@ async def bulletin_detail(
             "bulletin": bulletin,
             "prev_bulletin": prev_bulletin,
             "next_bulletin": next_bulletin,
-            "categories": categories,
         },
     )

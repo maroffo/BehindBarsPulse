@@ -26,6 +26,7 @@ class Bulletin(BaseModel):
     key_topics: list[str] = []
     sources_cited: list[str] = []
     articles_count: int = 0
+    press_review: list[dict] | None = None
 
 
 class EditorialCommentChunk(BaseModel):

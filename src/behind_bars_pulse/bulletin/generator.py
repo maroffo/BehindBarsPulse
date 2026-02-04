@@ -2,6 +2,7 @@
 # ABOUTME: Orchestrates article loading, AI generation, and DB persistence.
 
 from datetime import date, timedelta
+from typing import TYPE_CHECKING
 
 import structlog
 from sqlalchemy import create_engine
@@ -12,6 +13,9 @@ from behind_bars_pulse.bulletin.models import Bulletin, EditorialCommentChunk
 from behind_bars_pulse.config import Settings, get_settings
 from behind_bars_pulse.db.models import Article as ArticleORM
 from behind_bars_pulse.models import EnrichedArticle
+
+if TYPE_CHECKING:
+    from behind_bars_pulse.models import Article
 
 log = structlog.get_logger()
 
@@ -45,11 +49,17 @@ class BulletinGenerator:
             log.warning("no_articles_for_bulletin", date=articles_date)
             return None
 
-        # Generate bulletin via AI
+        # Generate bulletin content via AI
         bulletin_content = self.ai_service.generate_bulletin(
             articles=articles,
             issue_date=issue_date.isoformat(),
         )
+
+        # Generate press review with thematic categories (like newsletter)
+        press_review = self.ai_service.generate_press_review(
+            articles={url: self._to_article(a) for url, a in articles.items()}
+        )
+        press_review_data = [cat.model_dump(mode="json") for cat in press_review]
 
         return Bulletin(
             issue_date=issue_date,
@@ -59,6 +69,18 @@ class BulletinGenerator:
             key_topics=bulletin_content.key_topics,
             sources_cited=bulletin_content.sources_cited,
             articles_count=len(articles),
+            press_review=press_review_data,
+        )
+
+    def _to_article(self, enriched: EnrichedArticle) -> "Article":
+        """Convert EnrichedArticle to Article for press review generation."""
+        from behind_bars_pulse.models import Article
+
+        return Article(
+            title=enriched.title,
+            link=enriched.link,
+            content=enriched.content,
+            published_date=enriched.published_date,
         )
 
     def _load_articles_from_db(self, articles_date: date) -> dict[str, EnrichedArticle]:
