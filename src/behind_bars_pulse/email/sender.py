@@ -1,6 +1,8 @@
 # ABOUTME: Email sender for newsletter distribution via AWS SES SMTP.
 # ABOUTME: Handles template rendering, SMTP delivery, confirmation emails, and newsletter archival.
 
+from __future__ import annotations
+
 import smtplib
 from datetime import date
 from email.message import EmailMessage
