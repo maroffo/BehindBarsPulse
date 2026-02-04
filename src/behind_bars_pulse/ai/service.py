@@ -18,6 +18,7 @@ from tenacity import (
 )
 
 from behind_bars_pulse.ai.prompts import (
+    BULLETIN_PROMPT,
     CAPACITY_EXTRACTION_PROMPT,
     ENTITY_EXTRACTION_PROMPT,
     EVENT_EXTRACTION_PROMPT,
@@ -29,6 +30,7 @@ from behind_bars_pulse.ai.prompts import (
     REVIEW_CONTENT_PROMPT,
     STORY_EXTRACTION_PROMPT,
 )
+from behind_bars_pulse.bulletin.models import BulletinContent
 from behind_bars_pulse.config import Settings, get_settings
 from behind_bars_pulse.models import (
     Article,
@@ -727,3 +729,52 @@ class AIService:
         )
 
         return self._parse_json_response(response)
+
+    def generate_bulletin(
+        self,
+        articles: dict[str, EnrichedArticle],
+        issue_date: str,
+    ) -> BulletinContent:
+        """Generate daily editorial bulletin from articles.
+
+        Args:
+            articles: Dictionary of enriched articles to analyze.
+            issue_date: Date string for the bulletin (YYYY-MM-DD).
+
+        Returns:
+            BulletinContent with generated editorial commentary.
+        """
+        from pydantic import TypeAdapter
+
+        log.info("generating_bulletin", article_count=len(articles), issue_date=issue_date)
+
+        # Prepare articles for the prompt
+        articles_data = []
+        for url, article in articles.items():
+            articles_data.append(
+                {
+                    "title": article.title,
+                    "link": str(url),
+                    "author": article.author,
+                    "source": article.source,
+                    "summary": article.summary,
+                    "content": article.content[:1500],
+                }
+            )
+
+        prompt = json.dumps(
+            {"articles": articles_data, "date": issue_date},
+            indent=2,
+            ensure_ascii=False,
+        )
+
+        # Use structured output for guaranteed valid JSON
+        schema = TypeAdapter(BulletinContent).json_schema()
+
+        response = self._generate(
+            prompt=prompt,
+            system_prompt=BULLETIN_PROMPT.format(date=issue_date),
+            response_schema=schema,
+        )
+
+        return BulletinContent(**json.loads(response))

@@ -4,11 +4,13 @@
 
     <div class="results-list" id="results-list">
         {% for result in results %}
-        <article class="result-card">
+        {% if result.result_type == 'article' %}
+        <article class="result-card result-card--article">
             <div class="result-header">
                 {% if result.article.category %}
                 <span class="article-category">{{ result.article.category }}</span>
                 {% endif %}
+                <span class="result-type-badge">Articolo</span>
                 <span class="similarity-score" title="Rilevanza: {{ (result.similarity * 100) | round(1) }}%">
                     {{ (result.similarity * 100) | round | int }}% correlato
                 </span>
@@ -28,13 +30,40 @@
             <p class="result-summary">{{ result.article.summary }}</p>
             {% endif %}
         </article>
+        {% elif result.result_type == 'editorial' %}
+        <article class="result-card result-card--editorial">
+            <div class="result-header">
+                {% if result.comment.category %}
+                <span class="editorial-category">{{ result.comment.category }}</span>
+                {% endif %}
+                <span class="result-type-badge result-type-badge--editorial">
+                    {% if result.comment.source_type == 'bulletin' %}Bollettino{% else %}Newsletter{% endif %}
+                </span>
+                <span class="similarity-score" title="Rilevanza: {{ (result.similarity * 100) | round(1) }}%">
+                    {{ (result.similarity * 100) | round | int }}% correlato
+                </span>
+            </div>
+            <h2 class="result-title">
+                {% if result.comment.source_type == 'bulletin' %}
+                <a href="/bollettino/{{ result.comment.source_date.strftime('%Y-%m-%d') }}">
+                    Bollettino del {{ result.comment.source_date.strftime('%d/%m/%Y') }}
+                </a>
+                {% else %}
+                <a href="/archive/{{ result.comment.source_date.strftime('%Y-%m-%d') }}">
+                    Newsletter del {{ result.comment.source_date.strftime('%d/%m/%Y') }}
+                </a>
+                {% endif %}
+            </h2>
+            <p class="result-summary">{{ result.comment.content[:300] }}{% if result.comment.content|length > 300 %}...{% endif %}</p>
+        </article>
+        {% endif %}
         {% endfor %}
     </div>
 
     {% if has_more %}
     <div id="load-more-container">
         <button class="load-more-btn"
-                hx-get="/search/results?q={{ query | urlencode }}&offset={{ next_offset }}"
+                hx-get="/search/results?q={{ query | urlencode }}&offset={{ next_offset }}&content_type={{ content_type }}"
                 hx-target="#load-more-container"
                 hx-swap="outerHTML"
                 hx-indicator="#load-more-spinner">
@@ -51,6 +80,6 @@
 </div>
 {% else %}
 <div class="search-placeholder">
-    <p>Inserisci una query per cercare negli articoli.</p>
+    <p>Inserisci una query per cercare negli articoli e nei commenti editoriali.</p>
 </div>
 {% endif %}

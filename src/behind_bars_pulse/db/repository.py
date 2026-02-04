@@ -9,7 +9,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from behind_bars_pulse.db.models import (
     Article,
+    Bulletin,
     CharacterPosition,
+    EditorialComment,
     FacilitySnapshot,
     FollowUp,
     KeyCharacter,
@@ -193,6 +195,13 @@ class ArticleRepository:
         if category:
             query = query.where(Article.category == category)
         result = await self.session.execute(query)
+        return result.scalar_one()
+
+    async def count_with_embeddings(self) -> int:
+        """Count articles that have embeddings."""
+        result = await self.session.execute(
+            select(func.count(Article.id)).where(Article.embedding.isnot(None))
+        )
         return result.scalar_one()
 
     async def list_categories(self) -> Sequence[str]:
@@ -854,3 +863,203 @@ class FacilitySnapshotRepository:
             .order_by(FacilitySnapshot.region)
         )
         return result.scalars().all()
+
+
+class BulletinRepository:
+    """Repository for Bulletin CRUD operations."""
+
+    def __init__(self, session: AsyncSession):
+        self.session = session
+
+    async def save(self, bulletin: Bulletin) -> Bulletin:
+        """Save a bulletin (insert or update)."""
+        self.session.add(bulletin)
+        await self.session.flush()
+        return bulletin
+
+    async def get_by_id(self, bulletin_id: int) -> Bulletin | None:
+        """Get bulletin by ID."""
+        return await self.session.get(Bulletin, bulletin_id)
+
+    async def get_by_date(self, issue_date: date) -> Bulletin | None:
+        """Get bulletin by issue date."""
+        result = await self.session.execute(
+            select(Bulletin).where(Bulletin.issue_date == issue_date)
+        )
+        return result.scalar_one_or_none()
+
+    async def get_latest(self) -> Bulletin | None:
+        """Get the most recent bulletin."""
+        result = await self.session.execute(
+            select(Bulletin).order_by(Bulletin.issue_date.desc()).limit(1)
+        )
+        return result.scalar_one_or_none()
+
+    async def list_recent(self, limit: int = 10, offset: int = 0) -> Sequence[Bulletin]:
+        """List recent bulletins ordered by date descending."""
+        result = await self.session.execute(
+            select(Bulletin).order_by(Bulletin.issue_date.desc()).limit(limit).offset(offset)
+        )
+        return result.scalars().all()
+
+    async def count(self) -> int:
+        """Count total bulletins."""
+        result = await self.session.execute(select(func.count(Bulletin.id)))
+        return result.scalar_one()
+
+    async def delete_by_date(self, issue_date: date) -> bool:
+        """Delete bulletin by date. Returns True if deleted."""
+        result = await self.session.execute(
+            delete(Bulletin).where(Bulletin.issue_date == issue_date)
+        )
+        return result.rowcount > 0
+
+    async def search_by_embedding(
+        self,
+        embedding: list[float],
+        threshold: float = 0.5,
+        limit: int = 10,
+    ) -> list[tuple[Bulletin, float]]:
+        """Search bulletins by embedding similarity."""
+        distance = Bulletin.embedding.cosine_distance(embedding)
+        similarity = (1 - distance).label("similarity")
+
+        result = await self.session.execute(
+            select(Bulletin, similarity)
+            .where(Bulletin.embedding.isnot(None))
+            .where((1 - distance) >= threshold)
+            .order_by(distance)
+            .limit(limit)
+        )
+        return [(row.Bulletin, row.similarity) for row in result.all()]
+
+    async def get_previous(self, issue_date: date) -> Bulletin | None:
+        """Get the bulletin before the given date."""
+        result = await self.session.execute(
+            select(Bulletin)
+            .where(Bulletin.issue_date < issue_date)
+            .order_by(Bulletin.issue_date.desc())
+            .limit(1)
+        )
+        return result.scalar_one_or_none()
+
+    async def get_next(self, issue_date: date) -> Bulletin | None:
+        """Get the bulletin after the given date."""
+        result = await self.session.execute(
+            select(Bulletin)
+            .where(Bulletin.issue_date > issue_date)
+            .order_by(Bulletin.issue_date.asc())
+            .limit(1)
+        )
+        return result.scalar_one_or_none()
+
+
+class EditorialCommentRepository:
+    """Repository for EditorialComment CRUD and search operations."""
+
+    def __init__(self, session: AsyncSession):
+        self.session = session
+
+    async def save(self, comment: EditorialComment) -> EditorialComment:
+        """Save an editorial comment."""
+        self.session.add(comment)
+        await self.session.flush()
+        return comment
+
+    async def save_batch(self, comments: list[EditorialComment]) -> list[EditorialComment]:
+        """Save multiple comments in batch."""
+        self.session.add_all(comments)
+        await self.session.flush()
+        return comments
+
+    async def get_by_id(self, comment_id: int) -> EditorialComment | None:
+        """Get comment by ID."""
+        return await self.session.get(EditorialComment, comment_id)
+
+    async def list_by_source(
+        self, source_type: str, source_id: int
+    ) -> Sequence[EditorialComment]:
+        """List comments from a specific source."""
+        result = await self.session.execute(
+            select(EditorialComment)
+            .where(EditorialComment.source_type == source_type)
+            .where(EditorialComment.source_id == source_id)
+            .order_by(EditorialComment.id)
+        )
+        return result.scalars().all()
+
+    async def list_recent(
+        self, limit: int = 20, offset: int = 0, source_type: str | None = None
+    ) -> Sequence[EditorialComment]:
+        """List recent comments, optionally filtered by source type."""
+        query = select(EditorialComment).order_by(EditorialComment.source_date.desc())
+        if source_type:
+            query = query.where(EditorialComment.source_type == source_type)
+        query = query.limit(limit).offset(offset)
+        result = await self.session.execute(query)
+        return result.scalars().all()
+
+    async def search_by_embedding(
+        self,
+        embedding: list[float],
+        threshold: float = 0.5,
+        limit: int = 20,
+        offset: int = 0,
+        source_type: str | None = None,
+    ) -> tuple[list[tuple[EditorialComment, float]], int]:
+        """Search comments by embedding similarity.
+
+        Args:
+            embedding: Query embedding vector
+            threshold: Minimum similarity threshold (0-1)
+            limit: Maximum results per page
+            offset: Number of results to skip
+            source_type: Filter by source type ('bulletin' or 'newsletter')
+
+        Returns:
+            Tuple of (results list, total count)
+        """
+        distance = EditorialComment.embedding.cosine_distance(embedding)
+        similarity = (1 - distance).label("similarity")
+
+        # Base query conditions
+        base_conditions = [
+            EditorialComment.embedding.isnot(None),
+            (1 - distance) >= threshold,
+        ]
+        if source_type:
+            base_conditions.append(EditorialComment.source_type == source_type)
+
+        # Count total
+        count_result = await self.session.execute(
+            select(func.count(EditorialComment.id)).where(*base_conditions)
+        )
+        total = count_result.scalar_one()
+
+        # Fetch results
+        result = await self.session.execute(
+            select(EditorialComment, similarity)
+            .where(*base_conditions)
+            .order_by(distance)
+            .limit(limit)
+            .offset(offset)
+        )
+        results = [(row.EditorialComment, row.similarity) for row in result.all()]
+        return results, total
+
+    async def count(self, source_type: str | None = None) -> int:
+        """Count comments, optionally filtered by source type."""
+        query = select(func.count(EditorialComment.id))
+        if source_type:
+            query = query.where(EditorialComment.source_type == source_type)
+        result = await self.session.execute(query)
+        return result.scalar_one()
+
+    async def delete_by_source(self, source_type: str, source_id: int) -> int:
+        """Delete all comments from a specific source. Returns count deleted."""
+        result = await self.session.execute(
+            delete(EditorialComment)
+            .where(EditorialComment.source_type == source_type)
+            .where(EditorialComment.source_id == source_id)
+        )
+        return result.rowcount

@@ -6,7 +6,7 @@
 <section class="search-page">
     <header class="page-header">
         <h1 class="page-title">Cerca</h1>
-        <p class="page-subtitle">Ricerca semantica negli articoli</p>
+        <p class="page-subtitle">Ricerca semantica in articoli e commenti editoriali</p>
     </header>
 
     <form class="search-form" hx-get="/search/results" hx-target="#search-results" hx-trigger="submit">
@@ -19,8 +19,25 @@
                    autocomplete="off">
             <button type="submit" class="search-btn">Cerca</button>
         </div>
+
+        <div class="search-filters">
+            <span class="filter-label">Cerca in:</span>
+            <label class="filter-option">
+                <input type="radio" name="content_type" value="all" {% if content_type == 'all' or not content_type %}checked{% endif %}>
+                <span>Tutto</span>
+            </label>
+            <label class="filter-option">
+                <input type="radio" name="content_type" value="articles" {% if content_type == 'articles' %}checked{% endif %}>
+                <span>Articoli</span>
+            </label>
+            <label class="filter-option">
+                <input type="radio" name="content_type" value="editorial" {% if content_type == 'editorial' %}checked{% endif %}>
+                <span>Commenti Editoriali</span>
+            </label>
+        </div>
+
         <p class="search-hint">
-            La ricerca utilizza l'intelligenza artificiale per trovare articoli semanticamente correlati alla tua query.
+            La ricerca utilizza l'intelligenza artificiale per trovare contenuti semanticamente correlati alla tua query.
         </p>
     </form>
 

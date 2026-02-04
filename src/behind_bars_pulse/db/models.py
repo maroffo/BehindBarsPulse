@@ -303,3 +303,63 @@ class FacilitySnapshot(Base):
 
     def __repr__(self) -> str:
         return f"<FacilitySnapshot {self.facility} @ {self.snapshot_date}: {self.occupancy_rate}%>"
+
+
+class Bulletin(Base):
+    """A daily editorial bulletin with AI-generated commentary on prison news."""
+
+    __tablename__ = "bulletins"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    issue_date: Mapped[date] = mapped_column(Date, nullable=False, unique=True, index=True)
+    title: Mapped[str] = mapped_column(String(500), nullable=False)
+    subtitle: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    embedding: Mapped[list[float] | None] = mapped_column(
+        Vector(EMBEDDING_DIMENSION), nullable=True
+    )
+    articles_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+
+    __table_args__ = (
+        Index("ix_bulletins_issue_date_desc", issue_date.desc()),
+        Index(
+            "ix_bulletins_embedding",
+            embedding,
+            postgresql_using="ivfflat",
+            postgresql_with={"lists": 100},
+            postgresql_ops={"embedding": "vector_cosine_ops"},
+        ),
+    )
+
+    def __repr__(self) -> str:
+        return f"<Bulletin {self.issue_date}: {self.title[:50]}...>"
+
+
+class EditorialComment(Base):
+    """An editorial comment extracted from bulletins or newsletters for search."""
+
+    __tablename__ = "editorial_comments"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    source_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    source_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    source_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
+    category: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    embedding: Mapped[list[float] | None] = mapped_column(
+        Vector(EMBEDDING_DIMENSION), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+
+    __table_args__ = (
+        Index("ix_editorial_comments_source_type", "source_type"),
+        Index("ix_editorial_comments_source_date_desc", source_date.desc()),
+        Index(
+            "ix_editorial_comments_embedding",
+            embedding,
+            postgresql_using="ivfflat",
+            postgresql_with={"lists": 100},
+            postgresql_ops={"embedding": "vector_cosine_ops"},
+        ),
+    )

@@ -19,6 +19,7 @@
                 </a>
                 <ul class="nav-links">
                     <li><a href="/latest" {% if request.url.path == "/latest" %}class="active"{% endif %}>Ultima Edizione</a></li>
+                    <li><a href="/bollettino" {% if request.url.path.startswith("/bollettino") %}class="active"{% endif %}>Bollettino</a></li>
                     <li><a href="/archive" {% if request.url.path.startswith("/archive") %}class="active"{% endif %}>Archivio</a></li>
                     <li><a href="/articles" {% if request.url.path.startswith("/articles") or request.url.path.startswith("/article") %}class="active"{% endif %}>Articoli</a></li>
                     <li><a href="/stats" {% if request.url.path.startswith("/stats") %}class="active"{% endif %}>Statistiche</a></li>

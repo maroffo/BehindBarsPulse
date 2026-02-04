@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block title %}{{ bulletin.title }} - Il Bollettino - BehindBars{% endblock %}
+
+{% block content %}
+<article class="bulletin">
+    <nav class="breadcrumb">
+        <a href="/bollettino/archivio">&larr; Archivio Bollettini</a>
+    </nav>
+
+    <header class="bulletin-header">
+        <span class="bulletin-badge">Il Bollettino</span>
+        <time class="bulletin-date" datetime="{{ bulletin.issue_date }}">
+            {{ bulletin.issue_date.strftime('%d %B %Y') }}
+        </time>
+        <h1 class="bulletin-title">{{ bulletin.title }}</h1>
+        {% if bulletin.subtitle %}
+        <p class="bulletin-subtitle">{{ bulletin.subtitle }}</p>
+        {% endif %}
+    </header>
+
+    <section class="bulletin-content">
+        <p>{{ bulletin.content | replace('\n\n', '</p><p>') | replace('\n', '<br>') | sanitize }}</p>
+    </section>
+
+    {% if bulletin.articles_count %}
+    <footer class="bulletin-meta">
+        <p class="bulletin-stats">
+            Basato su {{ bulletin.articles_count }} articoli
+        </p>
+    </footer>
+    {% endif %}
+
+    <nav class="bulletin-nav">
+        {% if prev_bulletin %}
+        <a href="/bollettino/{{ prev_bulletin.issue_date.strftime('%Y-%m-%d') }}" class="nav-prev">
+            &larr; {{ prev_bulletin.issue_date.strftime('%d/%m/%Y') }}
+        </a>
+        {% endif %}
+        {% if next_bulletin %}
+        <a href="/bollettino/{{ next_bulletin.issue_date.strftime('%Y-%m-%d') }}" class="nav-next">
+            {{ next_bulletin.issue_date.strftime('%d/%m/%Y') }} &rarr;
+        </a>
+        {% endif %}
+    </nav>
+</article>
+{% endblock %}

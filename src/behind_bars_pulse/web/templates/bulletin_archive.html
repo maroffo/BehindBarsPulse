@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block title %}Archivio Bollettini - BehindBars{% endblock %}
+
+{% block content %}
+<section class="archive">
+    <header class="archive-header">
+        <h1>Il Bollettino</h1>
+        <p class="archive-subtitle">Commento editoriale giornaliero sulle notizie delle carceri italiane</p>
+    </header>
+
+    {% if bulletins %}
+    <div class="archive-list">
+        {% for bulletin in bulletins %}
+        <article class="archive-item">
+            <a href="/bollettino/{{ bulletin.issue_date.strftime('%Y-%m-%d') }}" class="archive-item-link">
+                <time class="archive-item-date" datetime="{{ bulletin.issue_date }}">
+                    {{ bulletin.issue_date.strftime('%d %B %Y') }}
+                </time>
+                <h2 class="archive-item-title">{{ bulletin.title }}</h2>
+                {% if bulletin.subtitle %}
+                <p class="archive-item-subtitle">{{ bulletin.subtitle }}</p>
+                {% endif %}
+            </a>
+        </article>
+        {% endfor %}
+    </div>
+
+    <nav class="pagination">
+        {% if page > 1 %}
+        <a href="?page={{ page - 1 }}" class="pagination-prev">&larr; Precedente</a>
+        {% endif %}
+        <span class="pagination-current">Pagina {{ page }}</span>
+        {% if has_more %}
+        <a href="?page={{ page + 1 }}" class="pagination-next">Successiva &rarr;</a>
+        {% endif %}
+    </nav>
+    {% else %}
+    <div class="empty-state">
+        <p>Nessun bollettino disponibile al momento.</p>
+        <p>I bollettini vengono generati ogni giorno alle 8:00.</p>
+    </div>
+    {% endif %}
+</section>
+{% endblock %}

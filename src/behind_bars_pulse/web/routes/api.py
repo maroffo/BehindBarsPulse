@@ -6,7 +6,7 @@ from datetime import date
 from typing import Any
 
 import structlog
-from fastapi import APIRouter, BackgroundTasks
+from fastapi import APIRouter, BackgroundTasks, HTTPException
 from pydantic import BaseModel
 
 from behind_bars_pulse.web.middleware.oidc import OIDCVerified
@@ -721,4 +721,158 @@ async def api_weekly(
     return TaskResponse(
         status="accepted",
         message=f"Weekly digest started for {target_date.isoformat()}",
+    )
+
+
+def _run_bulletin(issue_date: date) -> None:
+    """Generate and save a bulletin in background."""
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import Session
+
+    from behind_bars_pulse.bulletin.generator import BulletinGenerator
+    from behind_bars_pulse.config import get_settings
+    from behind_bars_pulse.db.models import Bulletin as BulletinORM
+    from behind_bars_pulse.db.models import EditorialComment as EditorialCommentORM
+    from behind_bars_pulse.services.newsletter_service import NewsletterService
+
+    settings = get_settings()
+    log.info("api_bulletin_start", date=issue_date.isoformat())
+
+    try:
+        # Generate bulletin
+        generator = BulletinGenerator(settings)
+        bulletin = generator.generate(issue_date)
+
+        if not bulletin:
+            log.warning("api_bulletin_no_articles", date=issue_date.isoformat())
+            return
+
+        # Save to database
+        sync_url = settings.database_url.replace("+asyncpg", "").replace(
+            "postgresql+", "postgresql://"
+        )
+        if sync_url.startswith("postgresql://"):
+            sync_url = sync_url.replace("postgresql://", "postgresql+psycopg2://", 1)
+
+        engine = create_engine(sync_url)
+
+        with Session(engine) as session:
+            # Delete existing bulletin for this date
+            existing = (
+                session.query(BulletinORM)
+                .filter(BulletinORM.issue_date == issue_date)
+                .first()
+            )
+            if existing:
+                # Also delete associated editorial comments
+                session.query(EditorialCommentORM).filter(
+                    EditorialCommentORM.source_type == "bulletin",
+                    EditorialCommentORM.source_id == existing.id,
+                ).delete()
+                session.delete(existing)
+                session.commit()
+
+            # Sanitize NUL characters (PostgreSQL doesn't accept them)
+            def sanitize_str(s: str | None) -> str | None:
+                return s.replace("\x00", "") if s else s
+
+            # Create new bulletin
+            db_bulletin = BulletinORM(
+                issue_date=bulletin.issue_date,
+                title=sanitize_str(bulletin.title),
+                subtitle=sanitize_str(bulletin.subtitle),
+                content=sanitize_str(bulletin.content),
+                articles_count=bulletin.articles_count,
+            )
+
+            # Generate embedding for bulletin
+            try:
+                newsletter_service = NewsletterService()
+                embedding = newsletter_service._generate_embedding(bulletin.content)
+                if embedding:
+                    db_bulletin.embedding = embedding
+            except Exception as e:
+                log.warning("bulletin_embedding_failed", error=str(e))
+
+            session.add(db_bulletin)
+            session.flush()
+
+            # Extract and save editorial comments
+            comment_chunks = generator.extract_editorial_comments(bulletin, db_bulletin.id)
+            for chunk in comment_chunks:
+                db_comment = EditorialCommentORM(
+                    source_type=chunk.source_type,
+                    source_id=chunk.source_id,
+                    source_date=chunk.source_date,
+                    category=chunk.category,
+                    content=chunk.content,
+                )
+
+                # Generate embedding for comment
+                try:
+                    embedding = newsletter_service._generate_embedding(chunk.content)
+                    if embedding:
+                        db_comment.embedding = embedding
+                except Exception as e:
+                    log.warning("comment_embedding_failed", error=str(e))
+
+                session.add(db_comment)
+
+            session.commit()
+            log.info("api_bulletin_complete", date=issue_date.isoformat(), id=db_bulletin.id)
+
+        engine.dispose()
+
+    except Exception:
+        log.exception("api_bulletin_failed")
+
+
+@router.post("/bulletin", response_model=TaskResponse)
+async def api_bulletin(
+    background_tasks: BackgroundTasks,
+    _verified: OIDCVerified,
+    issue_date: str | None = None,
+):
+    """Trigger daily bulletin generation.
+
+    This endpoint is called by Cloud Scheduler daily at 8:00.
+    Analyzes articles from the previous day and generates an editorial bulletin.
+    """
+    target_date = date.fromisoformat(issue_date) if issue_date else date.today()
+
+    log.info("api_bulletin_triggered", date=target_date.isoformat())
+    background_tasks.add_task(_run_bulletin, target_date)
+
+    return TaskResponse(
+        status="accepted",
+        message=f"Bulletin generation started for {target_date.isoformat()}",
+    )
+
+
+@router.post("/bulletin-admin", response_model=TaskResponse)
+async def api_bulletin_admin(
+    background_tasks: BackgroundTasks,
+    admin_token: str | None = None,
+    issue_date: str | None = None,
+):
+    """Admin endpoint to generate a bulletin for a specific date.
+
+    Requires admin_token query parameter matching GEMINI_API_KEY.
+    """
+    from behind_bars_pulse.config import get_settings
+
+    settings = get_settings()
+    expected_token = settings.gemini_api_key.get_secret_value() if settings.gemini_api_key else None
+
+    if not admin_token or admin_token != expected_token:
+        raise HTTPException(status_code=403, detail="Invalid admin token")
+
+    target_date = date.fromisoformat(issue_date) if issue_date else date.today()
+
+    log.info("api_bulletin_admin_triggered", date=target_date.isoformat())
+    background_tasks.add_task(_run_bulletin, target_date)
+
+    return TaskResponse(
+        status="accepted",
+        message=f"Bulletin generation started for {target_date.isoformat()}",
     )

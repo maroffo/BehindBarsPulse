@@ -10,6 +10,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from behind_bars_pulse.db.repository import (
     ArticleRepository,
+    BulletinRepository,
+    EditorialCommentRepository,
     NarrativeRepository,
     NewsletterRepository,
 )
@@ -64,3 +66,23 @@ def get_newsletter_service() -> NewsletterService:
 
 
 NewsletterSvc = Annotated[NewsletterService, Depends(get_newsletter_service)]
+
+
+async def get_bulletin_repository(
+    session: DbSession,
+) -> AsyncGenerator[BulletinRepository]:
+    """Get bulletin repository with session."""
+    yield BulletinRepository(session)
+
+
+BulletinRepo = Annotated[BulletinRepository, Depends(get_bulletin_repository)]
+
+
+async def get_editorial_comment_repository(
+    session: DbSession,
+) -> AsyncGenerator[EditorialCommentRepository]:
+    """Get editorial comment repository with session."""
+    yield EditorialCommentRepository(session)
+
+
+EditorialCommentRepo = Annotated[EditorialCommentRepository, Depends(get_editorial_comment_repository)]

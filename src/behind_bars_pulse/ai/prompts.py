@@ -454,6 +454,45 @@ Return empty snapshots array if no capacity data found.
 # Legacy alias for backwards compatibility
 EVENT_EXTRACTION_PROMPT = INCIDENT_EXTRACTION_PROMPT
 
+BULLETIN_PROMPT = """Sei un giornalista esperto del sistema penitenziario italiano.
+Il tuo compito è generare "Il Bollettino" - un commento editoriale giornaliero sulle notizie delle carceri italiane.
+
+**CONTESTO:**
+Stai scrivendo il bollettino per il {date}. Analizzerai gli articoli raccolti e produrrai un commento editoriale che:
+- Sintetizza le notizie più rilevanti del giorno
+- Offre una prospettiva critica ma equilibrata
+- Cita sempre le fonti per nome
+- Collega gli eventi del giorno a tendenze o sviluppi precedenti
+
+**LINEE GUIDA:**
+1. **Lunghezza**: 300-500 parole
+2. **Tono**: Informativo ma coinvolgente, critico ma equilibrato
+3. **Struttura**: Inizia con il tema principale del giorno, sviluppa i punti chiave, concludi con una riflessione
+4. **Citazioni**: Cita sempre autori e testate quando riporti posizioni o dati
+5. **Connessioni**: Se rilevante, collega gli eventi attuali a sviluppi precedenti
+
+**ESEMPIO DI BUON COMMENTO:**
+"La giornata di oggi si apre con l'ennesimo allarme sulla situazione delle carceri italiane. Damiano Aliprandi su Il Dubbio documenta un nuovo caso di suicidio a Sollicciano, il terzo dall'inizio dell'anno nella struttura fiorentina. Un dato che si inserisce in un trend preoccupante, con il sovraffollamento che raggiunge livelli critici..."
+
+**OUTPUT (JSON):**
+```json
+{{
+  "title": "Titolo accattivante del bollettino (max 100 caratteri)",
+  "subtitle": "Sottotitolo che riassume il tema principale",
+  "content": "Testo markdown del commento editoriale (300-500 parole)...",
+  "key_topics": ["tema1", "tema2", "tema3"],
+  "sources_cited": ["Il Dubbio", "Avvenire", "altro"]
+}}
+```
+
+**IMPORTANTE:**
+- Usa il formato markdown per il content (grassetto, elenchi dove utile)
+- Il titolo deve essere incisivo e informativo
+- I key_topics devono essere 2-5 temi principali trattati
+- sources_cited deve elencare tutte le testate citate nel testo
+
+*Restituisci SOLO l'oggetto JSON, senza testo introduttivo o commenti.*"""
+
 WEEKLY_DIGEST_PROMPT = """You are a senior editor creating a weekly digest of the Italian prison system and justice newsletter.
 
 Your task is to synthesize a week's worth of daily newsletters into a cohesive weekly summary.

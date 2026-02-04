@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block title %}Il Bollettino - BehindBars{% endblock %}
+
+{% block content %}
+<section class="bulletin-empty">
+    <header class="bulletin-header">
+        <span class="bulletin-badge">Il Bollettino</span>
+        <h1>Commento Editoriale Giornaliero</h1>
+    </header>
+
+    <div class="empty-state">
+        <p>Il primo bollettino non è ancora stato generato.</p>
+        <p>I bollettini vengono creati automaticamente ogni giorno alle 8:00, analizzando le notizie del giorno precedente.</p>
+        <p>Torna presto per leggere il primo commento editoriale!</p>
+    </div>
+
+    <div class="cta-box">
+        <h3>Nel frattempo</h3>
+        <ul>
+            <li><a href="/archive">Consulta l'archivio delle newsletter settimanali</a></li>
+            <li><a href="/articles">Sfoglia tutti gli articoli raccolti</a></li>
+            <li><a href="/">Iscriviti per ricevere aggiornamenti</a></li>
+        </ul>
+    </div>
+</section>
+{% endblock %}
