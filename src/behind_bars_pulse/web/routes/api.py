@@ -913,29 +913,35 @@ async def api_migrate(admin_token: str | None = None):
     log.info("api_migrate_triggered")
 
     try:
-        # Get alembic.ini path relative to the app
-        import os
+        import subprocess
+        import sys
 
-        from alembic import command
-        from alembic.config import Config
+        # Run alembic in a subprocess to avoid event loop conflicts
+        # (env.py uses asyncio.run() which can't be called from FastAPI's loop)
+        result = subprocess.run(
+            [sys.executable, "-m", "alembic", "upgrade", "head"],
+            cwd="/app",
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
 
-        alembic_ini = os.path.join(os.path.dirname(__file__), "../../../..", "alembic.ini")
-        if not os.path.exists(alembic_ini):
-            # Try from /app in container
-            alembic_ini = "/app/alembic.ini"
+        if result.returncode != 0:
+            log.error("api_migrate_failed", stderr=result.stderr, stdout=result.stdout)
+            raise HTTPException(
+                status_code=500,
+                detail=f"Migration failed: {result.stderr or result.stdout}",
+            )
 
-        alembic_cfg = Config(alembic_ini)
-
-        # Note: URL is loaded from settings via env.py's get_url()
-        # No need to set it here as env.py handles this
-        command.upgrade(alembic_cfg, "head")
-
-        log.info("api_migrate_complete")
+        log.info("api_migrate_complete", stdout=result.stdout)
         return TaskResponse(
             status="success",
             message="Database migrations completed successfully",
         )
 
+    except subprocess.TimeoutExpired as e:
+        log.exception("api_migrate_timeout")
+        raise HTTPException(status_code=500, detail="Migration timed out") from e
     except Exception as e:
         log.exception("api_migrate_failed")
         raise HTTPException(status_code=500, detail=str(e)) from e
