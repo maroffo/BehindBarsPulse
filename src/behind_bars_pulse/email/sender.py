@@ -5,12 +5,16 @@ import smtplib
 from datetime import date
 from email.message import EmailMessage
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import structlog
 from jinja2 import Environment, FileSystemLoader
 
 from behind_bars_pulse.config import Settings, get_settings
 from behind_bars_pulse.models import NewsletterContext
+
+if TYPE_CHECKING:
+    from behind_bars_pulse.services.storage import StorageService
 
 log = structlog.get_logger()
 
@@ -26,13 +30,14 @@ class EmailSender:
     def __init__(self, settings: Settings | None = None) -> None:
         self.settings = settings or get_settings()
         self._jinja_env: Environment | None = None
-        self._storage: "StorageService | None" = None
+        self._storage: StorageService | None = None
 
     @property
-    def storage(self) -> "StorageService | None":
+    def storage(self) -> StorageService | None:
         """Lazy-initialized GCS storage service."""
         if self._storage is None and self.settings.gcs_bucket:
             from behind_bars_pulse.services.storage import StorageService
+
             self._storage = StorageService(self.settings.gcs_bucket)
         return self._storage
 

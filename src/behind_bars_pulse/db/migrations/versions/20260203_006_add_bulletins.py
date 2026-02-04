@@ -39,9 +39,7 @@ def upgrade() -> None:
         sa.UniqueConstraint("issue_date", name="uq_bulletins_issue_date"),
     )
     op.create_index("ix_bulletins_issue_date", "bulletins", ["issue_date"])
-    op.create_index(
-        "ix_bulletins_issue_date_desc", "bulletins", [sa.text("issue_date DESC")]
-    )
+    op.create_index("ix_bulletins_issue_date_desc", "bulletins", [sa.text("issue_date DESC")])
     op.create_index(
         "ix_bulletins_embedding",
         "bulletins",

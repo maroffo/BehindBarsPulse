@@ -98,8 +98,7 @@ async def search_results(
                     offset=offset,
                 )
                 results = [
-                    SearchResult(article=article, similarity=score)
-                    for article, score in similar
+                    SearchResult(article=article, similarity=score) for article, score in similar
                 ]
 
             elif content_type == ContentType.EDITORIAL.value:

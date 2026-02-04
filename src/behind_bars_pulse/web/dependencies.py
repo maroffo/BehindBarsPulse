@@ -85,4 +85,6 @@ async def get_editorial_comment_repository(
     yield EditorialCommentRepository(session)
 
 
-EditorialCommentRepo = Annotated[EditorialCommentRepository, Depends(get_editorial_comment_repository)]
+EditorialCommentRepo = Annotated[
+    EditorialCommentRepository, Depends(get_editorial_comment_repository)
+]

@@ -133,6 +133,7 @@ class NewsletterGenerator:
         if not issues and self.settings.gcs_bucket:
             try:
                 from behind_bars_pulse.services.storage import StorageService
+
                 storage = StorageService(self.settings.gcs_bucket)
                 if storage.is_enabled:
                     gcs_files = storage.list_files("previous_issues/")

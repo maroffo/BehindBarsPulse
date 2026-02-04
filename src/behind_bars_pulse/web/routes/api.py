@@ -759,9 +759,7 @@ def _run_bulletin(issue_date: date) -> None:
         with Session(engine) as session:
             # Delete existing bulletin for this date
             existing = (
-                session.query(BulletinORM)
-                .filter(BulletinORM.issue_date == issue_date)
-                .first()
+                session.query(BulletinORM).filter(BulletinORM.issue_date == issue_date).first()
             )
             if existing:
                 # Also delete associated editorial comments

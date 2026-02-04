@@ -1,9 +1,10 @@
 # ABOUTME: Storage service for GCS integration.
 # ABOUTME: Handles persistent storage of newsletters and data files.
 
+from pathlib import Path
+
 import structlog
 from google.cloud import storage
-from pathlib import Path
 
 log = structlog.get_logger()
 
@@ -59,7 +60,9 @@ class StorageService:
             log.error("gcs_upload_failed", error=str(e), path=gcs_path)
             return None
 
-    def upload_content(self, content: str, gcs_path: str, content_type: str = "text/plain") -> str | None:
+    def upload_content(
+        self, content: str, gcs_path: str, content_type: str = "text/plain"
+    ) -> str | None:
         """Upload string content directly to GCS.
 
         Args:

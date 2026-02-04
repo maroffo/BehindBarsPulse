@@ -837,7 +837,11 @@ class FacilitySnapshotRepository:
         # Build result
         result = []
         for region, data in region_data.items():
-            avg_occ = sum(data["occupancy_rates"]) / len(data["occupancy_rates"]) if data["occupancy_rates"] else 0
+            avg_occ = (
+                sum(data["occupancy_rates"]) / len(data["occupancy_rates"])
+                if data["occupancy_rates"]
+                else 0
+            )
             result.append((region, data["inmates"], data["capacity"], avg_occ))
 
         # Sort by avg occupancy descending
@@ -973,9 +977,7 @@ class EditorialCommentRepository:
         """Get comment by ID."""
         return await self.session.get(EditorialComment, comment_id)
 
-    async def list_by_source(
-        self, source_type: str, source_id: int
-    ) -> Sequence[EditorialComment]:
+    async def list_by_source(self, source_type: str, source_id: int) -> Sequence[EditorialComment]:
         """List comments from a specific source."""
         result = await self.session.execute(
             select(EditorialComment)

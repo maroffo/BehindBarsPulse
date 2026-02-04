@@ -1,6 +1,7 @@
 # ABOUTME: RSS feed fetcher and article content extractor.
 # ABOUTME: Uses feedparser for RSS and httpx + readability for content extraction.
 
+import contextlib
 from datetime import UTC, date, datetime
 
 import feedparser
@@ -81,10 +82,8 @@ class FeedFetcher:
                 # Extract publication date from RSS entry
                 published_date = None
                 if hasattr(entry, "published_parsed") and entry.published_parsed:
-                    try:
+                    with contextlib.suppress(ValueError, TypeError):
                         published_date = date(*entry.published_parsed[:3])
-                    except (ValueError, TypeError):
-                        pass
 
                 log.info("article_fetched", title=entry.title, published=published_date)
                 articles[entry.link] = Article(
