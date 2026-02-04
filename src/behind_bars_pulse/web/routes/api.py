@@ -774,12 +774,28 @@ def _run_bulletin(issue_date: date) -> None:
             def sanitize_str(s: str | None) -> str | None:
                 return s.replace("\x00", "") if s else s
 
+            def sanitize_json(obj: Any) -> Any:
+                """Recursively sanitize NUL chars from JSON-serializable data."""
+                if isinstance(obj, str):
+                    return obj.replace("\x00", "")
+                elif isinstance(obj, dict):
+                    return {k: sanitize_json(v) for k, v in obj.items()}
+                elif isinstance(obj, list):
+                    return [sanitize_json(item) for item in obj]
+                return obj
+
+            # Sanitize press_review if present
+            press_review_data = None
+            if bulletin.press_review:
+                press_review_data = sanitize_json(bulletin.press_review)
+
             # Create new bulletin
             db_bulletin = BulletinORM(
                 issue_date=bulletin.issue_date,
                 title=sanitize_str(bulletin.title),
                 subtitle=sanitize_str(bulletin.subtitle),
                 content=sanitize_str(bulletin.content),
+                press_review=press_review_data,
                 articles_count=bulletin.articles_count,
             )
 
@@ -874,3 +890,58 @@ async def api_bulletin_admin(
         status="accepted",
         message=f"Bulletin generation started for {target_date.isoformat()}",
     )
+
+
+@router.post("/migrate", response_model=TaskResponse)
+async def api_migrate(admin_token: str | None = None):
+    """Run database migrations (Alembic upgrade head).
+
+    Admin endpoint for running migrations after deployment.
+    Requires admin_token query parameter matching GEMINI_API_KEY.
+
+    IMPORTANT: Run this endpoint after deploying new code that includes
+    database schema changes, BEFORE accessing any pages that use new columns.
+    """
+    from behind_bars_pulse.config import get_settings
+
+    settings = get_settings()
+    expected_token = settings.gemini_api_key.get_secret_value() if settings.gemini_api_key else None
+
+    if not admin_token or admin_token != expected_token:
+        raise HTTPException(status_code=403, detail="Invalid admin token")
+
+    log.info("api_migrate_triggered")
+
+    try:
+        # Get alembic.ini path relative to the app
+        import os
+
+        from alembic import command
+        from alembic.config import Config
+
+        alembic_ini = os.path.join(os.path.dirname(__file__), "../../../..", "alembic.ini")
+        if not os.path.exists(alembic_ini):
+            # Try from /app in container
+            alembic_ini = "/app/alembic.ini"
+
+        alembic_cfg = Config(alembic_ini)
+
+        # Override sqlalchemy.url with our database URL
+        sync_url = settings.database_url.replace("+asyncpg", "").replace(
+            "postgresql+", "postgresql://"
+        )
+        if sync_url.startswith("postgresql://"):
+            sync_url = sync_url.replace("postgresql://", "postgresql+psycopg2://", 1)
+        alembic_cfg.set_main_option("sqlalchemy.url", sync_url)
+
+        command.upgrade(alembic_cfg, "head")
+
+        log.info("api_migrate_complete")
+        return TaskResponse(
+            status="success",
+            message="Database migrations completed successfully",
+        )
+
+    except Exception as e:
+        log.exception("api_migrate_failed")
+        raise HTTPException(status_code=500, detail=str(e)) from e

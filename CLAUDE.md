@@ -172,12 +172,34 @@ gcloud run deploy behindbars-prod \
   --project playground-maroffo
 ```
 
+### Database Migrations
+
+**IMPORTANT:** Migrations CANNOT be run locally against Cloud SQL. Always use the `/api/migrate` endpoint after deploying new code with schema changes.
+
+```bash
+# After deploying code with new migrations:
+curl -X POST "https://behindbars.news/api/migrate?admin_token=YOUR_GEMINI_API_KEY"
+```
+
+**Deployment workflow with migrations:**
+1. Commit and push code (including new migration files)
+2. Build and push Docker image
+3. Deploy to Cloud Run
+4. Call `/api/migrate` endpoint to apply migrations
+5. Verify the app works
+
+The local `.env` uses `DB_HOST=localhost`, which connects to a local PostgreSQL, NOT Cloud SQL. Never try to run `alembic upgrade` locally expecting it to affect production.
+
 ### Admin API Endpoints
 
 Protected by `admin_token` (= GEMINI_API_KEY):
 
-- `POST /api/regenerate?admin_token=...&collection_date=2026-01-07&days_back=3&first_issue=true`
-- `POST /api/import-newsletters?admin_token=...`
+| Endpoint | Description |
+|----------|-------------|
+| `POST /api/migrate?admin_token=...` | Run Alembic migrations on Cloud SQL |
+| `POST /api/regenerate?admin_token=...&collection_date=2026-01-07&days_back=3` | Regenerate newsletter |
+| `POST /api/bulletin-admin?admin_token=...&issue_date=2026-02-04` | Regenerate bulletin |
+| `POST /api/import-newsletters?admin_token=...` | Import newsletters from GCS |
 
 ## Language Note
 
