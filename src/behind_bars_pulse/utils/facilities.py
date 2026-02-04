@@ -123,10 +123,27 @@ FACILITY_ALIASES: dict[str, list[str]] = {
         "casa circondariale di pavia",
         "carcere di pavia",
     ],
-    "Bergamo": [
+    "Gleno (Bergamo)": [
         "bergamo",
+        "gleno",
+        "carcere del gleno",
+        "casa circondariale del gleno",
         "casa circondariale di bergamo",
         "carcere di bergamo",
+    ],
+    "Massama (Oristano)": [
+        "massama",
+        "oristano",
+        "oristano massama",
+        "casa di reclusione di oristano",
+        "carcere di oristano",
+    ],
+    "Don Soria (Alessandria)": [
+        "don soria",
+        "alessandria",
+        "don soria di alessandria",
+        "casa circondariale di alessandria",
+        "carcere di alessandria",
     ],
 }
 
@@ -234,6 +251,11 @@ def get_facility_region(facility: str | None) -> str | None:
         "monza": "Lombardia",
         "pavia": "Lombardia",
         "bergamo": "Lombardia",
+        "gleno": "Lombardia",
+        "alessandria": "Piemonte",
+        "don soria": "Piemonte",
+        "oristano": "Sardegna",
+        "massama": "Sardegna",
         "bologna": "Emilia-Romagna",
         "dozza": "Emilia-Romagna",
         "vasto": "Abruzzo",
