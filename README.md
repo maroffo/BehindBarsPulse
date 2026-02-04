@@ -4,13 +4,14 @@
 
 ## Features
 
-- **Daily Newsletter Generation**: Collects articles from [Ristretti Orizzonti](https://ristretti.org/), enriches them with AI-generated summaries, and produces a curated newsletter
-- **Narrative Memory System**: Tracks ongoing stories, key characters, and follow-up events across issues, creating continuity and context
-- **Weekly Digest**: Synthesizes the week's coverage into a cohesive summary highlighting major narrative arcs
-- **AI-Powered Content**: Uses Google Gemini (via Vertex AI) for article summarization, categorization, and editorial commentary
+- **Il Bollettino (Daily)**: Automated daily editorial commentary on prison news, generated at 8:00 AM with thematic categorization
+- **Newsletter (Weekly)**: Weekly digest sent to subscribers via email, synthesizing major narrative arcs
+- **Narrative Memory System**: Tracks ongoing stories, key characters, and follow-up events across issues
+- **Statistics Dashboard**: Prison incident visualization (suicides, assaults, protests) and capacity data by facility/region
+- **Semantic Search**: pgvector-powered search across articles and editorial content
+- **AI-Powered Content**: Google Gemini for article summarization, categorization, and editorial commentary
+- **Facility Normalization**: Deduplicates prison name variations for accurate statistics
 - **Structured Output**: Gemini's `response_json_schema` guarantees valid JSON, eliminating parsing errors
-- **Integrated Editorial**: Press review comments synthesize multiple sources by name, not just list summaries
-- **Semantic Embeddings**: Articles stored with 768-dimension embeddings for future RAG and search features
 
 ## Technology Stack
 
@@ -197,12 +198,14 @@ BehindBarsPulse/
 
 ## Web Frontend
 
-The web frontend at `behindbars.org` provides:
+The web frontend at `behindbars.news` provides:
 
-- **Home**: Latest newsletter with full content
-- **Archive**: Browse all past newsletters by date
+- **Home**: Project overview with latest bollettino and newsletter
+- **Il Bollettino**: Daily AI-generated editorial commentary with thematic categories
+- **Newsletter Archive**: Browse all past weekly newsletters by date
 - **Articles**: Searchable article database with semantic search (pgvector)
-- **Search**: HTMX-powered instant search across all content
+- **Statistics**: Prison incident dashboard with charts (by type, region, facility) and capacity data
+- **Search**: HTMX-powered instant search across articles and editorial content
 
 ### Semantic Search
 

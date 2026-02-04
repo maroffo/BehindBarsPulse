@@ -83,9 +83,7 @@ class TestBulletinGenerator:
         generator = BulletinGenerator(mock_settings)
         assert generator.settings == mock_settings
 
-    def test_extract_editorial_comments_single_paragraph(
-        self, mock_settings: Settings
-    ) -> None:
+    def test_extract_editorial_comments_single_paragraph(self, mock_settings: Settings) -> None:
         """Should extract single chunk for short content."""
         from behind_bars_pulse.bulletin.generator import BulletinGenerator
 
@@ -105,9 +103,7 @@ class TestBulletinGenerator:
         assert chunks[0].source_id == 1
         assert chunks[0].content == "Short content without paragraph breaks."
 
-    def test_extract_editorial_comments_multiple_paragraphs(
-        self, mock_settings: Settings
-    ) -> None:
+    def test_extract_editorial_comments_multiple_paragraphs(self, mock_settings: Settings) -> None:
         """Should extract multiple chunks for long content with paragraphs."""
         from behind_bars_pulse.bulletin.generator import BulletinGenerator
 

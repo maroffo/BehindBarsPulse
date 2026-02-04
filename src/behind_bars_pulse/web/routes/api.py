@@ -6,7 +6,7 @@ from datetime import date
 from typing import Any
 
 import structlog
-from fastapi import APIRouter, BackgroundTasks, HTTPException
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
 from pydantic import BaseModel
 
 from behind_bars_pulse.web.middleware.oidc import OIDCVerified
@@ -944,4 +944,119 @@ async def api_migrate(admin_token: str | None = None):
         raise HTTPException(status_code=500, detail="Migration timed out") from e
     except Exception as e:
         log.exception("api_migrate_failed")
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@router.post("/api/normalize-facilities")
+async def normalize_facilities(
+    admin_token: str = Query(..., description="Admin authentication token"),
+    dry_run: bool = Query(True, description="Preview changes without applying"),
+) -> dict:
+    """Normalize facility names in database to consolidate duplicates.
+
+    This updates prison_events and facility_snapshots tables to use canonical
+    facility names (e.g., "Brescia Canton Mombello" → "Canton Mombello (Brescia)").
+
+    Requires admin_token query parameter matching GEMINI_API_KEY.
+
+    Set dry_run=false to apply changes.
+    """
+    from collections import Counter
+
+    from sqlalchemy import text
+
+    from behind_bars_pulse.config import get_settings
+    from behind_bars_pulse.db.session import get_session
+    from behind_bars_pulse.utils.facilities import normalize_facility_name
+
+    settings = get_settings()
+    expected_token = settings.gemini_api_key.get_secret_value() if settings.gemini_api_key else None
+
+    if not admin_token or admin_token != expected_token:
+        raise HTTPException(status_code=403, detail="Invalid admin token")
+
+    log.info("api_normalize_facilities_triggered", dry_run=dry_run)
+
+    results = {
+        "prison_events": {"before": 0, "after": 0, "changes": 0},
+        "facility_snapshots": {"before": 0, "after": 0, "changes": 0},
+        "sample_changes": [],
+        "dry_run": dry_run,
+    }
+
+    try:
+        async with get_session() as session:
+            # Analyze and normalize prison_events
+            events_result = await session.execute(
+                text("SELECT id, facility FROM prison_events WHERE facility IS NOT NULL")
+            )
+            events = events_result.fetchall()
+
+            before_counts: Counter = Counter()
+            after_counts: Counter = Counter()
+            event_changes = []
+
+            for event_id, facility in events:
+                before_counts[facility] += 1
+                normalized = normalize_facility_name(facility)
+                after_counts[normalized] += 1
+                if facility != normalized:
+                    event_changes.append((event_id, facility, normalized))
+
+            results["prison_events"]["before"] = len(before_counts)
+            results["prison_events"]["after"] = len(after_counts)
+            results["prison_events"]["changes"] = len(event_changes)
+
+            # Analyze and normalize facility_snapshots
+            snaps_result = await session.execute(
+                text("SELECT id, facility FROM facility_snapshots WHERE facility IS NOT NULL")
+            )
+            snapshots = snaps_result.fetchall()
+
+            before_counts = Counter()
+            after_counts = Counter()
+            snap_changes = []
+
+            for snap_id, facility in snapshots:
+                before_counts[facility] += 1
+                normalized = normalize_facility_name(facility)
+                after_counts[normalized] += 1
+                if facility != normalized:
+                    snap_changes.append((snap_id, facility, normalized))
+
+            results["facility_snapshots"]["before"] = len(before_counts)
+            results["facility_snapshots"]["after"] = len(after_counts)
+            results["facility_snapshots"]["changes"] = len(snap_changes)
+
+            # Sample changes for preview
+            all_changes = event_changes[:5] + snap_changes[:5]
+            results["sample_changes"] = [
+                {"id": c[0], "old": c[1], "new": c[2]} for c in all_changes[:10]
+            ]
+
+            # Apply changes if not dry run
+            if not dry_run:
+                for event_id, _, normalized in event_changes:
+                    await session.execute(
+                        text("UPDATE prison_events SET facility = :facility WHERE id = :id"),
+                        {"facility": normalized, "id": event_id},
+                    )
+
+                for snap_id, _, normalized in snap_changes:
+                    await session.execute(
+                        text("UPDATE facility_snapshots SET facility = :facility WHERE id = :id"),
+                        {"facility": normalized, "id": snap_id},
+                    )
+
+                await session.commit()
+                log.info(
+                    "api_normalize_facilities_applied",
+                    events_updated=len(event_changes),
+                    snapshots_updated=len(snap_changes),
+                )
+
+        return results
+
+    except Exception as e:
+        log.exception("api_normalize_facilities_failed")
         raise HTTPException(status_code=500, detail=str(e)) from e

@@ -1,46 +1,34 @@
-# TODO - Refactoring UI e Bollettino
+# TODO - BehindBarsPulse
 
 ## Obiettivo
-Ristrutturare il sito per dare senso alla distinzione Bollettino (quotidiano on-site) vs Newsletter (settimanale email), migliorare UX articoli, e creare una HP informativa.
+Piattaforma di monitoraggio del sistema penitenziario italiano con bollettino quotidiano, newsletter settimanale, statistiche e ricerca semantica.
 
 ---
 
 ## Piano di Implementazione
 
-### Fase 1: Fix Bollettino Content ✅
-- [x] Convertire markdown → HTML nel bollettino (usare markdown lib)
-- [x] Caricare articoli del giorno precedente nel context del bollettino
-- [x] Raggruppare articoli per categoria nel template bollettino
-- [x] Aggiungere link agli articoli originali (come newsletter)
+### Fase 6: Stats e Data Quality ✅
+- [x] Fix facility name normalization (deduplicazione istituti)
+- [x] `utils/facilities.py` con alias mappings
+- [x] Repository methods normalizzano nomi prima di aggregare
+- [x] Endpoint API `/api/normalize-facilities` per cleanup dati
+- [x] Script `scripts/normalize_facilities.py` per analisi/fix batch
 
-### Fase 2: Pagina Articolo - Rimuovere Contenuto ✅
-- [x] Rimuovere sezione `article.content` dal template
-- [x] Rendere prominente il pulsante "Leggi l'originale"
-- [x] Mantenere: titolo, meta, riassunto, articoli correlati
-- [x] Layout articoli correlati già esistente
+### Fase 7: Bollettino con Press Review ✅
+- [x] Migration 007 per colonna `press_review` JSONB
+- [x] BulletinGenerator genera categorie tematiche con commento editoriale
+- [x] Template bollettino mostra articoli raggruppati per categoria
+- [x] Articoli correlati con formato card search
 
-### Fase 3: Nuova Navigazione ✅
-- [x] Ristrutturare nav: Home | Edizioni | Articoli | Statistiche | Cerca
-- [x] Creare pagina `/edizioni` con due sezioni:
-  - Bollettini quotidiani (lista recenti + link archivio)
-  - Newsletter settimanali (lista recenti + link archivio)
-- [x] `/archive` → redirect 301 a `/edizioni/newsletter`
-- [x] `/bollettino/archivio` → redirect 301 a `/edizioni/bollettino`
-- [x] Aggiornati tutti i link interni
-
-### Fase 4: Nuova Home Page ✅
-- [x] Creare nuova HP con:
-  - Hero: spiegazione progetto BehindBars
-  - CTA iscrizione newsletter
-  - Card ultimo bollettino quotidiano
-  - Card ultima newsletter settimanale
-- [x] Form iscrizione rimane su HP (più conversioni)
-
-### Fase 5: Test e Deploy
-- [x] Verificare tutti i link funzionanti
-- [x] Test linting/format/type check passano
+### In Corso
 - [ ] Test responsive (manual)
-- [ ] Deploy
+- [ ] Deploy con facility normalization
+- [ ] Backfill: normalizzare dati esistenti in produzione
+
+### Future
+- [ ] RAG per commento editoriale con contesto storico
+- [ ] Alert automatici per facility con alta recidività incidenti
+- [ ] Export dati CSV per giornalisti
 
 ---
 

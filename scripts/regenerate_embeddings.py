@@ -57,9 +57,7 @@ async def main():
 
                 # Update article embedding
                 await session.execute(
-                    update(Article)
-                    .where(Article.id == article.id)
-                    .values(embedding=embedding)
+                    update(Article).where(Article.id == article.id).values(embedding=embedding)
                 )
                 updated += 1
 

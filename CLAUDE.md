@@ -200,6 +200,68 @@ Protected by `admin_token` (= GEMINI_API_KEY):
 | `POST /api/regenerate?admin_token=...&collection_date=2026-01-07&days_back=3` | Regenerate newsletter |
 | `POST /api/bulletin-admin?admin_token=...&issue_date=2026-02-04` | Regenerate bulletin |
 | `POST /api/import-newsletters?admin_token=...` | Import newsletters from GCS |
+| `POST /api/normalize-facilities?admin_token=...&dry_run=true` | Normalize facility names in DB |
+
+## Facility Name Normalization
+
+Italian prison names appear in various forms across articles (e.g., "Brescia Canton Mombello", "Canton Mombello", "Brescia - Canton Mombello"). The normalization system consolidates these to canonical names for accurate statistics.
+
+### Components
+
+| File | Purpose |
+|------|---------|
+| `utils/facilities.py` | Alias mappings and `normalize_facility_name()` function |
+| `db/repository.py` | `count_by_facility()` and `get_latest_by_facility()` normalize before aggregating |
+| `scripts/normalize_facilities.py` | CLI script for batch analysis/cleanup |
+| `/api/normalize-facilities` | Admin endpoint for production cleanup |
+
+### Usage
+
+```bash
+# Analyze current state (dry run)
+uv run python scripts/normalize_facilities.py --dry-run
+
+# Show facilities without aliases (may need mapping)
+uv run python scripts/normalize_facilities.py --show-missing
+
+# Apply normalization in production
+curl -X POST "https://behindbars.news/api/normalize-facilities?admin_token=YOUR_KEY&dry_run=false"
+```
+
+### Adding New Aliases
+
+Edit `src/behind_bars_pulse/utils/facilities.py`:
+
+```python
+FACILITY_ALIASES: dict[str, list[str]] = {
+    "Canonical Name (City)": [
+        "alias1",
+        "alias2",
+        # Add new variations here (lowercase)
+    ],
+}
+```
+
+## Statistics Dashboard
+
+The `/stats` page shows prison incident data visualized with Chart.js:
+
+- **Incidents by type**: Suicide, self-harm, assault, protest, natural death
+- **Incidents by region**: Geographic distribution
+- **Facility ranking**: Top facilities by incident count (normalized names)
+- **Capacity data**: Occupancy rates, regional summaries, trends
+
+### Stats API Endpoints
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /stats/api/by-type` | Event counts by type |
+| `GET /stats/api/by-region` | Event counts by region |
+| `GET /stats/api/by-facility` | Top facilities by incident count |
+| `GET /stats/api/by-month` | Monthly trends |
+| `GET /stats/api/capacity/latest` | Latest capacity per facility |
+| `GET /stats/api/capacity/by-region` | Regional capacity summary |
+| `GET /stats/api/capacity/trend` | National capacity trend |
 
 ## Language Note
 

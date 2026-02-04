@@ -92,9 +92,7 @@ async def import_newsletters(issues_dir: Path) -> int:
         html_content = html_path.read_text(encoding="utf-8")
 
         # Try to find corresponding TXT file
-        txt_path = html_path.with_suffix(".txt").with_name(
-            html_path.name.replace(".html", ".txt")
-        )
+        txt_path = html_path.with_suffix(".txt").with_name(html_path.name.replace(".html", ".txt"))
         txt_content = ""
         if txt_path.exists():
             txt_content = txt_path.read_text(encoding="utf-8")
