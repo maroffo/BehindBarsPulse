@@ -926,13 +926,8 @@ async def api_migrate(admin_token: str | None = None):
 
         alembic_cfg = Config(alembic_ini)
 
-        # Override sqlalchemy.url with our database URL
-        sync_url = settings.database_url.replace("+asyncpg", "").replace(
-            "postgresql+", "postgresql://"
-        )
-        if sync_url.startswith("postgresql://"):
-            sync_url = sync_url.replace("postgresql://", "postgresql+psycopg2://", 1)
-        alembic_cfg.set_main_option("sqlalchemy.url", sync_url)
+        # Use sync database URL (already properly formatted with URL-encoded password)
+        alembic_cfg.set_main_option("sqlalchemy.url", settings.database_url_sync)
 
         command.upgrade(alembic_cfg, "head")
 

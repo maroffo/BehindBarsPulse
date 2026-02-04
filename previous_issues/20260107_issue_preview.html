@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <title>⚖️⛓️BehindBars - Notizie dal mondo della giustizia e delle carceri italiane - 07.01.2026</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <style>
+        /* Reset */
+        body, table, td, p, a, li, blockquote {
+            -webkit-text-size-adjust: 100%;
+            -ms-text-size-adjust: 100%;
+        }
+        table, td {
+            mso-table-lspace: 0pt;
+            mso-table-rspace: 0pt;
+        }
+        img {
+            -ms-interpolation-mode: bicubic;
+            border: 0;
+            height: auto;
+            line-height: 100%;
+            outline: none;
+            text-decoration: none;
+        }
+
+        /* Base */
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            background-color: #f5f5f5;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            color: #1a1a1a;
+        }
+
+        /* Container */
+        .wrapper {
+            width: 100%;
+            background-color: #f5f5f5;
+            padding: 40px 0;
+        }
+        .container {
+            max-width: 680px;
+            margin: 0 auto;
+            background-color: #ffffff;
+        }
+
+        /* Header */
+        .header {
+            padding: 40px 48px 32px;
+            border-bottom: 3px solid #c0392b;
+        }
+        .header-title {
+            font-family: Georgia, 'Times New Roman', serif;
+            font-size: 28px;
+            font-weight: 700;
+            color: #1a1a1a;
+            margin: 0 0 4px 0;
+            letter-spacing: -0.5px;
+        }
+        .header-subtitle {
+            font-size: 14px;
+            color: #666666;
+            margin: 0;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .header-date {
+            font-size: 13px;
+            color: #999999;
+            margin-top: 16px;
+        }
+
+        /* Content */
+        .content {
+            padding: 40px 48px;
+        }
+
+        /* Newsletter Title & Subtitle */
+        .newsletter-title {
+            font-family: Georgia, 'Times New Roman', serif;
+            font-size: 32px;
+            font-weight: 700;
+            color: #1a1a1a;
+            margin: 0 0 12px 0;
+            line-height: 1.2;
+            letter-spacing: -0.5px;
+        }
+        .newsletter-subtitle {
+            font-family: Georgia, 'Times New Roman', serif;
+            font-size: 20px;
+            font-weight: 400;
+            color: #4a4a4a;
+            margin: 0 0 32px 0;
+            line-height: 1.4;
+            font-style: italic;
+        }
+
+        /* Opening & Closing */
+        .editorial {
+            font-size: 17px;
+            color: #2a2a2a;
+            line-height: 1.7;
+            margin-bottom: 32px;
+        }
+        .editorial p {
+            margin: 0 0 16px 0;
+        }
+
+        /* Divider */
+        .divider {
+            border: none;
+            border-top: 1px solid #e0e0e0;
+            margin: 40px 0;
+        }
+        .divider-strong {
+            border: none;
+            border-top: 2px solid #c0392b;
+            margin: 40px 0;
+        }
+
+        /* Quote */
+        .closing-quote {
+            font-family: Georgia, 'Times New Roman', serif;
+            font-size: 15px;
+            font-style: italic;
+            color: #4a4a4a;
+            text-align: left;
+            padding: 32px 48px;
+            margin: 0;
+            border-top: 1px solid #e0e0e0;
+            background-color: #fafafa;
+        }
+
+        /* Section Header */
+        .section-header {
+            font-family: Georgia, 'Times New Roman', serif;
+            font-size: 24px;
+            font-weight: 700;
+            color: #1a1a1a;
+            margin: 0 0 24px 0;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        /* Category */
+        .category {
+            margin-bottom: 40px;
+        }
+        .category-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: #c0392b;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin: 0 0 16px 0;
+        }
+        .category-comment {
+            font-size: 16px;
+            color: #2a2a2a;
+            line-height: 1.7;
+            margin: 0 0 24px 0;
+        }
+
+        /* Article Links */
+        .article-links {
+            border-top: 1px solid #e8e8e8;
+            padding-top: 16px;
+        }
+        .article-link {
+            margin-bottom: 12px;
+            padding-left: 16px;
+            border-left: 2px solid #e0e0e0;
+        }
+        .article-link:last-child {
+            margin-bottom: 0;
+        }
+        .article-link-title {
+            font-family: Georgia, 'Times New Roman', serif;
+            font-size: 15px;
+            font-weight: 600;
+            margin: 0 0 4px 0;
+            line-height: 1.3;
+        }
+        .article-link-title a {
+            color: #1a1a1a;
+            text-decoration: none;
+        }
+        .article-link-title a:hover {
+            color: #c0392b;
+            text-decoration: underline;
+        }
+        .article-link-meta {
+            font-size: 12px;
+            color: #888888;
+            margin: 0;
+        }
+
+        /* Footer */
+        .footer {
+            padding: 32px 48px;
+            background-color: #2c3e50;
+            color: #b0b0b0;
+        }
+        .footer p {
+            font-size: 13px;
+            line-height: 1.6;
+            margin: 0 0 16px 0;
+        }
+        .footer a {
+            color: #ffffff;
+            text-decoration: none;
+        }
+        .footer a:hover {
+            text-decoration: underline;
+        }
+        .footer-note {
+            font-size: 12px;
+            color: #808080;
+            font-style: italic;
+        }
+        .footer-brand {
+            font-size: 11px;
+            color: #606060;
+            margin-top: 24px;
+            padding-top: 16px;
+            border-top: 1px solid #3d4f5f;
+        }
+
+        /* Responsive */
+        @media only screen and (max-width: 680px) {
+            .container {
+                width: 100% !important;
+            }
+            .header, .content, .closing, .footer {
+                padding-left: 24px !important;
+                padding-right: 24px !important;
+            }
+            .newsletter-title {
+                font-size: 26px !important;
+            }
+            .newsletter-subtitle {
+                font-size: 18px !important;
+            }
+            .article-title {
+                font-size: 16px !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="wrapper">
+        <table class="container" cellpadding="0" cellspacing="0" role="presentation">
+            <!-- Header -->
+            <tr>
+                <td class="header">
+                    <p class="header-title">BehindBars</p>
+                    <p class="header-subtitle">Giustizia e Sistema Carcerario</p>
+                    <p class="header-date">07.01.2026</p>
+                </td>
+            </tr>
+
+            <!-- Main Content -->
+            <tr>
+                <td class="content">
+                    <!-- Newsletter Title -->
+                    <h1 class="newsletter-title">Tra emergenza e speranza: la giustizia italiana al bivio del 2026</h1>
+                    <p class="newsletter-subtitle">Dall’ipotesi di indulto al confronto sul referendum, BehindBars analizza la realtà penitenziaria oltre la fredda cronaca dei numeri.</p>
+
+                    <!-- Opening Editorial -->
+                    <div class="editorial">
+                        Benvenuti alla prima edizione di BehindBars, lo spazio settimanale dedicato all’analisi e al racconto del sistema penitenziario e della giustizia in Italia. Inauguriamo questo percorso con l'obiettivo di offrire una prospettiva profonda su una realtà spesso confinata ai margini del dibattito pubblico, ma essenziale per la tenuta della nostra democrazia. Il 2026 si apre sotto il peso del tragico record di 80 suicidi registrato lo scorso anno, un’emergenza che ha spinto un autorevole gruppo di giuristi a proporre un "indulto differito" come boccata d'ossigeno per un sistema stabilmente al collasso. Come documentano le cronache recenti, il sovraffollamento oltre la soglia del 138% continua ad alimentare tensioni preoccupanti, dalle rivolte di Oristano ai disagi cronici di Rebibbia legati alle carenze nei servizi sanitari. Nel frattempo, lo scontro sul referendum per la separazione delle carriere entra nel vivo, polarizzando il fronte tra l'ANM e i sostenitori del Sì in vista della scadenza di marzo. Mentre monitoriamo con apprensione la sorte dei 28 detenuti italiani in Venezuela, la Consulta, con la sentenza 201/2025, restituisce centralità alla liberazione anticipata contro le recenti strette burocratiche. Eppure, non mancano segnali di riscatto: dal magistero civile di Riccardo Muti a Opera ai laboratori di sartoria a San Vittore e Bologna, prove tangibili di come il lavoro e la cultura restino i migliori antidoti alla recidiva. Vi invitiamo ad approfondire questi temi nella rassegna che segue.
+                    </div>
+
+                    <hr class="divider-strong">
+
+                    <!-- Press Review -->
+                    <h2 class="section-header">Rassegna Stampa</h2>
+
+                    
+                    <div class="category">
+                        <p class="category-title">Riforma della Giustizia e Referendum</p>
+                        
+                        <p class="category-comment">La campagna referendaria sulla separazione delle carriere entra nel vivo con una polarizzazione senza precedenti. Virginia Piccolillo sul Corriere della Sera documenta la spaccatura interna alla magistratura, elencando i nomi di chi sostiene i due comitati contrapposti. Mentre Natale Labia su L&#39;Edicola del Sud analizza lo scontro politico sulle date e sulla raccolta firme, Errico Novi su Il Dubbio offre una prospettiva radicale, definendo la riforma un &#39;all in&#39; che potrebbe segnare la fine del potere delle correnti nell&#39;ANM. Il dibattito non riguarda solo l&#39;assetto istituzionale, ma, come ricorda Biagio Marzo su Il Riformista, punta a realizzare un processo penale realmente accusatorio dove il giudice sia un arbitro terzo e imparziale.</p>
+                        
+
+                        <div class="article-links">
+                        
+                            <div class="article-link">
+                                <p class="article-link-title">
+                                    <a href="https://ristretti.org/referendum-giustizia-la-sfida-tra-i-magistrati-ecco-tutti-i-nomi-degli-schieramenti-tra-le-toghe">Referendum Giustizia, la sfida tra i magistrati: ecco tutti i nomi degli schieramenti tra le toghe</a>
+                                </p>
+                                <p class="article-link-meta">
+                                    Virginia Piccolillo
+                                     · 
+                                    Corriere della Sera
+                                     · 
+                                    07 Jan
+                                </p>
+                            </div>
+                        
+                            <div class="article-link">
+                                <p class="article-link-title">
+                                    <a href="https://ristretti.org/e-un-all-in-tanto-se-vincesse-il-si-per-le-correnti-anm-sarebbe-la-fine">È un “all in”: tanto se vincesse il Sì per le correnti Anm sarebbe la fine</a>
+                                </p>
+                                <p class="article-link-meta">
+                                    Errico Novi
+                                     · 
+                                    Il Dubbio
+                                     · 
+                                    06 Jan
+                                </p>
+                            </div>
+                        
+                            <div class="article-link">
+                                <p class="article-link-title">
+                                    <a href="https://ristretti.org/riforma-della-giustizia-non-ce-ancora-una-data-per-il-referendum-ma-si-accende-lo-scontro">Riforma della giustizia: non c’è ancora una data per il referendum, ma si accende lo scontro</a>
+                                </p>
+                                <p class="article-link-meta">
+                                    Natale Labia
+                                     · 
+                                    L’Edicola del Sud
+                                     · 
+                                    07 Jan
+                                </p>
+                            </div>
+                        
+                        </div>
+                    </div>
+                    
+                    <div class="category">
+                        <p class="category-title">Emergenza Carceri e Bilancio 2025</p>
+                        
+                        <p class="category-comment">Il 2025 si chiude con un bilancio tragico: 80 suicidi e un sovraffollamento che tocca il 138%. Simone Olivelli su La Sicilia fotografa un sistema al collasso, mentre Federica Pacella su Il Giorno documenta l&#39;anno nero della Lombardia con picchi del 236% di affollamento a Vigevano. Di fronte a questo scenario, un nutrito gruppo di intellettuali e magistrati propone su Il Foglio un &#39;indulto differito&#39;, una misura di clemenza accompagnata da percorsi di reinserimento per evitare la recidiva. Un segnale di speranza arriva dalla Corte Costituzionale che, come riportato da Il Sole 24 Ore, ha ripristinato il riscontro semestrale per la liberazione anticipata, valorizzandola come stimolo fondamentale per il detenuto.</p>
+                        
+
+                        <div class="article-links">
+                        
+                            <div class="article-link">
+                                <p class="article-link-title">
+                                    <a href="https://ristretti.org/carceri-un-altro-anno-nero-dello-stato-tra-sovraffollamento-record-e-suicidi">Carceri, un altro anno nero dello Stato tra sovraffollamento record e suicidi</a>
+                                </p>
+                                <p class="article-link-meta">
+                                    Simone Olivelli
+                                     · 
+                                    La Sicilia
+                                     · 
+                                    06 Jan
+                                </p>
+                            </div>
+                        
+                            <div class="article-link">
+                                <p class="article-link-title">
+                                    <a href="https://ristretti.org/e-ora-di-un-indulto-differito-per-salvare-il-carcere-e-la-societa">È ora di un indulto differito per salvare il carcere e la società</a>
+                                </p>
+                                <p class="article-link-meta">
+                                    Simone Alecci, Sergio Belardinelli, Umberto Curi, et al.
+                                     · 
+                                    Il Foglio
+                                     · 
+                                    07 Jan
+                                </p>
+                            </div>
+                        
+                            <div class="article-link">
+                                <p class="article-link-title">
+                                    <a href="https://ristretti.org/liberazione-anticipata-torna-il-riscontro-semestrale-da-parte-del-mds">Liberazione anticipata, torna il riscontro semestrale da parte del MdS</a>
+                                </p>
+                                <p class="article-link-meta">
+                                    Non specificato
+                                     · 
+                                    Il Sole 24 Ore
+                                     · 
+                                    07 Jan
+                                </p>
+                            </div>
+                        
+                        </div>
+                    </div>
+                    
+                    <div class="category">
+                        <p class="category-title">Storie di Ingiustizia e Fragilità</p>
+                        
+                        <p class="category-comment">Il fallimento del sistema è incarnato dalle vicende umane più dolorose. Beniamino Zuncheddu, intervistato da Andrea Zedda su Vanity Fair, racconta i suoi 33 anni di prigione da innocente, ispirando una proposta di legge per un aiuto immediato alle vittime di errori giudiziari. Altrettanto drammatico è il caso di Christian Guercio, raccontato da Valentina Moro su La Stampa: un uomo con fragilità psichiche morto suicida a soli tre giorni dall&#39;arresto. Queste storie, insieme alla denuncia di Gianni Alemanno su Il Domani circa la fatica del vivere quotidiano in cella, mostrano l&#39;urgenza di riportare l&#39;umanità al centro dell&#39;esecuzione penale.</p>
+                        
+
+                        <div class="article-links">
+                        
+                            <div class="article-link">
+                                <p class="article-link-title">
+                                    <a href="https://ristretti.org/beniamino-zuncheddu-la-mia-vicenda-dimostra-che-senza-il-dubbio-non-puo-esserci-giustizia">Beniamino Zuncheddu: “La mia vicenda dimostra che senza il dubbio non può esserci giustizia”</a>
+                                </p>
+                                <p class="article-link-meta">
+                                    Andrea Zedda
+                                     · 
+                                    Vanity Fair
+                                     · 
+                                    07 Jan
+                                </p>
+                            </div>
+                        
+                            <div class="article-link">
+                                <p class="article-link-title">
+                                    <a href="https://ristretti.org/pdl-zuncheddu-un-aiuto-immediato-alle-vittime-di-ingiusta-detenzione">Pdl “Zuncheddu”: un aiuto immediato alle vittime di ingiusta detenzione</a>
+                                </p>
+                                <p class="article-link-meta">
+                                    Non indicato
+                                     · 
+                                    camerapenalevittoriochiusano.it
+                                     · 
+                                    07 Jan
+                                </p>
+                            </div>
+                        
+                            <div class="article-link">
+                                <p class="article-link-title">
+                                    <a href="https://ristretti.org/asti-il-ricordo-di-christian-suicida-in-carcere-la-sorella-cuore-fragile-e-anima-ribelle">Asti. Il ricordo di Christian, suicida in carcere. La sorella: “Cuore fragile e anima ribelle”</a>
+                                </p>
+                                <p class="article-link-meta">
+                                    Valentina Moro
+                                     · 
+                                    La Stampa
+                                     · 
+                                    06 Jan
+                                </p>
+                            </div>
+                        
+                        </div>
+                    </div>
+                    
+                    <div class="category">
+                        <p class="category-title">Lavoro e Cultura come Riscatto</p>
+                        
+                        <p class="category-comment">Nonostante le crisi, esistono modelli virtuosi che riducono drasticamente la recidiva. Chiara Pelizzoni su Famiglia Cristiana riporta come il lavoro esterno abbatta il rischio di tornare a delinquere al 2%, contro il 70% della media nazionale. Progetti come la cooperativa L&#39;Arcolaio a Siracusa, descritta da Patrizia Caiffa, e l&#39;impegno di &#39;Nonna Galeotta&#39; a Bollate, raccontato su Avvenire da Pierfranco Redaelli, dimostrano che il riscatto passa per la dignità professionale. La cultura gioca un ruolo chiave: Enrico Parola sul Corriere riporta la visita del Maestro Riccardo Muti nel carcere di Opera, a testimoniare che nessuno è irrecuperabile davanti alla bellezza.</p>
+                        
+
+                        <div class="article-links">
+                        
+                            <div class="article-link">
+                                <p class="article-link-title">
+                                    <a href="https://ristretti.org/intesa-sanpaolo-e-il-sostegno-al-lavoro-che-apre-le-carceri-e-regala-un-futuro">Intesa Sanpaolo e il sostegno al lavoro che “apre” le carceri e regala un futuro</a>
+                                </p>
+                                <p class="article-link-meta">
+                                    Chiara Pelizzoni
+                                     · 
+                                    Famiglia Cristiana
+                                     · 
+                                    07 Jan
+                                </p>
+                            </div>
+                        
+                            <div class="article-link">
+                                <p class="article-link-title">
+                                    <a href="https://ristretti.org/milano-riccardo-muti-tra-i-carcerati-di-opera-nessuno-e-irrecuperabile">Milano. Riccardo Muti tra i carcerati di Opera: “Nessuno è irrecuperabile”</a>
+                                </p>
+                                <p class="article-link-meta">
+                                    Enrico Parola
+                                     · 
+                                    Corriere della Sera
+                                     · 
+                                    07 Jan
+                                </p>
+                            </div>
+                        
+                            <div class="article-link">
+                                <p class="article-link-title">
+                                    <a href="https://ristretti.org/siracusa-erbe-officinali-e-pasticceria-il-riscatto-dei-detenuti-con-la-cooperativa-larcolaio">Siracusa. Erbe officinali e pasticceria, il riscatto dei detenuti con la cooperativa L’Arcolaio</a>
+                                </p>
+                                <p class="article-link-meta">
+                                    Patrizia Caiffa
+                                     · 
+                                    b-hop.it
+                                     · 
+                                    07 Jan
+                                </p>
+                            </div>
+                        
+                        </div>
+                    </div>
+                    
+                    <hr class="divider-strong">
+
+                    <!-- Closing Editorial -->
+                    <div class="editorial">
+                        Questa edizione inaugurale di BehindBars mette in luce la profonda frizione tra un’architettura spesso solo repressiva e la straordinaria resilienza di chi opera per il reinserimento sociale. Le riflessioni sull'indulto differito e la proposta di legge "Zuncheddu" per l'indennizzo immediato agli innocenti testimoniano che il dibattito sui diritti resta il cuore pulsante del nostro sistema, nonostante le criticità croniche. La sfida del 2026 sarà trasformare l'urgenza in una riforma organica che investa sulla dignità e sulla salute mentale, sottraendo definitivamente le carceri alla definizione di "discariche umane". Vi ricordiamo i prossimi appuntamenti: il consiglio comunale straordinario a Nuoro sul regime 41-bis il 9 gennaio, il concerto del Maestro Muti nel carcere di Opera il 10 gennaio e la conclusione del musical "Hair" al Teatro Carcano l’11 gennaio. La difesa dello Stato di diritto richiede attenzione costante e partecipazione informata. Grazie per aver scelto di accompagnarci in questo nuovo percorso; BehindBars tornerà la prossima settimana per continuare a raccontare la giustizia oltre le sbarre. Un cordiale saluto dalla redazione.
+                    </div>
+                </td>
+            </tr>
+
+            <!-- Quote -->
+            <tr>
+                <td class="closing-quote">
+                    "Il grado di civiltà di un Paese si misura osservando la condizione delle sue carceri."
+                </td>
+            </tr>
+
+            <!-- Footer -->
+            <tr>
+                <td class="footer">
+                    <p>
+                        <strong><a href="https://github.com/maroffo/BehindBarsPulse">BehindBarsPulse</a></strong> è un progetto personale che utilizza l'intelligenza artificiale per raccogliere e sintetizzare notizie sul sistema carcerario e la giustizia in Italia.
+                    </p>
+                    <p class="footer-note">
+                        I contenuti sono generati con l'ausilio di modelli linguistici avanzati e supervisionati. I riassunti riflettono i temi degli articoli originali, non necessariamente le opinioni dell'autore.
+                    </p>
+                    <p class="footer-brand">
+                        Creato con cura in Sardegna
+                    </p>
+                </td>
+            </tr>
+        </table>
+    </div>
+</body>
+</html>

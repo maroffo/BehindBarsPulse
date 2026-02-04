@@ -61,16 +61,20 @@ class Settings(BaseSettings):
     @property
     def database_url(self) -> str:
         """Build async PostgreSQL connection URL."""
+        from urllib.parse import quote_plus
+
         password = self.db_password.get_secret_value() if self.db_password else ""
-        return f"postgresql+asyncpg://{self.db_user}:{password}@{self.db_host}:{self.db_port}/{self.db_name}"
+        encoded_password = quote_plus(password)
+        return f"postgresql+asyncpg://{self.db_user}:{encoded_password}@{self.db_host}:{self.db_port}/{self.db_name}"
 
     @property
     def database_url_sync(self) -> str:
         """Build sync PostgreSQL connection URL (for Alembic)."""
+        from urllib.parse import quote_plus
+
         password = self.db_password.get_secret_value() if self.db_password else ""
-        return (
-            f"postgresql://{self.db_user}:{password}@{self.db_host}:{self.db_port}/{self.db_name}"
-        )
+        encoded_password = quote_plus(password)
+        return f"postgresql://{self.db_user}:{encoded_password}@{self.db_host}:{self.db_port}/{self.db_name}"
 
     # Paths
     previous_issues_dir: Path = Path("previous_issues")

@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <title>⚖️⛓️BehindBars - Notizie dal mondo della giustizia e delle carceri italiane - 21.01.2026</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <style>
+        /* Reset */
+        body, table, td, p, a, li, blockquote {
+            -webkit-text-size-adjust: 100%;
+            -ms-text-size-adjust: 100%;
+        }
+        table, td {
+            mso-table-lspace: 0pt;
+            mso-table-rspace: 0pt;
+        }
+        img {
+            -ms-interpolation-mode: bicubic;
+            border: 0;
+            height: auto;
+            line-height: 100%;
+            outline: none;
+            text-decoration: none;
+        }
+
+        /* Base */
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            background-color: #f5f5f5;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            color: #1a1a1a;
+        }
+
+        /* Container */
+        .wrapper {
+            width: 100%;
+            background-color: #f5f5f5;
+            padding: 40px 0;
+        }
+        .container {
+            max-width: 680px;
+            margin: 0 auto;
+            background-color: #ffffff;
+        }
+
+        /* Header */
+        .header {
+            padding: 40px 48px 32px;
+            border-bottom: 3px solid #c0392b;
+        }
+        .header-title {
+            font-family: Georgia, 'Times New Roman', serif;
+            font-size: 28px;
+            font-weight: 700;
+            color: #1a1a1a;
+            margin: 0 0 4px 0;
+            letter-spacing: -0.5px;
+        }
+        .header-subtitle {
+            font-size: 14px;
+            color: #666666;
+            margin: 0;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .header-date {
+            font-size: 13px;
+            color: #999999;
+            margin-top: 16px;
+        }
+
+        /* Content */
+        .content {
+            padding: 40px 48px;
+        }
+
+        /* Newsletter Title & Subtitle */
+        .newsletter-title {
+            font-family: Georgia, 'Times New Roman', serif;
+            font-size: 32px;
+            font-weight: 700;
+            color: #1a1a1a;
+            margin: 0 0 12px 0;
+            line-height: 1.2;
+            letter-spacing: -0.5px;
+        }
+        .newsletter-subtitle {
+            font-family: Georgia, 'Times New Roman', serif;
+            font-size: 20px;
+            font-weight: 400;
+            color: #4a4a4a;
+            margin: 0 0 32px 0;
+            line-height: 1.4;
+            font-style: italic;
+        }
+
+        /* Opening & Closing */
+        .editorial {
+            font-size: 17px;
+            color: #2a2a2a;
+            line-height: 1.7;
+            margin-bottom: 32px;
+        }
+        .editorial p {
+            margin: 0 0 16px 0;
+        }
+
+        /* Divider */
+        .divider {
+            border: none;
+            border-top: 1px solid #e0e0e0;
+            margin: 40px 0;
+        }
+        .divider-strong {
+            border: none;
+            border-top: 2px solid #c0392b;
+            margin: 40px 0;
+        }
+
+        /* Quote */
+        .closing-quote {
+            font-family: Georgia, 'Times New Roman', serif;
+            font-size: 15px;
+            font-style: italic;
+            color: #4a4a4a;
+            text-align: left;
+            padding: 32px 48px;
+            margin: 0;
+            border-top: 1px solid #e0e0e0;
+            background-color: #fafafa;
+        }
+
+        /* Section Header */
+        .section-header {
+            font-family: Georgia, 'Times New Roman', serif;
+            font-size: 24px;
+            font-weight: 700;
+            color: #1a1a1a;
+            margin: 0 0 24px 0;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        /* Category */
+        .category {
+            margin-bottom: 40px;
+        }
+        .category-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: #c0392b;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin: 0 0 16px 0;
+        }
+        .category-comment {
+            font-size: 16px;
+            color: #2a2a2a;
+            line-height: 1.7;
+            margin: 0 0 24px 0;
+        }
+
+        /* Article Links */
+        .article-links {
+            border-top: 1px solid #e8e8e8;
+            padding-top: 16px;
+        }
+        .article-link {
+            margin-bottom: 12px;
+            padding-left: 16px;
+            border-left: 2px solid #e0e0e0;
+        }
+        .article-link:last-child {
+            margin-bottom: 0;
+        }
+        .article-link-title {
+            font-family: Georgia, 'Times New Roman', serif;
+            font-size: 15px;
+            font-weight: 600;
+            margin: 0 0 4px 0;
+            line-height: 1.3;
+        }
+        .article-link-title a {
+            color: #1a1a1a;
+            text-decoration: none;
+        }
+        .article-link-title a:hover {
+            color: #c0392b;
+            text-decoration: underline;
+        }
+        .article-link-meta {
+            font-size: 12px;
+            color: #888888;
+            margin: 0;
+        }
+
+        /* Footer */
+        .footer {
+            padding: 32px 48px;
+            background-color: #2c3e50;
+            color: #b0b0b0;
+        }
+        .footer p {
+            font-size: 13px;
+            line-height: 1.6;
+            margin: 0 0 16px 0;
+        }
+        .footer a {
+            color: #ffffff;
+            text-decoration: none;
+        }
+        .footer a:hover {
+            text-decoration: underline;
+        }
+        .footer-note {
+            font-size: 12px;
+            color: #808080;
+            font-style: italic;
+        }
+        .footer-brand {
+            font-size: 11px;
+            color: #606060;
+            margin-top: 24px;
+            padding-top: 16px;
+            border-top: 1px solid #3d4f5f;
+        }
+
+        /* Responsive */
+        @media only screen and (max-width: 680px) {
+            .container {
+                width: 100% !important;
+            }
+            .header, .content, .closing, .footer {
+                padding-left: 24px !important;
+                padding-right: 24px !important;
+            }
+            .newsletter-title {
+                font-size: 26px !important;
+            }
+            .newsletter-subtitle {
+                font-size: 18px !important;
+            }
+            .article-title {
+                font-size: 16px !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="wrapper">
+        <table class="container" cellpadding="0" cellspacing="0" role="presentation">
+            <!-- Header -->
+            <tr>
+                <td class="header">
+                    <p class="header-title">BehindBars</p>
+                    <p class="header-subtitle">Giustizia e Sistema Carcerario</p>
+                    <p class="header-date">21.01.2026</p>
+                </td>
+            </tr>
+
+            <!-- Main Content -->
+            <tr>
+                <td class="content">
+                    <!-- Newsletter Title -->
+                    <h1 class="newsletter-title">Tra scudi normativi e banchi di prova: l’Italia al bivio della sicurezza</h1>
+                    <p class="newsletter-subtitle">Dall’accelerazione sul nuovo &#39;Pacchetto Sicurezza&#39; alla condanna della CEDU: la cronaca di un sistema sospeso tra emergenza e progettualità sociale.</p>
+
+                    <!-- Opening Editorial -->
+                    <div class="editorial">
+                        Benvenuti a un nuovo appuntamento con BehindBars. Questa settimana, il dibattito pubblico è stato segnato dalla tragedia di La Spezia, che ha impresso un'accelerazione decisa all'iter del nuovo "Pacchetto Sicurezza". Come abbiamo osservato nelle scorse edizioni, la risposta governativa punta con forza sulla deterrenza: dalle norme per la sicurezza negli istituti scolastici allo scudo penale per le forze dell'ordine. Eppure, proprio mentre la politica insegue l'urgenza della cronaca, la Corte Europea dei Diritti dell'Uomo ha condannato l'Italia per il caso Magherini, ricordandoci che la sicurezza non può prescindere da una formazione rigorosa e dal rispetto dei diritti fondamentali. Sul fronte delle riforme, il comitato del No ha raggiunto il traguardo delle 500.000 firme, aprendo un nuovo fronte legale davanti al TAR Lazio, la cui decisione sulla data referendaria è attesa per il 27 gennaio. In Sardegna, resta altissima la mobilitazione contro la concentrazione del regime 41-bis, mentre il sovrappollamento nazionale tocca la soglia critica del 138,5%. In questo clima di forte tensione, emerge tuttavia la vitalità della progettualità sociale: l’iniziativa "Jobel" di Caritas e Intesa Sanpaolo e l'apertura del carcere di Bollate al mondo del retail dimostrano che un modello rieducativo efficace è già una realtà concreta in molti territori. Segnaliamo infine che il 25 gennaio ricorrerà il decennale della scomparsa di Giulio Regeni, un monito universale sulla fragilità della tutela umana. Vi invitiamo ad approfondire i dettagli degli articoli più significativi di oggi nella seconda parte della newsletter.
+                    </div>
+
+                    <hr class="divider-strong">
+
+                    <!-- Press Review -->
+                    <h2 class="section-header">Rassegna Stampa</h2>
+
+                    
+                    <div class="category">
+                        <p class="category-title">Politiche di sicurezza e stretta repressiva</p>
+                        
+                        <p class="category-comment">Il Governo accelera su un duplice binario normativo che Giansandro Merli su Il Dubbio definisce un &#39;manuale di autoritarismo&#39;, volto a colpire dissenso, minori e migranti. Attraverso 65 misure, il pacchetto Piantedosi introduce sanzioni amministrative pesantissime per le manifestazioni e il controverso &#39;fermo di prevenzione&#39; di 12 ore. Susanna Marietti su Il Fatto Quotidiano denuncia una &#39;torsione poliziesca&#39; che mira a stravolgere lo Stato di diritto, proteggendo gli agenti con uno scudo penale e limitando il controllo della magistratura. Sul fronte della microcriminalità, Giulia Merlo su Il Domani illustra il nuovo &#39;decreto anti-lame&#39;, che trasforma il porto di coltelli da contravvenzione in reato punibile fino a tre anni, un intervento che per molti osservatori insegue più la cronaca che la prevenzione strutturale.</p>
+                        
+
+                        <div class="article-links">
+                        
+                            <div class="article-link">
+                                <p class="article-link-title">
+                                    <a href="https://ristretti.org/la-nuova-stretta-del-governo-su-dissenso-e-immigrazione">La nuova stretta del Governo su dissenso e immigrazione</a>
+                                </p>
+                                <p class="article-link-meta">
+                                    Giansandro Merli
+                                     · 
+                                    Il Dubbio
+                                     · 
+                                    15 Jan
+                                </p>
+                            </div>
+                        
+                            <div class="article-link">
+                                <p class="article-link-title">
+                                    <a href="https://ristretti.org/pacchetto-sicurezza-mano-libera-ai-poliziotti-e-diritti-rispettati-solo-se-non-sei-straniero">Pacchetto Sicurezza. Mano libera ai poliziotti e diritti rispettati solo se non sei straniero</a>
+                                </p>
+                                <p class="article-link-meta">
+                                    Susanna Marietti
+                                     · 
+                                    Il Fatto Quotidiano
+                                     · 
+                                    17 Jan
+                                </p>
+                            </div>
+                        
+                            <div class="article-link">
+                                <p class="article-link-title">
+                                    <a href="https://ristretti.org/cosa-prevede-il-nuovo-decreto-sicurezza-sui-coltelli">Cosa prevede il nuovo Decreto Sicurezza sui coltelli?</a>
+                                </p>
+                                <p class="article-link-meta">
+                                    Sconosciuto
+                                     · 
+                                    Ristretti Orizzonti
+                                     · 
+                                    17 Jan
+                                </p>
+                            </div>
+                        
+                        </div>
+                    </div>
+                    
+                    <div class="category">
+                        <p class="category-title">Emergenza minori e fallimento dei nuovi istituti</p>
+                        
+                        <p class="category-comment">La tragedia di La Spezia, con l&#39;omicidio del giovane Abanoub Youssef raccontato da Alfio Sciacca e Andrea Barsanti sul Corriere della Sera, ha innescato un acceso dibattito sull&#39;uso dei metal detector nelle scuole, caldeggiato dal ministro Valditara. Tuttavia, l&#39;emergenza non riguarda solo gli istituti scolastici: Danilo Lupo su Il Fatto Quotidiano documenta le &#39;enormi falle&#39; dei nuovi penitenziari minorili inaugurati dal sottosegretario Ostellari a Lecce, L&#39;Aquila e Rovigo, strutture aperte senza collaudi antincendio e con infiltrazioni d&#39;acqua. Eraldo Affinati su La Stampa invita a guardare oltre la repressione, sottolineando come la solitudine degli insegnanti e la crisi delle figure adulte di riferimento rendano i ragazzi &#39;timidi e tracotanti&#39; preda di un vuoto educativo che il carcere non può colmare.</p>
+                        
+
+                        <div class="article-links">
+                        
+                            <div class="article-link">
+                                <p class="article-link-title">
+                                    <a href="https://ristretti.org/accoltellato-in-classe-a-la-spezia-abu-muore-a-19-anni">Accoltellato in classe a La Spezia, Abu muore a 19 anni</a>
+                                </p>
+                                <p class="article-link-meta">
+                                    Alfio Sciacca e Andrea Barsanti
+                                     · 
+                                    Corriere della Sera
+                                     · 
+                                    17 Jan
+                                </p>
+                            </div>
+                        
+                            <div class="article-link">
+                                <p class="article-link-title">
+                                    <a href="https://ristretti.org/nelle-carceri-minorili-appena-inaugurate-celle-senza-sistema-antincendio-e-buchi-nel-soffitto">Nelle carceri minorili appena inaugurate celle senza sistema antincendio e buchi nel soffitto</a>
+                                </p>
+                                <p class="article-link-meta">
+                                    Danilo Lupo
+                                     · 
+                                    Il Fatto Quotidiano
+                                     · 
+                                    18 Jan
+                                </p>
+                            </div>
+                        
+                            <div class="article-link">
+                                <p class="article-link-title">
+                                    <a href="https://ristretti.org/i-ragazzi-timidi-e-tracotanti-e-quegli-insegnanti-lasciati-soli">I ragazzi timidi e tracotanti e quegli insegnanti lasciati soli</a>
+                                </p>
+                                <p class="article-link-meta">
+                                    Eraldo Affinati
+                                     · 
+                                    La Stampa
+                                     · 
+                                    18 Jan
+                                </p>
+                            </div>
+                        
+                        </div>
+                    </div>
+                    
+                    <div class="category">
+                        <p class="category-title">Diritti umani e responsabilità dello Stato</p>
+                        
+                        <p class="category-comment">La condanna dell&#39;Italia da parte della Cedu per la morte di Riccardo Magherini, analizzata da Damiano Aliprandi su Il Dubbio, certifica un fallimento sistemico nell&#39;addestramento delle forze d&#39;ordine sulle tecniche di immobilizzazione. Parallelamente, il suicidio di Christian Guercio ad Asti solleva interrogativi inquietanti: Valentina Moro su La Stampa riporta la denuncia di Ilaria Cucchi su un uomo con fragilità psichiche finito in cella per un graffio a un carabiniere invece di ricevere cure. Il quadro si fa ancora più nero a Bari dove, come riporta Giuseppe Di Bisceglie sul Corriere del Mezzogiorno, quello che sembrava il suicidio di Giuseppe Lacarpia si è rivelato un brutale omicidio commesso da compagni di cella in un contesto di sovraffollamento che il procuratore Rossi definisce &#39;un problema serio per la difesa dei diritti&#39;.</p>
+                        
+
+                        <div class="article-links">
+                        
+                            <div class="article-link">
+                                <p class="article-link-title">
+                                    <a href="https://ristretti.org/magherini-la-cedu-condanna-litalia-morte-evitabile">Magherini, la Cedu condanna l’Italia: “Morte evitabile”</a>
+                                </p>
+                                <p class="article-link-meta">
+                                    Damiano Aliprandi
+                                     · 
+                                    Il Dubbio
+                                     · 
+                                    16 Jan
+                                </p>
+                            </div>
+                        
+                            <div class="article-link">
+                                <p class="article-link-title">
+                                    <a href="https://ristretti.org/asti-troppi-punti-oscuri-sul-suicidio-in-carcere-di-christian-guercio">Asti. “Troppi punti oscuri sul suicidio in carcere di Christian Guercio”</a>
+                                </p>
+                                <p class="article-link-meta">
+                                    Valentina Moro
+                                     · 
+                                    La Stampa
+                                     · 
+                                    15 Jan
+                                </p>
+                            </div>
+                        
+                            <div class="article-link">
+                                <p class="article-link-title">
+                                    <a href="https://ristretti.org/baria-giuseppe-lacarpia-non-si-suicido-ma-venne-strangolato-nella-sua-cella">Bari. Giuseppe Lacarpia non si suicidò ma venne strangolato nella sua cella</a>
+                                </p>
+                                <p class="article-link-meta">
+                                    Giuseppe Di Bisceglie
+                                     · 
+                                    Corriere del Mezzogiorno
+                                     · 
+                                    16 Jan
+                                </p>
+                            </div>
+                        
+                        </div>
+                    </div>
+                    
+                    <div class="category">
+                        <p class="category-title">Battaglia referendaria e riforme</p>
+                        
+                        <p class="category-comment">Il raggiungimento delle 500mila firme popolari contro la riforma della giustizia, riportato da Giulia Merlo su Il Domani, apre un contenzioso sulla data del voto del 22-23 marzo, fissata dal Governo prima del termine della raccolta. Mentre Marco Boato su L&#39;Unità spiega le ragioni del &#39;No&#39; criticando il metodo unilaterale della maggioranza e l&#39;introduzione del sorteggio per il Csm, Salvatore Curreri, sulla stessa testata, difende il &#39;Sì&#39; come estremo tentativo di rompere il potere delle correnti. Sullo sfondo, l&#39;attacco frontale di Carlo Nordio al Csm, accusato di &#39;giustizia domestica&#39;, delinea un clima di scontro istituzionale senza precedenti che accompagnerà il Paese fino alle urne.</p>
+                        
+
+                        <div class="article-links">
+                        
+                            <div class="article-link">
+                                <p class="article-link-title">
+                                    <a href="https://ristretti.org/referendum-giustizia-raccolte-le-500mila-firme-contro-la-riforma-intanto-e-guerra-di-ricorsi">Referendum giustizia, raccolte le 500mila firme contro la riforma. Intanto è guerra di ricorsi</a>
+                                </p>
+                                <p class="article-link-meta">
+                                    Giulia Merlo
+                                     · 
+                                    Il Domani
+                                     · 
+                                    16 Jan
+                                </p>
+                            </div>
+                        
+                            <div class="article-link">
+                                <p class="article-link-title">
+                                    <a href="https://ristretti.org/perche-votero-no-alla-riforma-della-giustizia-anche-se-sono-favorevole-alla-separazione-delle-carriere">Perché voterò no alla riforma della Giustizia, anche se sono favorevole alla separazione delle carriere</a>
+                                </p>
+                                <p class="article-link-meta">
+                                    Marco Boato
+                                     · 
+                                    L’Unità
+                                     · 
+                                    18 Jan
+                                </p>
+                            </div>
+                        
+                            <div class="article-link">
+                                <p class="article-link-title">
+                                    <a href="https://ristretti.org/perche-votero-si-il-csm-non-e-il-parlamento-sorteggiare-i-magistrati-non-e-scandaloso">Perché voterò Sì. Il Csm non è il Parlamento: sorteggiare i magistrati non è scandaloso</a>
+                                </p>
+                                <p class="article-link-meta">
+                                    Salvatore Curreri
+                                     · 
+                                    L’Unità
+                                     · 
+                                    18 Jan
+                                </p>
+                            </div>
+                        
+                        </div>
+                    </div>
+                    
+                    <hr class="divider-strong">
+
+                    <!-- Closing Editorial -->
+                    <div class="editorial">
+                        La settimana ci consegna un’immagine nitida delle contraddizioni della giustizia italiana: da un lato la ricerca di scudi normativi e nuovi reati, dall’altro la testimonianza di chi, come a Bollate o a Casal del Marmo, trasforma le mura in soglie di opportunità. La condanna della CEDU per la morte di Riccardo Magherini non rappresenta solo un atto di giustizia tardiva, ma un richiamo urgente alla necessità di una riforma strutturale nell'addestramento e nel controllo degli apparati dello Stato. I dati sul sovrappollamento e i tragici episodi di Bari e Asti confermano che la finalità rieducativa rischia di rimanere un miraggio senza interventi deflattivi immediati. È proprio in questo scarto tra proclami e realtà che si giocherà la partita del referendum, i cui sviluppi legali al TAR Lazio monitoreremo con attenzione nell'udienza del 27 gennaio. Guardiamo inoltre con interesse all'avvio del percorso "Vite Libere" a Siena e al VII Convegno Nazionale della Diaconia Valdese il 22 gennaio. Ricordiamo infine la scadenza del 30 gennaio per le ultime richieste referendarie sulla separazione delle carriere. La difesa dello Stato di diritto richiede una partecipazione vigile e informata. Un cordiale saluto dalla redazione.
+                    </div>
+                </td>
+            </tr>
+
+            <!-- Quote -->
+            <tr>
+                <td class="closing-quote">
+                    "Il grado di civiltà di un Paese si misura osservando la condizione delle sue carceri."
+                </td>
+            </tr>
+
+            <!-- Footer -->
+            <tr>
+                <td class="footer">
+                    <p>
+                        <strong><a href="https://github.com/maroffo/BehindBarsPulse">BehindBarsPulse</a></strong> è un progetto personale che utilizza l'intelligenza artificiale per raccogliere e sintetizzare notizie sul sistema carcerario e la giustizia in Italia.
+                    </p>
+                    <p class="footer-note">
+                        I contenuti sono generati con l'ausilio di modelli linguistici avanzati e supervisionati. I riassunti riflettono i temi degli articoli originali, non necessariamente le opinioni dell'autore.
+                    </p>
+                    <p class="footer-brand">
+                        Creato con cura in Sardegna
+                    </p>
+                </td>
+            </tr>
+        </table>
+    </div>
+</body>
+</html>
