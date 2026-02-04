@@ -756,11 +756,14 @@ class FacilitySnapshotRepository:
         result = await self.session.execute(query)
         return result.scalars().all()
 
-    async def get_latest_by_facility(self) -> list[FacilitySnapshot]:
+    async def get_latest_by_facility(self) -> list[dict]:
         """Get the latest snapshot for each facility (normalized).
 
         Normalizes facility names to merge duplicates, then returns
-        the most recent snapshot per canonical facility name.
+        the most recent snapshot per canonical facility name as dicts.
+
+        Returns list of dicts with keys: facility, region, inmates, capacity,
+        occupancy_rate, snapshot_date.
         """
         from behind_bars_pulse.utils.facilities import normalize_facility_name
 
@@ -785,23 +788,28 @@ class FacilitySnapshotRepository:
         raw_snapshots = result.scalars().all()
 
         # Group by normalized facility name, keep most recent
-        normalized: dict[str, FacilitySnapshot] = {}
+        normalized: dict[str, dict] = {}
         for snap in raw_snapshots:
             canonical = normalize_facility_name(snap.facility) or snap.facility
             existing = normalized.get(canonical)
             if not existing or (
                 snap.snapshot_date
-                and existing.snapshot_date
-                and snap.snapshot_date > existing.snapshot_date
+                and existing["snapshot_date"]
+                and snap.snapshot_date > existing["snapshot_date"]
             ):
-                # Create a copy with normalized name
-                snap.facility = canonical
-                normalized[canonical] = snap
+                normalized[canonical] = {
+                    "facility": canonical,
+                    "region": snap.region,
+                    "inmates": snap.inmates,
+                    "capacity": snap.capacity,
+                    "occupancy_rate": snap.occupancy_rate,
+                    "snapshot_date": snap.snapshot_date,
+                }
 
         # Sort by occupancy rate descending
         sorted_snapshots = sorted(
             normalized.values(),
-            key=lambda s: s.occupancy_rate or 0,
+            key=lambda s: s["occupancy_rate"] or 0,
             reverse=True,
         )
         return sorted_snapshots
@@ -846,26 +854,27 @@ class FacilitySnapshotRepository:
 
         Returns list of (region, total_inmates, total_capacity, avg_occupancy).
         """
-        # Get latest snapshots per facility (uses get_latest_by_facility logic)
+        # Get latest snapshots per facility (returns dicts with normalized names)
         latest_snapshots = await self.get_latest_by_facility()
 
         # Aggregate by region
         region_data: dict[str, dict] = {}
         for snap in latest_snapshots:
-            if not snap.region:
+            region = snap["region"]
+            if not region:
                 continue
-            if snap.region not in region_data:
-                region_data[snap.region] = {
+            if region not in region_data:
+                region_data[region] = {
                     "inmates": 0,
                     "capacity": 0,
                     "occupancy_rates": [],
                 }
-            if snap.inmates:
-                region_data[snap.region]["inmates"] += snap.inmates
-            if snap.capacity:
-                region_data[snap.region]["capacity"] += snap.capacity
-            if snap.occupancy_rate:
-                region_data[snap.region]["occupancy_rates"].append(snap.occupancy_rate)
+            if snap["inmates"]:
+                region_data[region]["inmates"] += snap["inmates"]
+            if snap["capacity"]:
+                region_data[region]["capacity"] += snap["capacity"]
+            if snap["occupancy_rate"]:
+                region_data[region]["occupancy_rates"].append(snap["occupancy_rate"])
 
         # Build result
         result = []

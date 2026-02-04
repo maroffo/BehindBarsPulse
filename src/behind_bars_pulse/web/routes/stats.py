@@ -250,7 +250,7 @@ class CapacityByRegionResponse(BaseModel):
 
 @router.get("/stats/api/capacity/latest", response_model=CapacityLatestResponse)
 async def api_capacity_latest():
-    """Get latest capacity snapshot for each facility."""
+    """Get latest capacity snapshot for each facility (normalized)."""
     async with get_session() as session:
         repo = FacilitySnapshotRepository(session)
         snapshots = await repo.get_latest_by_facility()
@@ -258,12 +258,12 @@ async def api_capacity_latest():
     return CapacityLatestResponse(
         facilities=[
             FacilityCapacity(
-                facility=s.facility,
-                region=s.region,
-                inmates=s.inmates,
-                capacity=s.capacity,
-                occupancy_rate=s.occupancy_rate,
-                snapshot_date=s.snapshot_date.isoformat() if s.snapshot_date else "",
+                facility=s["facility"],
+                region=s["region"],
+                inmates=s["inmates"],
+                capacity=s["capacity"],
+                occupancy_rate=s["occupancy_rate"],
+                snapshot_date=s["snapshot_date"].isoformat() if s["snapshot_date"] else "",
             )
             for s in snapshots
         ]
