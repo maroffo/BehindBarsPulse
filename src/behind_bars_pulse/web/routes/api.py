@@ -926,9 +926,8 @@ async def api_migrate(admin_token: str | None = None):
 
         alembic_cfg = Config(alembic_ini)
 
-        # Use sync database URL (already properly formatted with URL-encoded password)
-        alembic_cfg.set_main_option("sqlalchemy.url", settings.database_url_sync)
-
+        # Note: URL is loaded from settings via env.py's get_url()
+        # No need to set it here as env.py handles this
         command.upgrade(alembic_cfg, "head")
 
         log.info("api_migrate_complete")
