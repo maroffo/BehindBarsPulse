@@ -808,10 +808,7 @@ class FacilitySnapshotRepository:
             for row in result.all()
         ]
 
-    async def get_regional_summary(
-        self,
-        snapshot_date: date | None = None,
-    ) -> list[tuple[str, int, int, float]]:
+    async def get_regional_summary(self) -> list[tuple[str, int, int, float]]:
         """Get summary by region using latest snapshot per facility.
 
         Returns list of (region, total_inmates, total_capacity, avg_occupancy).

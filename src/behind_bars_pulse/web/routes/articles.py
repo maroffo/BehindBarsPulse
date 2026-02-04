@@ -47,6 +47,18 @@ async def articles_list(
     )
 
 
+@router.get("/articles/stats")
+async def articles_stats(article_repo: ArticleRepo):
+    """Debug endpoint to check article counts."""
+    total = await article_repo.count()
+    with_embeddings = await article_repo.count_with_embeddings()
+    return {
+        "total_articles": total,
+        "with_embeddings": with_embeddings,
+        "without_embeddings": total - with_embeddings,
+    }
+
+
 @router.get("/article/{article_id}", response_class=HTMLResponse)
 async def article_detail(
     request: Request,
@@ -66,7 +78,7 @@ async def article_detail(
             similar = await article_repo.search_by_embedding(
                 embedding=article.embedding,
                 limit=4,  # Get one extra since current article might be included
-                threshold=0.6,
+                threshold=0.5,
             )
             # Filter out the current article
             related_articles = [art for art, _ in similar if art.id != article_id][:3]
