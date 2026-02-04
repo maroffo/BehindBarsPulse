@@ -947,7 +947,7 @@ async def api_migrate(admin_token: str | None = None):
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
-@router.post("/api/normalize-facilities")
+@router.post("/normalize-facilities")
 async def normalize_facilities(
     admin_token: str = Query(..., description="Admin authentication token"),
     dry_run: bool = Query(True, description="Preview changes without applying"),
@@ -1062,7 +1062,7 @@ async def normalize_facilities(
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
-@router.post("/api/cleanup-events")
+@router.post("/cleanup-events")
 async def cleanup_events(
     admin_token: str = Query(..., description="Admin authentication token"),
     dry_run: bool = Query(True, description="Preview changes without applying"),
