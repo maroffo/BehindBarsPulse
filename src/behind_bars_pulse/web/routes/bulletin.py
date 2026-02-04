@@ -2,11 +2,13 @@
 # ABOUTME: Provides latest, archive, and detail pages for bulletins.
 
 from collections import defaultdict
+from collections.abc import Sequence
 from datetime import datetime, timedelta
 
 from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse
 
+from behind_bars_pulse.db.models import Article
 from behind_bars_pulse.web.dependencies import ArticleRepo, BulletinRepo, Templates
 
 router = APIRouter(prefix="/bollettino")
@@ -14,9 +16,11 @@ router = APIRouter(prefix="/bollettino")
 ITEMS_PER_PAGE = 10
 
 
-def _group_articles_by_category(articles: list) -> list[dict]:
+def _group_articles_by_category(
+    articles: Sequence[Article],
+) -> list[dict[str, str | list[Article]]]:
     """Group articles by category, maintaining order."""
-    categories: dict[str, list] = defaultdict(list)
+    categories: dict[str, list[Article]] = defaultdict(list)
     for article in articles:
         cat = article.category or "Altro"
         categories[cat].append(article)

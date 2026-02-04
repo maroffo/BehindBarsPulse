@@ -1,6 +1,8 @@
 # ABOUTME: Edizioni routes for overview of bulletins and newsletters.
 # ABOUTME: Unified entry point for all editorial content archives.
 
+from collections.abc import Awaitable, Callable, Sequence
+
 from fastapi import APIRouter, Query, Request
 from fastapi.responses import HTMLResponse
 
@@ -9,6 +11,18 @@ from behind_bars_pulse.web.dependencies import BulletinRepo, NewsletterRepo, Tem
 router = APIRouter(prefix="/edizioni")
 
 ITEMS_PER_PAGE = 10
+
+
+async def _paginate[T](
+    fetch_fn: Callable[[int, int], Awaitable[Sequence[T]]],
+    page: int,
+    per_page: int = ITEMS_PER_PAGE,
+) -> tuple[list[T], bool]:
+    """Fetch paginated items with has_more detection."""
+    offset = (page - 1) * per_page
+    items = await fetch_fn(per_page + 1, offset)
+    has_more = len(items) > per_page
+    return list(items[:per_page]), has_more
 
 
 @router.get("", response_class=HTMLResponse)
@@ -40,15 +54,7 @@ async def bulletin_archive(
     page: int = Query(1, ge=1),
 ):
     """List all bulletins with pagination."""
-    offset = (page - 1) * ITEMS_PER_PAGE
-    bulletins = await bulletin_repo.list_recent(
-        limit=ITEMS_PER_PAGE + 1,
-        offset=offset,
-    )
-
-    has_more = len(bulletins) > ITEMS_PER_PAGE
-    if has_more:
-        bulletins = bulletins[:ITEMS_PER_PAGE]
+    bulletins, has_more = await _paginate(bulletin_repo.list_recent, page)
 
     return templates.TemplateResponse(
         request=request,
@@ -69,15 +75,7 @@ async def newsletter_archive(
     page: int = Query(1, ge=1),
 ):
     """List all newsletters with pagination."""
-    offset = (page - 1) * ITEMS_PER_PAGE
-    newsletters = await newsletter_repo.list_recent(
-        limit=ITEMS_PER_PAGE + 1,
-        offset=offset,
-    )
-
-    has_more = len(newsletters) > ITEMS_PER_PAGE
-    if has_more:
-        newsletters = newsletters[:ITEMS_PER_PAGE]
+    newsletters, has_more = await _paginate(newsletter_repo.list_recent, page)
 
     return templates.TemplateResponse(
         request=request,
