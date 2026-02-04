@@ -499,11 +499,16 @@ class PrisonEventRepository:
     ) -> list[tuple[str, int]]:
         """Count events grouped by facility, sorted by count descending.
 
+        Normalizes facility names to merge duplicates (e.g., "Brescia Canton Mombello"
+        and "Canton Mombello" both become "Canton Mombello (Brescia)").
+
         Args:
             event_type: Filter by event type.
             limit: Max facilities to return.
             exclude_aggregates: If True, exclude is_aggregate=True events.
         """
+        from behind_bars_pulse.utils.facilities import normalize_facility_name
+
         query = select(PrisonEvent.facility, func.count(PrisonEvent.id)).where(
             PrisonEvent.facility.isnot(None)
         )
@@ -511,13 +516,18 @@ class PrisonEventRepository:
             query = query.where(PrisonEvent.is_aggregate == False)  # noqa: E712
         if event_type:
             query = query.where(PrisonEvent.event_type == event_type)
-        query = (
-            query.group_by(PrisonEvent.facility)
-            .order_by(func.count(PrisonEvent.id).desc())
-            .limit(limit)
-        )
+        query = query.group_by(PrisonEvent.facility)
         result = await self.session.execute(query)
-        return [(row[0], row[1]) for row in result.all()]
+
+        # Normalize facility names and merge counts
+        normalized_counts: dict[str, int] = {}
+        for raw_name, count in result.all():
+            canonical = normalize_facility_name(raw_name) or raw_name
+            normalized_counts[canonical] = normalized_counts.get(canonical, 0) + count
+
+        # Sort by count descending and limit
+        sorted_facilities = sorted(normalized_counts.items(), key=lambda x: x[1], reverse=True)
+        return sorted_facilities[:limit]
 
     async def count_by_month(
         self,
@@ -746,12 +756,15 @@ class FacilitySnapshotRepository:
         result = await self.session.execute(query)
         return result.scalars().all()
 
-    async def get_latest_by_facility(self) -> Sequence[FacilitySnapshot]:
-        """Get the latest snapshot for each facility.
+    async def get_latest_by_facility(self) -> list[FacilitySnapshot]:
+        """Get the latest snapshot for each facility (normalized).
 
-        Uses a subquery to find max date per facility, then joins.
+        Normalizes facility names to merge duplicates, then returns
+        the most recent snapshot per canonical facility name.
         """
-        # Subquery: max date per facility
+        from behind_bars_pulse.utils.facilities import normalize_facility_name
+
+        # Subquery: max date per raw facility
         subq = (
             select(
                 FacilitySnapshot.facility,
@@ -763,15 +776,35 @@ class FacilitySnapshotRepository:
 
         # Join to get full records
         result = await self.session.execute(
-            select(FacilitySnapshot)
-            .join(
+            select(FacilitySnapshot).join(
                 subq,
                 (FacilitySnapshot.facility == subq.c.facility)
                 & (FacilitySnapshot.snapshot_date == subq.c.max_date),
             )
-            .order_by(FacilitySnapshot.occupancy_rate.desc().nulls_last())
         )
-        return result.scalars().all()
+        raw_snapshots = result.scalars().all()
+
+        # Group by normalized facility name, keep most recent
+        normalized: dict[str, FacilitySnapshot] = {}
+        for snap in raw_snapshots:
+            canonical = normalize_facility_name(snap.facility) or snap.facility
+            existing = normalized.get(canonical)
+            if not existing or (
+                snap.snapshot_date
+                and existing.snapshot_date
+                and snap.snapshot_date > existing.snapshot_date
+            ):
+                # Create a copy with normalized name
+                snap.facility = canonical
+                normalized[canonical] = snap
+
+        # Sort by occupancy rate descending
+        sorted_snapshots = sorted(
+            normalized.values(),
+            key=lambda s: s.occupancy_rate or 0,
+            reverse=True,
+        )
+        return sorted_snapshots
 
     async def get_national_trend(
         self,
