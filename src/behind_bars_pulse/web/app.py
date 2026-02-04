@@ -21,6 +21,7 @@ from behind_bars_pulse.web.routes import (
     articles,
     bulletin,
     edizioni,
+    feeds,
     home,
     landing,
     pages,
@@ -107,6 +108,7 @@ def create_app() -> FastAPI:
     app.include_router(bulletin.router)
     app.include_router(search.router)
     app.include_router(stats.router)
+    app.include_router(feeds.router)
     app.include_router(api.router)
 
     return app
