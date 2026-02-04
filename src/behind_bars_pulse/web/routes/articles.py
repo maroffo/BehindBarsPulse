@@ -80,8 +80,11 @@ async def article_detail(
                 limit=4,  # Get one extra since current article might be included
                 threshold=0.5,
             )
-            # Filter out the current article
-            related_articles = [art for art, _ in similar_results if art.id != article_id][:3]
+            # Filter out the current article, keep similarity score
+            for art, similarity in similar_results:
+                if art.id != article_id and len(related_articles) < 3:
+                    art.similarity = similarity  # Attach similarity to article object
+                    related_articles.append(art)
         except Exception:
             # Fallback to no related articles if search fails
             pass

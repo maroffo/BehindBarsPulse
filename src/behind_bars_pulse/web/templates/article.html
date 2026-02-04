@@ -53,16 +53,34 @@
     {% if related_articles %}
     <section class="related-articles">
         <h2>Articoli correlati</h2>
-        <div class="related-grid">
+        <div class="results-list">
             {% for related in related_articles %}
-            <a href="/article/{{ related.id }}" class="related-card">
-                <span class="related-category">{{ related.category or 'Altro' }}</span>
-                <h3>{{ related.title }}</h3>
-                <span class="related-meta">
-                    {{ related.source or 'Fonte sconosciuta' }}
-                    {% if related.published_date %} · {{ related.published_date | format_date }}{% endif %}
-                </span>
-            </a>
+            <article class="result-card result-card--article">
+                <div class="result-header">
+                    {% if related.category %}
+                    <span class="article-category">{{ related.category }}</span>
+                    {% endif %}
+                    {% if related.similarity %}
+                    <span class="similarity-score" title="Rilevanza: {{ (related.similarity * 100) | round(1) }}%">
+                        {{ (related.similarity * 100) | round | int }}% correlato
+                    </span>
+                    {% endif %}
+                </div>
+                <h3 class="result-title">
+                    <a href="/article/{{ related.id }}">{{ related.title }}</a>
+                </h3>
+                <p class="article-meta">
+                    {% if related.author %}<span class="author">{{ related.author }}</span>{% endif %}
+                    {% if related.author and related.source %} · {% endif %}
+                    {% if related.source %}<span class="source">{{ related.source }}</span>{% endif %}
+                    {% if related.published_date %}
+                    · <time>{{ related.published_date.strftime('%d/%m/%Y') }}</time>
+                    {% endif %}
+                </p>
+                {% if related.summary %}
+                <p class="result-summary">{{ related.summary }}</p>
+                {% endif %}
+            </article>
             {% endfor %}
         </div>
     </section>
