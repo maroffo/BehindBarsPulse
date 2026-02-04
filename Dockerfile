@@ -53,9 +53,9 @@ USER app
 # Expose port
 EXPOSE 8000
 
-# Health check
+# Health check (use /api/health to avoid DB queries during startup)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import httpx; httpx.get('http://localhost:8000/', timeout=5)" || exit 1
+    CMD python -c "import httpx; httpx.get('http://localhost:8000/api/health', timeout=5)" || exit 1
 
 # Run uvicorn
 CMD ["uvicorn", "behind_bars_pulse.web.app:app", "--host", "0.0.0.0", "--port", "8000"]

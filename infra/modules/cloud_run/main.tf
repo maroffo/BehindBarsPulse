@@ -276,7 +276,7 @@ resource "google_cloud_run_v2_service" "main" {
 
       startup_probe {
         http_get {
-          path = "/"
+          path = "/api/health"
         }
         initial_delay_seconds = 5
         period_seconds        = 10
@@ -285,7 +285,7 @@ resource "google_cloud_run_v2_service" "main" {
 
       liveness_probe {
         http_get {
-          path = "/"
+          path = "/api/health"
         }
         period_seconds = 30
       }
