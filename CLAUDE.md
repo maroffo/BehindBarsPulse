@@ -201,6 +201,7 @@ Protected by `admin_token` (= GEMINI_API_KEY):
 | `POST /api/bulletin-admin?admin_token=...&issue_date=2026-02-04` | Regenerate bulletin |
 | `POST /api/import-newsletters?admin_token=...` | Import newsletters from GCS |
 | `POST /api/normalize-facilities?admin_token=...&dry_run=true` | Normalize facility names in DB |
+| `POST /api/cleanup-events?admin_token=...&dry_run=true` | Remove duplicate events, mark aggregates |
 
 ## Facility Name Normalization
 
@@ -262,6 +263,36 @@ The `/stats` page shows prison incident data visualized with Chart.js:
 | `GET /stats/api/capacity/latest` | Latest capacity per facility |
 | `GET /stats/api/capacity/by-region` | Regional capacity summary |
 | `GET /stats/api/capacity/trend` | National capacity trend |
+
+## Event Deduplication
+
+Prison events extracted from articles can be duplicated when multiple sources report the same incident. The system handles this at two levels:
+
+### Ingestion-time Deduplication
+The collector (`collector.py`) checks for existing events with the same:
+- `event_date`
+- Normalized `facility` (e.g., "Brescia Canton Mombello" → "Canton Mombello (Brescia)")
+- `event_type`
+
+If a match is found, the new event is skipped.
+
+### Aggregate Statistics Filtering
+Articles sometimes report aggregate statistics (e.g., "80 suicides in 2025"). These are:
+- Marked with `is_aggregate=True` during extraction
+- Filtered out by default in stats queries (`exclude_aggregates=True`)
+
+### Cleanup Scripts
+For existing data issues:
+```bash
+# Preview cleanup
+uv run python scripts/cleanup_prison_events.py --dry-run
+
+# Apply cleanup (removes duplicates, marks aggregates)
+uv run python scripts/cleanup_prison_events.py
+
+# In production
+curl -X POST "https://behindbars.news/api/cleanup-events?admin_token=KEY&dry_run=false"
+```
 
 ## Language Note
 

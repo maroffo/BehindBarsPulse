@@ -1060,3 +1060,136 @@ async def normalize_facilities(
     except Exception as e:
         log.exception("api_normalize_facilities_failed")
         raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@router.post("/api/cleanup-events")
+async def cleanup_events(
+    admin_token: str = Query(..., description="Admin authentication token"),
+    dry_run: bool = Query(True, description="Preview changes without applying"),
+) -> dict:
+    """Clean up prison_events data quality issues.
+
+    This fixes:
+    1. Marks unmarked aggregate statistics (facility=NULL, count>1) as is_aggregate=True
+    2. Removes duplicate events (same incident from multiple articles)
+
+    Duplicates are identified by (date, normalized_facility, event_type).
+    Keeps the record with the longest description.
+
+    Requires admin_token query parameter matching GEMINI_API_KEY.
+    Set dry_run=false to apply changes.
+    """
+    from collections import defaultdict
+
+    from sqlalchemy import text
+
+    from behind_bars_pulse.config import get_settings
+    from behind_bars_pulse.db.session import get_session
+    from behind_bars_pulse.utils.facilities import normalize_facility_name
+
+    settings = get_settings()
+    expected_token = settings.gemini_api_key.get_secret_value() if settings.gemini_api_key else None
+
+    if not admin_token or admin_token != expected_token:
+        raise HTTPException(status_code=403, detail="Invalid admin token")
+
+    log.info("api_cleanup_events_triggered", dry_run=dry_run)
+
+    results: dict = {
+        "aggregates_marked": 0,
+        "duplicates_removed": 0,
+        "before_count": 0,
+        "after_count": 0,
+        "sample_duplicates": [],
+        "dry_run": dry_run,
+    }
+
+    try:
+        async with get_session() as session:
+            # Get all events
+            events_result = await session.execute(
+                text("""
+                    SELECT id, event_date, facility, event_type, count, description, is_aggregate
+                    FROM prison_events
+                    ORDER BY event_date, facility, event_type, id
+                """)
+            )
+            events = events_result.fetchall()
+            results["before_count"] = len(events)
+
+            # Step 1: Find unmarked aggregates (facility=NULL, count>1, not already marked)
+            aggregate_ids_to_mark = []
+            for row in events:
+                event_id, event_date, facility, event_type, count, description, is_agg = row
+                if facility is None and count is not None and count > 1 and not is_agg:
+                    aggregate_ids_to_mark.append(event_id)
+            results["aggregates_marked"] = len(aggregate_ids_to_mark)
+
+            # Step 2: Find duplicates by (date, normalized_facility, event_type)
+            groups: dict = defaultdict(list)
+            for row in events:
+                event_id, event_date, facility, event_type, count, description, is_agg = row
+                if is_agg or event_id in aggregate_ids_to_mark:
+                    continue
+                if event_date is None or facility is None:
+                    continue
+
+                normalized = normalize_facility_name(facility) or facility
+                key = (str(event_date), normalized, event_type)
+                groups[key].append(
+                    {
+                        "id": event_id,
+                        "facility": facility,
+                        "description": description or "",
+                    }
+                )
+
+            duplicate_ids = []
+            for key, event_list in groups.items():
+                if len(event_list) > 1:
+                    sorted_events = sorted(
+                        event_list, key=lambda e: len(e["description"]), reverse=True
+                    )
+                    keep = sorted_events[0]
+                    remove = sorted_events[1:]
+
+                    if len(results["sample_duplicates"]) < 5:
+                        results["sample_duplicates"].append(
+                            {
+                                "key": f"{key[0]} | {key[1]} | {key[2]}",
+                                "keep_id": keep["id"],
+                                "remove_ids": [r["id"] for r in remove],
+                            }
+                        )
+
+                    duplicate_ids.extend(r["id"] for r in remove)
+
+            results["duplicates_removed"] = len(duplicate_ids)
+            results["after_count"] = results["before_count"] - len(duplicate_ids)
+
+            # Apply changes
+            if not dry_run:
+                if aggregate_ids_to_mark:
+                    await session.execute(
+                        text("UPDATE prison_events SET is_aggregate = TRUE WHERE id = ANY(:ids)"),
+                        {"ids": aggregate_ids_to_mark},
+                    )
+
+                if duplicate_ids:
+                    await session.execute(
+                        text("DELETE FROM prison_events WHERE id = ANY(:ids)"),
+                        {"ids": duplicate_ids},
+                    )
+
+                await session.commit()
+                log.info(
+                    "api_cleanup_events_applied",
+                    aggregates_marked=len(aggregate_ids_to_mark),
+                    duplicates_removed=len(duplicate_ids),
+                )
+
+        return results
+
+    except Exception as e:
+        log.exception("api_cleanup_events_failed")
+        raise HTTPException(status_code=500, detail=str(e)) from e

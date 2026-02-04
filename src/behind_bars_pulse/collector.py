@@ -68,6 +68,7 @@ def _save_prison_events_to_db(events: list[dict], article_url_to_id: dict[str, i
         from sqlalchemy import select
 
         from behind_bars_pulse.db.models import PrisonEvent
+        from behind_bars_pulse.utils.facilities import normalize_facility_name
 
         saved_count = 0
         skipped_count = 0
@@ -97,7 +98,46 @@ def _save_prison_events_to_db(events: list[dict], article_url_to_id: dict[str, i
                             date=event_data["event_date"],
                         )
 
-                # Check for duplicate by composite key (url + type + date + normalized facility)
+                # Get normalized facility for dedup check (already normalized at line 82)
+                normalized_facility = facility  # Already normalized above
+
+                # Check for duplicate by (date + type + normalized facility)
+                # This catches the same incident reported by different articles
+                if event_date and normalized_facility:
+                    # Build query for normalized facility match
+                    # We need to check if any existing event normalizes to the same facility
+                    potential_matches = (
+                        session.execute(
+                            select(PrisonEvent).where(
+                                PrisonEvent.event_type == event_type,
+                                PrisonEvent.event_date == event_date,
+                                PrisonEvent.facility.isnot(None),
+                            )
+                        )
+                        .scalars()
+                        .all()
+                    )
+
+                    # Check if any match after normalization
+                    is_duplicate = False
+                    for match in potential_matches:
+                        if normalize_facility_name(match.facility) == normalized_facility:
+                            is_duplicate = True
+                            log.debug(
+                                "duplicate_event_skipped",
+                                new_facility=facility,
+                                existing_facility=match.facility,
+                                normalized=normalized_facility,
+                                event_date=str(event_date),
+                                event_type=event_type,
+                            )
+                            break
+
+                    if is_duplicate:
+                        skipped_count += 1
+                        continue
+
+                # Also check exact match from same source (for events without date/facility)
                 existing = session.execute(
                     select(PrisonEvent).where(
                         PrisonEvent.source_url == source_url,
