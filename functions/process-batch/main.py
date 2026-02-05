@@ -10,7 +10,7 @@ from datetime import date
 import functions_framework
 from cloudevents.http import CloudEvent
 from google.cloud import secretmanager, storage
-from sqlalchemy import Column, Date, Integer, String, Text, create_engine, delete
+from sqlalchemy import Column, Date, DateTime, Integer, String, Text, create_engine, delete, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import declarative_base, sessionmaker
 
@@ -32,6 +32,7 @@ class Newsletter(Base):
     html_content = Column(Text)
     txt_content = Column(Text)
     press_review = Column(JSONB)
+    created_at = Column(DateTime, nullable=False, server_default=func.now())
 
 
 # Global engine for connection reuse (warm starts)
@@ -196,9 +197,7 @@ def render_newsletter_html(
             art_link = html.escape(article.get("link", "#"))
 
             html_parts.append("<div class='article'>")
-            html_parts.append(
-                f"<a href='{art_link}' class='article-title'>{art_title}</a>"
-            )
+            html_parts.append(f"<a href='{art_link}' class='article-title'>{art_title}</a>")
             html_parts.append("</div>")
 
         html_parts.append("</div>")
