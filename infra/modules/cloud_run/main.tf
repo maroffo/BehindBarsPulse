@@ -157,6 +157,13 @@ resource "google_storage_bucket_iam_member" "assets_access" {
   member = "serviceAccount:${google_service_account.cloud_run.email}"
 }
 
+# Grant Vertex AI access for batch inference
+resource "google_project_iam_member" "aiplatform_user" {
+  project = var.project_id
+  role    = "roles/aiplatform.user"
+  member  = "serviceAccount:${google_service_account.cloud_run.email}"
+}
+
 # Cloud Run service
 resource "google_cloud_run_v2_service" "main" {
   name     = local.service_name
@@ -241,6 +248,17 @@ resource "google_cloud_run_v2_service" "main" {
       env {
         name  = "GCS_BUCKET"
         value = var.gcs_bucket
+      }
+
+      # Google Project ID and Region for Vertex AI Batch
+      env {
+        name  = "GOOGLE_PROJECT_ID"
+        value = var.project_id
+      }
+
+      env {
+        name  = "GOOGLE_REGION"
+        value = var.region
       }
 
       # SES credentials for email sending (optional)

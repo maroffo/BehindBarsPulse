@@ -26,6 +26,44 @@ from behind_bars_pulse.models import (
 log = structlog.get_logger()
 
 
+def _dereference_schema(
+    schema: dict[str, Any], max_depth: int = 50
+) -> dict[str, Any]:
+    """Inline all $ref references in a JSON schema.
+
+    Vertex AI batch prediction doesn't support $defs/$ref in schemas,
+    so we need to expand all references inline.
+
+    Args:
+        schema: JSON schema with potential $defs and $ref.
+        max_depth: Maximum recursion depth to prevent infinite loops.
+
+    Raises:
+        RecursionError: If max_depth is exceeded (circular reference detected).
+    """
+    defs = schema.pop("$defs", {})
+
+    def resolve(obj: Any, depth: int = 0) -> Any:
+        if depth > max_depth:
+            raise RecursionError(
+                f"Schema dereferencing exceeded max depth {max_depth}. "
+                "Possible circular reference in schema."
+            )
+        if isinstance(obj, dict):
+            if "$ref" in obj:
+                ref_path = obj["$ref"]  # e.g., "#/$defs/Importance"
+                ref_name = ref_path.split("/")[-1]
+                if ref_name in defs:
+                    return resolve(defs[ref_name].copy(), depth + 1)
+                return obj
+            return {k: resolve(v, depth) for k, v in obj.items()}
+        if isinstance(obj, list):
+            return [resolve(item, depth) for item in obj]
+        return obj
+
+    return resolve(schema)
+
+
 class BatchPromptType(str, Enum):
     """Types of prompts in a batch job."""
 
@@ -156,7 +194,10 @@ class BatchInferenceService:
             ensure_ascii=False,
         )
 
-        press_review_schema = TypeAdapter(list[PressReviewCategory]).json_schema()
+        # Dereference schema to inline $refs (Vertex AI batch doesn't support $defs)
+        press_review_schema = _dereference_schema(
+            TypeAdapter(list[PressReviewCategory]).json_schema()
+        )
         requests.append(
             BatchRequest(
                 prompt_type=BatchPromptType.PRESS_REVIEW,
@@ -308,14 +349,14 @@ class BatchInferenceService:
         output_uri = f"gs://{self.bucket_name}/batch_jobs/{issue_date.isoformat()}/output"
 
         # Create client (uses Application Default Credentials)
-        # Create client (uses Application Default Credentials)
         if not self.settings.google_project_id:
             raise ValueError("google_project_id setting is required for Vertex AI Batch")
 
+        # Use global endpoint for base Gemini models (batch supports global)
         client = genai.Client(
             vertexai=True,
             project=self.settings.google_project_id,
-            location=self.settings.google_region,
+            location="global",
         )
 
         log.info(
@@ -361,10 +402,11 @@ class BatchInferenceService:
         if not self.settings.google_project_id:
             raise ValueError("google_project_id setting is required for Vertex AI Batch")
 
+        # Use global endpoint for base Gemini models (batch supports global)
         client = genai.Client(
             vertexai=True,
             project=self.settings.google_project_id,
-            location=self.settings.google_region,
+            location="global",
         )
         job = client.batches.get(name=job_name)
 
