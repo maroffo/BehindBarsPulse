@@ -210,6 +210,15 @@ resource "google_cloudfunctions2_function" "process_batch" {
   }
 }
 
+# Allow Eventarc to invoke the Cloud Function (Gen2 functions are Cloud Run services)
+resource "google_cloud_run_v2_service_iam_member" "eventarc_invoker" {
+  project  = var.project_id
+  location = var.region
+  name     = google_cloudfunctions2_function.process_batch.name
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:${google_service_account.function.email}"
+}
+
 output "function_name" {
   value = google_cloudfunctions2_function.process_batch.name
 }
