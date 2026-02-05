@@ -95,7 +95,7 @@ resource "google_cloud_scheduler_job" "collect" {
   attempt_deadline = "600s"
 }
 
-# Daily newsletter batch job submission (8:00 AM Europe/Rome)
+# Daily newsletter batch job submission (10:00 AM Europe/Rome)
 # Submits Vertex AI batch job for newsletter generation
 # Results processed by Cloud Function when job completes
 resource "google_cloud_scheduler_job" "generate" {
@@ -103,7 +103,7 @@ resource "google_cloud_scheduler_job" "generate" {
   description = "Submit batch job for daily newsletter generation"
   project     = var.project_id
   region      = var.region
-  schedule    = "0 8 * * *"
+  schedule    = "0 10 * * *"
   time_zone   = var.timezone
 
   http_target {
@@ -125,6 +125,36 @@ resource "google_cloud_scheduler_job" "generate" {
 
   # Batch job submission is fast, processing happens async
   attempt_deadline = "120s"
+}
+
+# Daily bulletin job (10:00 AM Europe/Rome)
+# Generates editorial commentary on previous day's articles
+resource "google_cloud_scheduler_job" "bulletin" {
+  name        = "bulletin-daily"
+  description = "Daily editorial bulletin generation"
+  project     = var.project_id
+  region      = var.region
+  schedule    = "0 10 * * *"
+  time_zone   = var.timezone
+
+  http_target {
+    uri         = "${var.cloud_run_service_url}/api/bulletin"
+    http_method = "POST"
+
+    oidc_token {
+      service_account_email = google_service_account.scheduler.email
+      audience              = local.effective_audience
+    }
+  }
+
+  retry_config {
+    retry_count          = 3
+    min_backoff_duration = "60s"
+    max_backoff_duration = "600s"
+    max_doublings        = 3
+  }
+
+  attempt_deadline = "600s"
 }
 
 # Weekly digest job (Sunday 8:00 AM Europe/Rome)
@@ -170,4 +200,8 @@ output "generate_job_name" {
 
 output "weekly_job_name" {
   value = google_cloud_scheduler_job.weekly.name
+}
+
+output "bulletin_job_name" {
+  value = google_cloud_scheduler_job.bulletin.name
 }
