@@ -34,6 +34,7 @@ async def subscribe(
         "Per non perdere le prossime newsletter, aggiungi info@behindbars.news ai tuoi contatti."
     )
 
+    error_msg = None
     try:
         subscriber = await service.create_subscriber(email)
 
@@ -47,6 +48,21 @@ async def subscribe(
     except ValueError:
         # Email already exists - log but don't reveal to user (prevents enumeration)
         log.debug("subscribe_duplicate", email=email)
+    except Exception:
+        log.exception("subscribe_email_send_failed", email=email)
+        error_msg = (
+            "Si è verificato un errore nell'invio dell'email di conferma. "
+            "Riprova tra qualche minuto."
+        )
+
+    if error_msg:
+        if request.headers.get("HX-Request"):
+            return HTMLResponse(f'<div class="form-error">{error_msg}</div>')
+        return templates.TemplateResponse(
+            request=request,
+            name="subscribe_success.html",
+            context={"email": email, "error": error_msg},
+        )
 
     # Always return same response to prevent user enumeration
     if request.headers.get("HX-Request"):

@@ -4,6 +4,12 @@
 
 {% block content %}
 <div class="message-page">
+    {% if error %}
+    <div class="message-icon">⚠️</div>
+    <h1>Qualcosa è andato storto</h1>
+    <p class="message-text">{{ error }}</p>
+    <a href="/iscriviti" class="btn btn-outline">Riprova</a>
+    {% else %}
     <div class="message-icon">✉️</div>
     <h1>Controlla la tua email</h1>
     <p class="message-text">
@@ -14,6 +20,7 @@
         Se non la trovi, controlla la cartella spam.
     </p>
     <a href="/" class="btn btn-outline">Torna alla home</a>
+    {% endif %}
 </div>
 
 <style>
