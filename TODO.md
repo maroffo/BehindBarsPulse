@@ -21,6 +21,7 @@ Piattaforma di monitoraggio del sistema penitenziario italiano con bollettino qu
 - [x] Articoli correlati con formato card search
 
 ### In Corso
+- [ ] **BUG: SES SMTP Authentication Invalid** - registrazione subscriber fallisce all'invio email conferma (funzionava ieri)
 - [ ] Test responsive (manual)
 - [ ] Deploy con facility normalization
 - [ ] Backfill: normalizzare dati esistenti in produzione
@@ -66,6 +67,7 @@ Caricare articoli dal DB nel route `/bollettino/{date}` e raggrupparli per categ
 - [x] Primo bollettino generato
 
 ### Fix precedenti
+- [x] DateTime timezone fix - Migration 008 converte colonne a TIMESTAMPTZ (2026-02-05)
 - [x] OIDC Cloud Scheduler audience fix
 - [x] Newsletter format e sanitizzazione NUL
 - [x] Type safety e datetime.utcnow → datetime.now(UTC)

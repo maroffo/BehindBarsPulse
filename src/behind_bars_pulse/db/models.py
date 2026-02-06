@@ -49,7 +49,7 @@ class Newsletter(Base):
     txt_content: Mapped[str | None] = mapped_column(Text, nullable=True)
     press_review: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, default=lambda: datetime.now(UTC)
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC)
     )
 
     articles: Mapped[list["Article"]] = relationship(
@@ -84,7 +84,7 @@ class Article(Base):
         Vector(EMBEDDING_DIMENSION), nullable=True
     )
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, default=lambda: datetime.now(UTC)
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC)
     )
 
     newsletter_id: Mapped[int | None] = mapped_column(
@@ -128,7 +128,7 @@ class StoryThread(Base):
     impact_score: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     weekly_highlight: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, default=lambda: datetime.now(UTC)
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC)
     )
 
     followups: Mapped[list["FollowUp"]] = relationship(
@@ -151,7 +151,7 @@ class KeyCharacter(Base):
     role: Mapped[str] = mapped_column(String(500), nullable=False)
     aliases: Mapped[list[str] | None] = mapped_column(JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, default=lambda: datetime.now(UTC)
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC)
     )
 
     positions: Mapped[list["CharacterPosition"]] = relationship(
@@ -175,7 +175,7 @@ class CharacterPosition(Base):
     stance: Mapped[str] = mapped_column(Text, nullable=False)
     source_url: Mapped[str | None] = mapped_column(String(2000), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, default=lambda: datetime.now(UTC)
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC)
     )
 
     character: Mapped[KeyCharacter] = relationship("KeyCharacter", back_populates="positions")
@@ -220,10 +220,10 @@ class Subscriber(Base):
     token: Mapped[str] = mapped_column(String(64), unique=True, nullable=False, index=True)
     confirmed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     subscribed_at: Mapped[datetime] = mapped_column(
-        DateTime, default=lambda: datetime.now(UTC), nullable=False
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
     )
-    confirmed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    unsubscribed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    unsubscribed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     __table_args__ = (Index("ix_subscribers_email", email),)
 
@@ -261,7 +261,7 @@ class PrisonEvent(Base):
     confidence: Mapped[float] = mapped_column(Float, default=1.0, nullable=False)
     is_aggregate: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     extracted_at: Mapped[datetime] = mapped_column(
-        DateTime, default=lambda: datetime.now(UTC), nullable=False
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
     )
 
     article: Mapped[Article | None] = relationship("Article")
@@ -299,7 +299,7 @@ class FacilitySnapshot(Base):
         Integer, ForeignKey("articles.id", ondelete="SET NULL"), nullable=True
     )
     extracted_at: Mapped[datetime] = mapped_column(
-        DateTime, default=lambda: datetime.now(UTC), nullable=False
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
     )
 
     article: Mapped[Article | None] = relationship("Article")
@@ -331,7 +331,7 @@ class Bulletin(Base):
     )
     articles_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, default=lambda: datetime.now(UTC)
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC)
     )
 
     __table_args__ = (
@@ -364,7 +364,7 @@ class EditorialComment(Base):
         Vector(EMBEDDING_DIMENSION), nullable=True
     )
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, default=lambda: datetime.now(UTC)
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC)
     )
 
     __table_args__ = (
