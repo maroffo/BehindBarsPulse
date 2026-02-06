@@ -13,11 +13,18 @@ from google.cloud import storage
 from pydantic import TypeAdapter
 
 from behind_bars_pulse.ai.prompts import (
+    CAPACITY_EXTRACTION_PROMPT,
+    ENTITY_EXTRACTION_PROMPT,
+    EXTRACT_INFO_PROMPT,
+    FOLLOWUP_DETECTION_PROMPT,
+    INCIDENT_EXTRACTION_PROMPT,
     NEWSLETTER_CONTENT_PROMPT,
     PRESS_REVIEW_PROMPT,
+    STORY_EXTRACTION_PROMPT,
 )
 from behind_bars_pulse.config import Settings, get_settings
 from behind_bars_pulse.models import (
+    Article,
     EnrichedArticle,
     NewsletterContent,
     PressReviewCategory,
@@ -26,9 +33,7 @@ from behind_bars_pulse.models import (
 log = structlog.get_logger()
 
 
-def _dereference_schema(
-    schema: dict[str, Any], max_depth: int = 50
-) -> dict[str, Any]:
+def _dereference_schema(schema: dict[str, Any], max_depth: int = 50) -> dict[str, Any]:
     """Inline all $ref references in a JSON schema.
 
     Vertex AI batch prediction doesn't support $defs/$ref in schemas,
@@ -70,6 +75,12 @@ class BatchPromptType(str, Enum):
     NEWSLETTER_CONTENT = "newsletter_content"
     REVIEW_CONTENT = "review_content"
     PRESS_REVIEW = "press_review"
+    ENRICH_ARTICLE = "enrich_article"
+    EXTRACT_STORIES = "extract_stories"
+    EXTRACT_ENTITIES = "extract_entities"
+    DETECT_FOLLOWUPS = "detect_followups"
+    EXTRACT_EVENTS = "extract_events"
+    EXTRACT_CAPACITY = "extract_capacity"
 
 
 @dataclass
@@ -500,3 +511,419 @@ class BatchInferenceService:
                 )
 
         return newsletter_content, press_review
+
+    def build_collector_batch(
+        self,
+        articles: dict[str, Article],
+        existing_stories: list[dict[str, Any]],
+        existing_characters: list[dict[str, Any]],
+        story_ids: list[str],
+        existing_events: list[dict[str, Any]],
+        existing_snapshots: list[dict[str, Any]],
+    ) -> list[BatchRequest]:
+        """Build batch requests for collector enrichment pipeline.
+
+        Creates N+5 requests: 1 enrichment per article + 1 each for
+        stories, entities, followups, events, capacity.
+
+        Args:
+            articles: Raw articles keyed by URL.
+            existing_stories: Existing story dicts for story extraction.
+            existing_characters: Existing character dicts for entity extraction.
+            story_ids: Active story IDs for followup detection.
+            existing_events: Recent events for dedup in event extraction.
+            existing_snapshots: Recent snapshots for dedup in capacity extraction.
+
+        Returns:
+            List of BatchRequest objects for the batch job.
+        """
+        requests: list[BatchRequest] = []
+
+        # Build shared articles payload (used by stories/entities/followups/events/capacity)
+        articles_for_extraction = {
+            url: {
+                "title": a.title,
+                "link": str(a.link),
+                "content": a.content[:2000],
+            }
+            for url, a in articles.items()
+        }
+
+        # 1. One enrichment request per article
+        for url, article in articles.items():
+            # Use URL hash for stable custom_id
+            url_hash = uuid.uuid5(uuid.NAMESPACE_URL, url).hex[:12]
+            requests.append(
+                BatchRequest(
+                    prompt_type=BatchPromptType.ENRICH_ARTICLE,
+                    prompt=article.content,
+                    system_prompt=EXTRACT_INFO_PROMPT,
+                    custom_id=f"{BatchPromptType.ENRICH_ARTICLE.value}_{url_hash}",
+                )
+            )
+
+        # 2. Story extraction
+        story_prompt = json.dumps(
+            {
+                "articles": {
+                    url: {
+                        **articles_for_extraction[url],
+                        "summary": "",
+                        "content": a.content[:1000],
+                    }
+                    for url, a in articles.items()
+                },
+                "existing_stories": existing_stories,
+            },
+            indent=2,
+            ensure_ascii=False,
+        )
+        requests.append(
+            BatchRequest(
+                prompt_type=BatchPromptType.EXTRACT_STORIES,
+                prompt=story_prompt,
+                system_prompt=STORY_EXTRACTION_PROMPT,
+            )
+        )
+
+        # 3. Entity extraction
+        entity_prompt = json.dumps(
+            {
+                "articles": {
+                    url: {**articles_for_extraction[url], "content": a.content[:1500]}
+                    for url, a in articles.items()
+                },
+                "existing_characters": existing_characters,
+            },
+            indent=2,
+            ensure_ascii=False,
+        )
+        requests.append(
+            BatchRequest(
+                prompt_type=BatchPromptType.EXTRACT_ENTITIES,
+                prompt=entity_prompt,
+                system_prompt=ENTITY_EXTRACTION_PROMPT,
+            )
+        )
+
+        # 4. Followup detection
+        followup_prompt = json.dumps(
+            {
+                "articles": {
+                    url: {**articles_for_extraction[url], "content": a.content[:1500]}
+                    for url, a in articles.items()
+                },
+                "existing_story_ids": story_ids,
+            },
+            indent=2,
+            ensure_ascii=False,
+        )
+        requests.append(
+            BatchRequest(
+                prompt_type=BatchPromptType.DETECT_FOLLOWUPS,
+                prompt=followup_prompt,
+                system_prompt=FOLLOWUP_DETECTION_PROMPT,
+            )
+        )
+
+        # 5. Event extraction
+        event_prompt = json.dumps(
+            {
+                "articles": {
+                    url: {
+                        **articles_for_extraction[url],
+                        "source": "",  # Raw articles don't have source yet
+                    }
+                    for url, a in articles.items()
+                },
+                "existing_events": existing_events,
+            },
+            indent=2,
+            ensure_ascii=False,
+        )
+        requests.append(
+            BatchRequest(
+                prompt_type=BatchPromptType.EXTRACT_EVENTS,
+                prompt=event_prompt,
+                system_prompt=INCIDENT_EXTRACTION_PROMPT,
+            )
+        )
+
+        # 6. Capacity extraction
+        capacity_prompt = json.dumps(
+            {
+                "articles": {
+                    url: {
+                        **articles_for_extraction[url],
+                        "source": "",
+                    }
+                    for url, a in articles.items()
+                },
+                "existing_snapshots": existing_snapshots,
+            },
+            indent=2,
+            ensure_ascii=False,
+        )
+        requests.append(
+            BatchRequest(
+                prompt_type=BatchPromptType.EXTRACT_CAPACITY,
+                prompt=capacity_prompt,
+                system_prompt=CAPACITY_EXTRACTION_PROMPT,
+            )
+        )
+
+        log.info(
+            "collector_batch_built",
+            total_requests=len(requests),
+            enrichment_requests=len(articles),
+            extraction_requests=5,
+        )
+
+        return requests
+
+    def upload_collector_artifacts(
+        self,
+        articles: dict[str, Article],
+        collection_date: date,
+    ) -> str:
+        """Upload raw articles to GCS for Cloud Function to access later.
+
+        Args:
+            articles: Raw articles keyed by URL.
+            collection_date: Date of collection.
+
+        Returns:
+            GCS URI of the uploaded raw articles file.
+        """
+        articles_data = {url: article.model_dump(mode="json") for url, article in articles.items()}
+        raw_json = json.dumps(articles_data, indent=2, ensure_ascii=False)
+
+        blob_path = f"batch_jobs/collect/{collection_date.isoformat()}/raw_articles.json"
+        bucket = self.storage_client.bucket(self.bucket_name)
+        blob = bucket.blob(blob_path)
+        blob.upload_from_string(raw_json, content_type="application/json")
+
+        gcs_uri = f"gs://{self.bucket_name}/{blob_path}"
+        log.info(
+            "raw_articles_uploaded",
+            uri=gcs_uri,
+            article_count=len(articles),
+        )
+        return gcs_uri
+
+    def upload_collector_batch_input(
+        self,
+        requests: list[BatchRequest],
+        collection_date: date,
+    ) -> str:
+        """Upload collector batch input JSONL to GCS.
+
+        Uses a separate path from newsletter batches:
+        batch_jobs/collect/{date}/input.jsonl
+
+        Args:
+            requests: List of BatchRequest objects.
+            collection_date: Date of collection.
+
+        Returns:
+            GCS URI of the uploaded file.
+        """
+        lines = []
+        for request in requests:
+            jsonl_request = self._build_jsonl_request(request)
+            lines.append(json.dumps(jsonl_request, ensure_ascii=False))
+
+        jsonl_content = "\n".join(lines)
+
+        blob_path = f"batch_jobs/collect/{collection_date.isoformat()}/input.jsonl"
+        bucket = self.storage_client.bucket(self.bucket_name)
+        blob = bucket.blob(blob_path)
+        blob.upload_from_string(jsonl_content, content_type="application/jsonl")
+
+        gcs_uri = f"gs://{self.bucket_name}/{blob_path}"
+        log.info(
+            "collector_batch_input_uploaded",
+            uri=gcs_uri,
+            request_count=len(requests),
+            size_bytes=len(jsonl_content),
+        )
+        return gcs_uri
+
+    def submit_collector_batch_job(
+        self,
+        input_uri: str,
+        collection_date: date,
+        model: str | None = None,
+    ) -> BatchJobResult:
+        """Submit a collector batch job to Vertex AI.
+
+        Args:
+            input_uri: GCS URI of the input JSONL file.
+            collection_date: Date of collection (used for output path).
+            model: Model to use (defaults to settings.gemini_model).
+
+        Returns:
+            BatchJobResult with job details.
+        """
+        from google import genai
+        from google.genai.types import CreateBatchJobConfig
+
+        model = model or self.settings.gemini_model
+
+        output_uri = (
+            f"gs://{self.bucket_name}/batch_jobs/collect/{collection_date.isoformat()}/output"
+        )
+
+        if not self.settings.google_project_id:
+            raise ValueError("google_project_id setting is required for Vertex AI Batch")
+
+        client = genai.Client(
+            vertexai=True,
+            project=self.settings.google_project_id,
+            location="global",
+        )
+
+        log.info(
+            "submitting_collector_batch_job",
+            model=model,
+            input_uri=input_uri,
+            output_uri=output_uri,
+        )
+
+        job = client.batches.create(
+            model=model,
+            src=input_uri,
+            config=CreateBatchJobConfig(dest=output_uri),
+        )
+
+        result = BatchJobResult(
+            job_name=job.name or "",
+            input_uri=input_uri,
+            output_uri=output_uri,
+            status=str(job.state),
+        )
+
+        log.info(
+            "collector_batch_job_submitted",
+            job_name=result.job_name,
+            status=result.status,
+        )
+
+        return result
+
+    @staticmethod
+    def _extract_text_from_result(result: dict[str, Any]) -> str | None:
+        """Extract text content from a single batch result entry.
+
+        Args:
+            result: A single result dict from batch output JSONL.
+
+        Returns:
+            Extracted text string, or None if not available.
+        """
+        response = result.get("response", {})
+        candidates = response.get("candidates", [])
+        if not candidates:
+            return None
+        content = candidates[0].get("content", {})
+        parts = content.get("parts", [])
+        if not parts:
+            return None
+        text = parts[0].get("text", "")
+        return text if text else None
+
+    def parse_collector_results(
+        self,
+        results: list[dict[str, Any]],
+    ) -> dict[str, Any]:
+        """Parse collector batch results into structured components.
+
+        Groups results by custom_id prefix and parses each into the
+        appropriate data structure.
+
+        Args:
+            results: List of result dicts from download_batch_results.
+
+        Returns:
+            Dictionary with keys:
+              - enrichments: dict mapping url_hash -> ArticleInfo dict
+              - stories: dict with updated_stories/new_stories
+              - entities: dict with updated_characters/new_characters
+              - followups: dict with followups list
+              - events: dict with events list
+              - capacity: dict with snapshots list
+        """
+        parsed: dict[str, Any] = {
+            "enrichments": {},
+            "stories": {"updated_stories": [], "new_stories": []},
+            "entities": {"updated_characters": [], "new_characters": []},
+            "followups": {"followups": []},
+            "events": {"events": []},
+            "capacity": {"snapshots": []},
+        }
+
+        for result in results:
+            custom_id = result.get("custom_id", "")
+            text = self._extract_text_from_result(result)
+            if not text:
+                log.warning("empty_collector_batch_response", custom_id=custom_id)
+                continue
+
+            try:
+                data = json.loads(text)
+
+                if custom_id.startswith(BatchPromptType.ENRICH_ARTICLE.value):
+                    # Extract url_hash from custom_id: "enrich_article_{hash}"
+                    url_hash = custom_id[len(BatchPromptType.ENRICH_ARTICLE.value) + 1 :]
+                    # data is a list with one item (EXTRACT_INFO_PROMPT returns array)
+                    if isinstance(data, list) and data:
+                        parsed["enrichments"][url_hash] = data[0]
+                    else:
+                        parsed["enrichments"][url_hash] = data
+                    log.debug("parsed_enrichment", url_hash=url_hash)
+
+                elif custom_id.startswith(BatchPromptType.EXTRACT_STORIES.value):
+                    parsed["stories"] = data
+                    log.info(
+                        "parsed_stories",
+                        updated=len(data.get("updated_stories", [])),
+                        new=len(data.get("new_stories", [])),
+                    )
+
+                elif custom_id.startswith(BatchPromptType.EXTRACT_ENTITIES.value):
+                    parsed["entities"] = data
+                    log.info(
+                        "parsed_entities",
+                        updated=len(data.get("updated_characters", [])),
+                        new=len(data.get("new_characters", [])),
+                    )
+
+                elif custom_id.startswith(BatchPromptType.DETECT_FOLLOWUPS.value):
+                    parsed["followups"] = data
+                    log.info("parsed_followups", count=len(data.get("followups", [])))
+
+                elif custom_id.startswith(BatchPromptType.EXTRACT_EVENTS.value):
+                    parsed["events"] = data
+                    log.info("parsed_events", count=len(data.get("events", [])))
+
+                elif custom_id.startswith(BatchPromptType.EXTRACT_CAPACITY.value):
+                    parsed["capacity"] = data
+                    log.info("parsed_capacity", count=len(data.get("snapshots", [])))
+
+            except (json.JSONDecodeError, TypeError) as e:
+                log.error(
+                    "collector_batch_result_parse_error",
+                    custom_id=custom_id,
+                    error=str(e),
+                )
+
+        log.info(
+            "collector_results_parsed",
+            enrichments=len(parsed["enrichments"]),
+            stories_updated=len(parsed["stories"].get("updated_stories", [])),
+            stories_new=len(parsed["stories"].get("new_stories", [])),
+            events=len(parsed["events"].get("events", [])),
+            snapshots=len(parsed["capacity"].get("snapshots", [])),
+        )
+
+        return parsed

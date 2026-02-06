@@ -55,14 +55,25 @@ async def health_check():
 
 
 def _run_collect(collection_date: date) -> None:
-    """Run article collection in background."""
-    from behind_bars_pulse.collector import ArticleCollector
+    """Run article collection in background.
 
-    log.info("api_collect_start", date=collection_date.isoformat())
+    Uses batch inference when GCS bucket is configured (production),
+    falls back to online collection when not (local dev).
+    """
+    from behind_bars_pulse.collector import ArticleCollector
+    from behind_bars_pulse.config import get_settings
+
+    settings = get_settings()
+    log.info("api_collect_start", date=collection_date.isoformat(), batch=bool(settings.gcs_bucket))
+
     try:
         with ArticleCollector() as collector:
-            enriched = collector.collect(collection_date)
-        log.info("api_collect_complete", articles=len(enriched))
+            if settings.gcs_bucket:
+                result = collector.collect_batch(collection_date)
+                log.info("api_collect_batch_submitted", **result)
+            else:
+                enriched = collector.collect(collection_date)
+                log.info("api_collect_complete", articles=len(enriched))
     except Exception:
         log.exception("api_collect_failed")
 

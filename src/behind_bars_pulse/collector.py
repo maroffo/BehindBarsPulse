@@ -382,7 +382,7 @@ def _save_articles_to_db(
                     text = f"{article.title}. {article.summary}"
 
                 try:
-                    embedding = svc._embed_query(text)
+                    embedding = svc._embed_text(text)
                 except Exception as e:
                     log.warning("embedding_generation_failed", url=url[:50], error=str(e))
                     embedding = None
@@ -415,6 +415,53 @@ def _save_articles_to_db(
     except Exception as e:
         log.debug("db_save_skipped", error=str(e), hint="DB not configured or unavailable")
         return 0, {}
+
+
+def _get_existing_snapshots_for_dedup() -> list[dict[str, Any]]:
+    """Get recent capacity snapshots from DB for AI deduplication.
+
+    Returns:
+        List of snapshot dicts, or empty list if DB not available.
+    """
+    try:
+        result = _get_sync_db_session()
+        if not result:
+            log.debug("existing_snapshots_fetch_skipped", error="DB not configured")
+            return []
+
+        session, engine = result
+
+        from datetime import timedelta
+
+        from sqlalchemy import select
+
+        from behind_bars_pulse.db.models import FacilitySnapshot
+
+        try:
+            cutoff = datetime.now(UTC) - timedelta(days=90)
+            stmt = (
+                select(FacilitySnapshot)
+                .where(FacilitySnapshot.extracted_at >= cutoff)
+                .order_by(FacilitySnapshot.extracted_at.desc())
+            )
+            snapshots = session.execute(stmt).scalars().all()
+
+            return [
+                {
+                    "facility": s.facility,
+                    "snapshot_date": s.snapshot_date.isoformat() if s.snapshot_date else None,
+                    "source_url": s.source_url,
+                }
+                for s in snapshots
+            ]
+
+        finally:
+            session.close()
+            engine.dispose()
+
+    except Exception as e:
+        log.debug("existing_snapshots_fetch_skipped", error=str(e))
+        return []
 
 
 class ArticleCollector:
@@ -490,6 +537,102 @@ class ArticleCollector:
 
         log.info("collection_complete", date=collection_date.isoformat(), count=len(enriched))
         return enriched
+
+    def collect_batch(
+        self,
+        collection_date: date | None = None,
+    ) -> dict[str, Any]:
+        """Run collection pipeline using Vertex AI batch inference.
+
+        Fetches RSS articles, uploads raw articles to GCS, builds a batch
+        JSONL with N+5 requests, and submits to Vertex AI.
+
+        Results are processed asynchronously by the Cloud Function when
+        the batch job completes.
+
+        Args:
+            collection_date: Date to use for collection. Defaults to today.
+
+        Returns:
+            Dictionary with batch job details (job_name, input_uri, etc.).
+        """
+        from behind_bars_pulse.ai.batch import BatchInferenceService
+
+        collection_date = collection_date or date.today()
+        log.info("starting_batch_collection", date=collection_date.isoformat())
+
+        # Fetch raw articles from RSS
+        articles = self.feed_fetcher.fetch_feed()
+        log.info("articles_fetched", count=len(articles))
+
+        if not articles:
+            log.warning("no_articles_fetched")
+            return {"status": "skipped", "message": "No articles fetched"}
+
+        batch_service = BatchInferenceService(self.settings)
+
+        # Upload raw articles to GCS (Cloud Function needs them later)
+        batch_service.upload_collector_artifacts(articles, collection_date)
+
+        # Load existing context for extraction prompts
+        context = self.storage.load_context()
+
+        existing_stories = [
+            {
+                "id": s.id,
+                "topic": s.topic,
+                "summary": s.summary,
+                "keywords": s.keywords,
+                "status": s.status,
+            }
+            for s in context.ongoing_storylines
+            if s.status != "resolved"
+        ]
+
+        existing_characters = [
+            {
+                "name": c.name,
+                "role": c.role,
+                "aliases": c.aliases,
+            }
+            for c in context.key_characters
+        ]
+
+        story_ids = [s.id for s in context.ongoing_storylines if s.status == "active"]
+
+        # Load existing events/snapshots for dedup
+        existing_events = _get_existing_events_for_dedup()
+        existing_snapshots = _get_existing_snapshots_for_dedup()
+
+        # Build batch requests
+        requests = batch_service.build_collector_batch(
+            articles=articles,
+            existing_stories=existing_stories,
+            existing_characters=existing_characters,
+            story_ids=story_ids,
+            existing_events=existing_events,
+            existing_snapshots=existing_snapshots,
+        )
+
+        # Upload JSONL and submit batch job
+        input_uri = batch_service.upload_collector_batch_input(requests, collection_date)
+        result = batch_service.submit_collector_batch_job(input_uri, collection_date)
+
+        log.info(
+            "batch_collection_submitted",
+            date=collection_date.isoformat(),
+            article_count=len(articles),
+            job_name=result.job_name,
+        )
+
+        return {
+            "status": "submitted",
+            "job_name": result.job_name,
+            "input_uri": result.input_uri,
+            "output_uri": result.output_uri,
+            "article_count": len(articles),
+            "request_count": len(requests),
+        }
 
     def _update_narrative_context(
         self,
