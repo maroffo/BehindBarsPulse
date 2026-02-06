@@ -892,6 +892,124 @@ async def api_bulletin_admin(
     )
 
 
+def _run_regenerate_embeddings() -> None:
+    """Regenerate all article and editorial comment embeddings with current model."""
+    import time
+
+    from google import genai
+    from google.genai.types import EmbedContentConfig
+    from sqlalchemy import create_engine, select, update
+    from sqlalchemy.orm import sessionmaker
+
+    from behind_bars_pulse.config import get_settings
+    from behind_bars_pulse.db.models import Article, EditorialComment
+    from behind_bars_pulse.services.newsletter_service import EMBEDDING_MODEL
+
+    settings = get_settings()
+    log.info("regenerate_embeddings_start", model=EMBEDDING_MODEL)
+
+    if not settings.gemini_api_key:
+        log.error("regenerate_embeddings_no_api_key")
+        return
+
+    client = genai.Client(api_key=settings.gemini_api_key.get_secret_value())
+
+    sync_url = settings.database_url.replace("+asyncpg", "").replace("postgresql+", "postgresql://")
+    if sync_url.startswith("postgresql://"):
+        sync_url = sync_url.replace("postgresql://", "postgresql+psycopg2://", 1)
+    engine = create_engine(sync_url)
+    Session = sessionmaker(bind=engine)
+
+    def embed(text: str, task_type: str = "RETRIEVAL_DOCUMENT") -> list[float]:
+        response = client.models.embed_content(
+            model=EMBEDDING_MODEL,
+            contents=text,
+            config=EmbedContentConfig(task_type=task_type, output_dimensionality=768),
+        )
+        return list(response.embeddings[0].values)
+
+    # Regenerate article embeddings
+    with Session() as session:
+        articles = session.execute(select(Article).order_by(Article.id)).scalars().all()
+        log.info("regenerate_articles_found", count=len(articles))
+
+        updated = 0
+        for i, article in enumerate(articles):
+            text = article.title
+            if article.summary:
+                text = f"{article.title}. {article.summary}"
+            try:
+                embedding = embed(text)
+                session.execute(
+                    update(Article).where(Article.id == article.id).values(embedding=embedding)
+                )
+                updated += 1
+                if (i + 1) % 10 == 0:
+                    log.info("regenerate_articles_progress", current=i + 1, total=len(articles))
+                if (i + 1) % 50 == 0:
+                    session.commit()
+                    time.sleep(1)
+            except Exception as e:
+                log.warning("regenerate_article_failed", article_id=article.id, error=str(e))
+        session.commit()
+        log.info("regenerate_articles_complete", updated=updated, total=len(articles))
+
+    # Regenerate editorial comment embeddings
+    with Session() as session:
+        comments = (
+            session.execute(select(EditorialComment).order_by(EditorialComment.id)).scalars().all()
+        )
+        log.info("regenerate_comments_found", count=len(comments))
+
+        updated = 0
+        for i, comment in enumerate(comments):
+            try:
+                embedding = embed(comment.content)
+                session.execute(
+                    update(EditorialComment)
+                    .where(EditorialComment.id == comment.id)
+                    .values(embedding=embedding)
+                )
+                updated += 1
+                if (i + 1) % 50 == 0:
+                    session.commit()
+                    time.sleep(1)
+            except Exception as e:
+                log.warning("regenerate_comment_failed", comment_id=comment.id, error=str(e))
+        session.commit()
+        log.info("regenerate_comments_complete", updated=updated, total=len(comments))
+
+    engine.dispose()
+    log.info("regenerate_embeddings_complete")
+
+
+@router.post("/regenerate-embeddings", response_model=TaskResponse)
+async def api_regenerate_embeddings(
+    background_tasks: BackgroundTasks,
+    admin_token: str | None = None,
+):
+    """Regenerate all article and editorial comment embeddings.
+
+    Use after changing embedding model. Runs in background.
+    Requires admin_token query parameter matching GEMINI_API_KEY.
+    """
+    from behind_bars_pulse.config import get_settings
+
+    settings = get_settings()
+    expected_token = settings.gemini_api_key.get_secret_value() if settings.gemini_api_key else None
+
+    if not admin_token or admin_token != expected_token:
+        raise HTTPException(status_code=403, detail="Invalid admin token")
+
+    log.info("api_regenerate_embeddings_triggered")
+    background_tasks.add_task(_run_regenerate_embeddings)
+
+    return TaskResponse(
+        status="accepted",
+        message="Embedding regeneration started in background",
+    )
+
+
 @router.post("/migrate", response_model=TaskResponse)
 async def api_migrate(admin_token: str | None = None):
     """Run database migrations (Alembic upgrade head).

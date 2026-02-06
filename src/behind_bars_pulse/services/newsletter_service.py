@@ -17,7 +17,7 @@ from behind_bars_pulse.models import EnrichedArticle, NewsletterContext, PressRe
 
 logger = structlog.get_logger()
 
-EMBEDDING_MODEL = "models/text-embedding-004"
+EMBEDDING_MODEL = "models/gemini-embedding-001"
 
 
 class NewsletterService:

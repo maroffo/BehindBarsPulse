@@ -6,6 +6,7 @@ import time
 
 import structlog
 from google import genai
+from google.genai.types import EmbedContentConfig
 from sqlalchemy import select, update
 
 from behind_bars_pulse.config import get_settings
@@ -14,7 +15,7 @@ from behind_bars_pulse.db.session import get_session
 
 log = structlog.get_logger()
 
-EMBEDDING_MODEL = "models/text-embedding-004"
+EMBEDDING_MODEL = "models/gemini-embedding-001"
 BATCH_SIZE = 50
 SLEEP_BETWEEN_BATCHES = 2  # seconds
 
@@ -24,6 +25,10 @@ def generate_embedding(client: genai.Client, text: str) -> list[float]:
     response = client.models.embed_content(
         model=EMBEDDING_MODEL,
         contents=text,
+        config=EmbedContentConfig(
+            task_type="RETRIEVAL_DOCUMENT",
+            output_dimensionality=768,
+        ),
     )
     return response.embeddings[0].values
 

@@ -25,7 +25,7 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 if TYPE_CHECKING:
     pass
 
-EMBEDDING_DIMENSION = 768  # text-multilingual-embedding-002
+EMBEDDING_DIMENSION = 768  # gemini-embedding-001 (MRL scaled from 3072)
 
 
 class Base(DeclarativeBase):
