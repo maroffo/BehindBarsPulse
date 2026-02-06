@@ -33,9 +33,6 @@
         {% elif result.result_type == 'editorial' %}
         <article class="result-card result-card--editorial">
             <div class="result-header">
-                {% if result.comment.category %}
-                <span class="editorial-category">{{ result.comment.category }}</span>
-                {% endif %}
                 <span class="result-type-badge result-type-badge--editorial">
                     {% if result.comment.source_type == 'bulletin' %}Bollettino{% else %}Newsletter{% endif %}
                 </span>
