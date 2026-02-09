@@ -10,6 +10,7 @@ from typing import Any
 import structlog
 from google import genai
 from google.genai import types
+from pydantic import BaseModel
 from tenacity import (
     retry,
     retry_if_exception_type,
@@ -41,6 +42,93 @@ from behind_bars_pulse.models import (
 )
 
 log = structlog.get_logger()
+
+
+# --- AI Response Schemas for Structured Output ---
+
+
+class _StoryUpdate(BaseModel):
+    id: str
+    new_summary: str = ""
+    new_keywords: list[str] = []
+    impact_score: float = 0.5
+    article_urls: list[str] = []
+
+
+class _NewStory(BaseModel):
+    topic: str
+    summary: str = ""
+    keywords: list[str] = []
+    impact_score: float = 0.5
+    article_urls: list[str] = []
+
+
+class _StoryExtractionResult(BaseModel):
+    updated_stories: list[_StoryUpdate] = []
+    new_stories: list[_NewStory] = []
+
+
+class _CharacterPosition(BaseModel):
+    stance: str = ""
+    source_url: str = ""
+
+
+class _CharacterUpdate(BaseModel):
+    name: str
+    new_position: _CharacterPosition | None = None
+
+
+class _NewCharacter(BaseModel):
+    name: str
+    role: str = ""
+    aliases: list[str] = []
+    initial_position: _CharacterPosition | None = None
+
+
+class _EntityExtractionResult(BaseModel):
+    updated_characters: list[_CharacterUpdate] = []
+    new_characters: list[_NewCharacter] = []
+
+
+class _FollowUpItem(BaseModel):
+    event: str
+    expected_date: str
+    story_id: str | None = None
+    source_url: str = ""
+
+
+class _FollowUpResult(BaseModel):
+    followups: list[_FollowUpItem] = []
+
+
+class _PrisonEventItem(BaseModel):
+    event_type: str
+    event_date: str | None = None
+    facility: str | None = None
+    region: str | None = None
+    count: int = 1
+    description: str = ""
+    source_url: str = ""
+    confidence: float = 1.0
+    is_aggregate: bool = False
+
+
+class _EventExtractionResult(BaseModel):
+    events: list[_PrisonEventItem] = []
+
+
+class _CapacitySnapshotItem(BaseModel):
+    facility: str
+    region: str | None = None
+    snapshot_date: str
+    inmates: int | None = None
+    capacity: int | None = None
+    occupancy_rate: float | None = None
+    source_url: str = ""
+
+
+class _CapacityExtractionResult(BaseModel):
+    snapshots: list[_CapacitySnapshotItem] = []
 
 
 class AIService:
@@ -575,12 +663,15 @@ class AIService:
             "existing_stories": existing_stories,
         }
 
+        schema = _StoryExtractionResult.model_json_schema()
+
         response = self._generate(
             prompt=json.dumps(prompt_data, indent=2, ensure_ascii=False),
             system_prompt=STORY_EXTRACTION_PROMPT,
+            response_schema=schema,
         )
 
-        return self._parse_json_response(response)
+        return json.loads(response)
 
     def extract_entities(
         self,
@@ -610,12 +701,15 @@ class AIService:
             "existing_characters": existing_characters,
         }
 
+        schema = _EntityExtractionResult.model_json_schema()
+
         response = self._generate(
             prompt=json.dumps(prompt_data, indent=2, ensure_ascii=False),
             system_prompt=ENTITY_EXTRACTION_PROMPT,
+            response_schema=schema,
         )
 
-        return self._parse_json_response(response)
+        return json.loads(response)
 
     def detect_followups(
         self,
@@ -645,12 +739,15 @@ class AIService:
             "existing_story_ids": story_ids,
         }
 
+        schema = _FollowUpResult.model_json_schema()
+
         response = self._generate(
             prompt=json.dumps(prompt_data, indent=2, ensure_ascii=False),
             system_prompt=FOLLOWUP_DETECTION_PROMPT,
+            response_schema=schema,
         )
 
-        return self._parse_json_response(response)
+        return json.loads(response)
 
     def extract_prison_events(
         self,
@@ -684,12 +781,15 @@ class AIService:
             "existing_events": existing_events or [],
         }
 
+        schema = _EventExtractionResult.model_json_schema()
+
         response = self._generate(
             prompt=json.dumps(prompt_data, indent=2, ensure_ascii=False),
             system_prompt=EVENT_EXTRACTION_PROMPT,
+            response_schema=schema,
         )
 
-        return self._parse_json_response(response)
+        return json.loads(response)
 
     def extract_capacity_snapshots(
         self,
@@ -723,12 +823,15 @@ class AIService:
             "existing_snapshots": existing_snapshots or [],
         }
 
+        schema = _CapacityExtractionResult.model_json_schema()
+
         response = self._generate(
             prompt=json.dumps(prompt_data, indent=2, ensure_ascii=False),
             system_prompt=CAPACITY_EXTRACTION_PROMPT,
+            response_schema=schema,
         )
 
-        return self._parse_json_response(response)
+        return json.loads(response)
 
     def generate_bulletin(
         self,

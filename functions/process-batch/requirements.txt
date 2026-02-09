@@ -6,5 +6,6 @@ cloudevents==1.*
 google-cloud-storage==2.*
 google-cloud-secret-manager==2.*
 sqlalchemy==2.*
+pgvector==0.3.*
 psycopg2-binary==2.*
 google-cloud-aiplatform>=1.38.0

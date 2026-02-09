@@ -12,7 +12,7 @@ from datetime import UTC, date, datetime, timedelta
 import functions_framework
 from cloudevents.http import CloudEvent
 from google.cloud import secretmanager, storage
-from vertexai.language_models import TextEmbeddingInput, TextEmbeddingModel
+from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     Boolean,
     Column,
@@ -30,6 +30,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import declarative_base, sessionmaker
+from vertexai.language_models import TextEmbeddingInput, TextEmbeddingModel
 
 # Database setup - global scope for connection reuse across invocations
 Base = declarative_base()
@@ -70,7 +71,7 @@ class Article(Base):
     source = Column(String(200))
     summary = Column(Text)
     published_date = Column(Date)
-    embedding = Column(JSONB)
+    embedding = Column(Vector(768))
     created_at = Column(DateTime, nullable=False, server_default=func.now())
 
 
