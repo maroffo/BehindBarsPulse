@@ -660,6 +660,7 @@ def save_enriched_articles_to_db(
             summary=enrichment.get("summary"),
             published_date=published_date,
             embedding=embeddings[i] if i < len(embeddings) else None,
+            created_at=datetime.now(UTC),
         )
         session.add(db_article)
         session.flush()
