@@ -125,16 +125,15 @@ def _run_weekly(reference_date: date) -> None:
                 .all()
             )
 
-            recipients = [
-                row.email
-                for row in session.execute(
+            recipients = list(
+                session.execute(
                     select(Subscriber.email)
                     .where(Subscriber.confirmed == True)  # noqa: E712
                     .where(Subscriber.unsubscribed_at.is_(None))
                 )
                 .scalars()
                 .all()
-            ]
+            )
 
         engine.dispose()
 
