@@ -1,7 +1,6 @@
 # ABOUTME: API routes for Cloud Scheduler automation.
 # ABOUTME: Endpoints for collect, generate, weekly, and health check.
 
-import asyncio
 from datetime import date
 from typing import Any
 
@@ -79,36 +78,65 @@ def _run_collect(collection_date: date) -> None:
 
 
 def _run_weekly(reference_date: date) -> None:
-    """Run weekly digest and send in background."""
+    """Run weekly digest and send in background.
+
+    Uses sync DB access to avoid event loop conflicts in background tasks.
+    """
     from datetime import timedelta
 
-    from behind_bars_pulse.db.models import Bulletin
-    from behind_bars_pulse.db.repository import BulletinRepository, SubscriberRepository
-    from behind_bars_pulse.db.session import get_session
+    from sqlalchemy import create_engine, select
+    from sqlalchemy.orm import sessionmaker
+
+    from behind_bars_pulse.config import get_settings
+    from behind_bars_pulse.db.models import Bulletin as BulletinORM
+    from behind_bars_pulse.db.models import Subscriber
     from behind_bars_pulse.email.sender import EmailSender
     from behind_bars_pulse.newsletter.weekly import WeeklyDigestGenerator
-    from behind_bars_pulse.services.subscriber_service import SubscriberService
 
     log.info("api_weekly_start", date=reference_date.isoformat())
 
-    generator = WeeklyDigestGenerator()
+    settings = get_settings()
+    generator = WeeklyDigestGenerator(settings)
     lookback = generator.settings.weekly_lookback_days
     week_end = reference_date
     week_start = reference_date - timedelta(days=lookback - 1)
 
-    async def load_data() -> tuple[list[Bulletin], list[str]]:
-        async with get_session() as session:
-            bulletin_repo = BulletinRepository(session)
-            bulletins = list(await bulletin_repo.list_by_date_range(week_start, week_end))
-
-            sub_repo = SubscriberRepository(session)
-            service = SubscriberService(sub_repo)
-            recipients = await service.get_active_emails()
-
-            return bulletins, recipients
-
     try:
-        bulletins, recipients = asyncio.run(load_data())
+        # Sync DB access (background tasks can't share the async engine)
+        sync_url = settings.database_url.replace("+asyncpg", "").replace(
+            "postgresql+", "postgresql+psycopg2://"
+        )
+        if sync_url.startswith("postgresql://"):
+            sync_url = sync_url.replace("postgresql://", "postgresql+psycopg2://", 1)
+        engine = create_engine(sync_url)
+        SessionLocal = sessionmaker(bind=engine)
+
+        with SessionLocal() as session:
+            bulletins = list(
+                session.execute(
+                    select(BulletinORM)
+                    .where(
+                        BulletinORM.issue_date >= week_start,
+                        BulletinORM.issue_date <= week_end,
+                    )
+                    .order_by(BulletinORM.issue_date.asc())
+                )
+                .scalars()
+                .all()
+            )
+
+            recipients = [
+                row.email
+                for row in session.execute(
+                    select(Subscriber.email)
+                    .where(Subscriber.confirmed == True)  # noqa: E712
+                    .where(Subscriber.unsubscribed_at.is_(None))
+                )
+                .scalars()
+                .all()
+            ]
+
+        engine.dispose()
 
         log.info("weekly_data_loaded", bulletins=len(bulletins), recipients=len(recipients))
 
