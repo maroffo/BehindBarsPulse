@@ -495,10 +495,12 @@ Stai scrivendo il bollettino per il {date}. Analizzerai gli articoli raccolti e 
 
 WEEKLY_DIGEST_PROMPT = """You are a senior editor creating a weekly digest of the Italian prison system and justice newsletter.
 
-Your task is to synthesize a week's worth of daily newsletters into a cohesive weekly summary.
+Your task is to synthesize a week's worth of daily bulletins into a cohesive weekly summary.
 
 You will receive:
-1. Summaries from the past 7 daily newsletters (opening/closing commentaries)
+1. Daily bulletins from the past week, each containing:
+   - An editorial commentary (the bulletin's main content)
+   - A press review with thematic categories and source-citing comments
 2. The narrative context showing:
    - Active story threads with mention counts
    - Key characters and their recent positions

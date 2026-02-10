@@ -1,8 +1,8 @@
 # ABOUTME: Tests for weekly digest generator.
-# ABOUTME: Validates weekly summary generation from daily newsletters.
+# ABOUTME: Validates weekly summary generation from daily bulletins.
 
-from datetime import date, timedelta
-from pathlib import Path
+from datetime import date
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -19,12 +19,8 @@ from behind_bars_pulse.newsletter.weekly import WeeklyDigestContent, WeeklyDiges
 
 
 @pytest.fixture
-def weekly_settings(tmp_path: Path) -> Settings:
+def weekly_settings(tmp_path) -> Settings:
     """Create settings for weekly testing."""
-    # Create previous_issues directory
-    issues_dir = tmp_path / "previous_issues"
-    issues_dir.mkdir()
-
     return Settings(
         gemini_api_key=SecretStr("test-api-key"),
         gemini_model="gemini-test",
@@ -41,27 +37,44 @@ def weekly_settings(tmp_path: Path) -> Settings:
         sender_name="Test Sender",
         bounce_email="bounce@example.com",
         default_recipient="recipient@example.com",
-        previous_issues_dir=issues_dir,
-        templates_dir=Path("src/behind_bars_pulse/email/templates"),
+        previous_issues_dir=tmp_path / "previous_issues",
+        templates_dir=tmp_path / "templates",
         data_dir=tmp_path / "data",
         weekly_lookback_days=7,
     )
 
 
 @pytest.fixture
-def sample_issue_content() -> str:
-    """Create sample newsletter content."""
-    return """⚖️⛓️BehindBars - Notizie dal mondo della giustizia e delle carceri italiane - 15.01.2025
-Title: Test Title for Newsletter
-Subtitle: Test Subtitle explaining the day's themes
-Opening Comment: This is the opening commentary with key insights.
-Closing Comment: This is the closing reflection on the day's news.
-
-Items:
-Topic: Test Category
-Test comment about the category.
-1. Test Article - https://example.com/1
-"""
+def sample_bulletins() -> list:
+    """Create sample bulletin objects (SimpleNamespace mimicking ORM)."""
+    return [
+        SimpleNamespace(
+            issue_date=date(2026, 2, 8),
+            title="Titolo Sabato",
+            subtitle="Sottotitolo sabato",
+            content="Editoriale del sabato con analisi.",
+            press_review=[
+                {"category": "Giustizia", "comment": "Commento giustizia."},
+                {"category": "Carceri", "comment": "Commento carceri."},
+            ],
+        ),
+        SimpleNamespace(
+            issue_date=date(2026, 2, 7),
+            title="Titolo Venerdì",
+            subtitle="Sottotitolo venerdì",
+            content="Editoriale del venerdì.",
+            press_review=[
+                {"category": "Riforme", "comment": "Commento riforme."},
+            ],
+        ),
+        SimpleNamespace(
+            issue_date=date(2026, 2, 6),
+            title="Titolo Giovedì",
+            subtitle=None,
+            content="Editoriale giovedì.",
+            press_review=None,
+        ),
+    ]
 
 
 @pytest.fixture
@@ -119,49 +132,49 @@ class TestWeeklyDigestContent:
 class TestWeeklyDigestGenerator:
     """Tests for WeeklyDigestGenerator."""
 
-    def test_extract_summary_from_issue(
+    def test_build_summaries_from_bulletins(
         self,
         weekly_settings: Settings,
-        sample_issue_content: str,
+        sample_bulletins: list,
     ) -> None:
-        """_extract_summary_from_issue extracts key fields."""
+        """_build_summaries_from_bulletins extracts and sorts by date."""
         generator = WeeklyDigestGenerator(weekly_settings)
-        summary = generator._extract_summary_from_issue(sample_issue_content, date(2025, 1, 15))
-
-        assert summary["date"] == "2025-01-15"
-        assert summary["title"] == "Test Title for Newsletter"
-        assert "Subtitle" in summary["subtitle"]
-        assert "opening" in summary["opening"].lower()
-        assert "closing" in summary["closing"].lower()
-
-    def test_load_daily_summaries(
-        self,
-        weekly_settings: Settings,
-        sample_issue_content: str,
-    ) -> None:
-        """_load_daily_summaries loads existing issues."""
-        # Create some test issue files
-        issues_dir = Path(weekly_settings.previous_issues_dir)
-        reference_date = date(2025, 1, 15)
-
-        for i in range(3):
-            issue_date = reference_date - timedelta(days=i)
-            file_name = f"{issue_date.strftime('%Y%m%d')}_issue.txt"
-            (issues_dir / file_name).write_text(sample_issue_content)
-
-        generator = WeeklyDigestGenerator(weekly_settings)
-        summaries = generator._load_daily_summaries(reference_date, 7)
+        summaries = generator._build_summaries_from_bulletins(sample_bulletins)
 
         assert len(summaries) == 3
-        # Should be sorted oldest first
-        assert summaries[0]["date"] == "2025-01-13"
+        # Sorted ascending by date
+        assert summaries[0]["date"] == "2026-02-06"
+        assert summaries[1]["date"] == "2026-02-07"
+        assert summaries[2]["date"] == "2026-02-08"
 
-    def test_load_daily_summaries_empty_dir(self, weekly_settings: Settings) -> None:
-        """_load_daily_summaries returns empty list when no issues exist."""
+    def test_build_summaries_maps_fields(
+        self,
+        weekly_settings: Settings,
+        sample_bulletins: list,
+    ) -> None:
+        """_build_summaries_from_bulletins maps all bulletin fields correctly."""
         generator = WeeklyDigestGenerator(weekly_settings)
-        summaries = generator._load_daily_summaries(date(2025, 1, 15), 7)
+        summaries = generator._build_summaries_from_bulletins(sample_bulletins)
 
-        assert summaries == []
+        saturday = summaries[2]  # Feb 8
+        assert saturday["title"] == "Titolo Sabato"
+        assert saturday["subtitle"] == "Sottotitolo sabato"
+        assert saturday["editorial"] == "Editoriale del sabato con analisi."
+        assert len(saturday["press_review"]) == 2
+        assert saturday["press_review"][0]["category"] == "Giustizia"
+
+    def test_build_summaries_handles_null_fields(
+        self,
+        weekly_settings: Settings,
+        sample_bulletins: list,
+    ) -> None:
+        """_build_summaries_from_bulletins handles None subtitle and press_review."""
+        generator = WeeklyDigestGenerator(weekly_settings)
+        summaries = generator._build_summaries_from_bulletins(sample_bulletins)
+
+        thursday = summaries[0]  # Feb 6
+        assert thursday["subtitle"] == ""
+        assert thursday["press_review"] == []
 
     def test_build_prompt_data(
         self,
@@ -172,17 +185,24 @@ class TestWeeklyDigestGenerator:
         generator = WeeklyDigestGenerator(weekly_settings)
 
         daily_summaries = [
-            {"date": "2025-01-15", "title": "Test", "opening": "Test", "closing": "Test"}
+            {
+                "date": "2026-02-08",
+                "title": "Test",
+                "subtitle": "",
+                "editorial": "Editorial text",
+                "press_review": [{"category": "Cat", "comment": "Comment"}],
+            }
         ]
 
         prompt_data = generator._build_prompt_data(
             daily_summaries,
             sample_narrative_context,
-            date(2025, 1, 15),
+            date(2026, 2, 8),
         )
 
         assert "daily_summaries" in prompt_data
         assert len(prompt_data["daily_summaries"]) == 1
+        assert prompt_data["daily_summaries"][0]["editorial"] == "Editorial text"
         assert "narrative_context" in prompt_data
         assert len(prompt_data["narrative_context"]["top_stories"]) == 1
         assert prompt_data["narrative_context"]["top_stories"][0]["topic"] == "Decreto Carceri"
@@ -194,10 +214,10 @@ class TestWeeklyDigestGenerator:
         mock_ai_class: MagicMock,
         mock_storage_class: MagicMock,
         weekly_settings: Settings,
-        sample_issue_content: str,
+        sample_bulletins: list,
         sample_narrative_context: NarrativeContext,
     ) -> None:
-        """generate creates weekly digest content."""
+        """generate creates weekly digest content from bulletins."""
         # Setup mock AI
         mock_ai = MagicMock()
         mock_ai._generate.return_value = """{
@@ -216,35 +236,25 @@ class TestWeeklyDigestGenerator:
         mock_storage.load_context.return_value = sample_narrative_context
         mock_storage_class.return_value = mock_storage
 
-        # Create test issues
-        issues_dir = Path(weekly_settings.previous_issues_dir)
-        reference_date = date(2025, 1, 15)
-        for i in range(3):
-            issue_date = reference_date - timedelta(days=i)
-            file_name = f"{issue_date.strftime('%Y%m%d')}_issue.txt"
-            (issues_dir / file_name).write_text(sample_issue_content)
-
         generator = WeeklyDigestGenerator(weekly_settings)
-        content = generator.generate(reference_date=reference_date)
+        content = generator.generate(
+            bulletins=sample_bulletins,
+            reference_date=date(2026, 2, 8),
+        )
 
         assert content.weekly_title == "Weekly Test Title"
         assert len(content.narrative_arcs) == 1
 
-    def test_generate_raises_when_no_dailies(
+    def test_generate_raises_when_no_bulletins(
         self,
         weekly_settings: Settings,
-        sample_narrative_context: NarrativeContext,
     ) -> None:
-        """generate raises ValueError when no daily newsletters found."""
-        with patch("behind_bars_pulse.newsletter.weekly.NarrativeStorage") as mock_storage_class:
-            mock_storage = MagicMock()
-            mock_storage.load_context.return_value = sample_narrative_context
-            mock_storage_class.return_value = mock_storage
-
+        """generate raises ValueError when no bulletins provided."""
+        with patch("behind_bars_pulse.newsletter.weekly.NarrativeStorage"):
             generator = WeeklyDigestGenerator(weekly_settings)
 
-            with pytest.raises(ValueError, match="No daily newsletters"):
-                generator.generate(reference_date=date(2025, 1, 15))
+            with pytest.raises(ValueError, match="No bulletins found"):
+                generator.generate(bulletins=[], reference_date=date(2026, 2, 8))
 
     def test_build_context(
         self,

@@ -945,6 +945,15 @@ class BulletinRepository:
         )
         return result.scalars().all()
 
+    async def list_by_date_range(self, start_date: date, end_date: date) -> Sequence[Bulletin]:
+        """List bulletins within a date range, ordered by date ascending."""
+        result = await self.session.execute(
+            select(Bulletin)
+            .where(Bulletin.issue_date >= start_date, Bulletin.issue_date <= end_date)
+            .order_by(Bulletin.issue_date.asc())
+        )
+        return result.scalars().all()
+
     async def count(self) -> int:
         """Count total bulletins."""
         result = await self.session.execute(select(func.count(Bulletin.id)))

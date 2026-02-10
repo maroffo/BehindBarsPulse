@@ -78,59 +78,12 @@ def _run_collect(collection_date: date) -> None:
         log.exception("api_collect_failed")
 
 
-def _run_generate(collection_date: date) -> None:
-    """Run newsletter generation in background."""
-    from behind_bars_pulse.email.sender import EmailSender
-    from behind_bars_pulse.newsletter.generator import NewsletterGenerator
-    from behind_bars_pulse.services.newsletter_service import NewsletterService
-
-    log.info("api_generate_start", date=collection_date.isoformat())
-    try:
-        with NewsletterGenerator() as generator:
-            newsletter_content, press_review, enriched_articles = generator.generate(
-                collection_date=collection_date,
-                days_back=7,
-                first_issue=False,
-            )
-
-            today_str = collection_date.strftime("%d.%m.%Y")
-            context = generator.build_context(newsletter_content, press_review, today_str)
-
-            # Save preview to files/GCS
-            sender = EmailSender()
-            html_path = sender.save_preview(context, issue_date=collection_date)
-
-            # Read rendered content for DB storage
-            html_content = html_path.read_text(encoding="utf-8") if html_path.exists() else None
-            txt_path = html_path.with_suffix(".txt").with_name(
-                html_path.name.replace(".html", ".txt")
-            )
-            txt_content = txt_path.read_text(encoding="utf-8") if txt_path.exists() else None
-
-            # Save to database
-            newsletter_service = NewsletterService()
-            asyncio.run(
-                newsletter_service.save_newsletter(
-                    context=context,
-                    enriched_articles=list(enriched_articles.values()),
-                    press_review=press_review,
-                    html_content=html_content,
-                    txt_content=txt_content,
-                    issue_date=collection_date,
-                    generate_embeddings=False,  # Articles already have embeddings from collect
-                )
-            )
-
-        log.info("api_generate_complete")
-    except Exception:
-        log.exception("api_generate_failed")
-
-
 def _run_weekly(reference_date: date) -> None:
     """Run weekly digest and send in background."""
     from datetime import timedelta
 
-    from behind_bars_pulse.db.repository import SubscriberRepository
+    from behind_bars_pulse.db.models import Bulletin
+    from behind_bars_pulse.db.repository import BulletinRepository, SubscriberRepository
     from behind_bars_pulse.db.session import get_session
     from behind_bars_pulse.email.sender import EmailSender
     from behind_bars_pulse.newsletter.weekly import WeeklyDigestGenerator
@@ -138,22 +91,33 @@ def _run_weekly(reference_date: date) -> None:
 
     log.info("api_weekly_start", date=reference_date.isoformat())
 
-    async def get_recipients() -> list[str]:
+    generator = WeeklyDigestGenerator()
+    lookback = generator.settings.weekly_lookback_days
+    week_end = reference_date
+    week_start = reference_date - timedelta(days=lookback - 1)
+
+    async def load_data() -> tuple[list[Bulletin], list[str]]:
         async with get_session() as session:
-            repo = SubscriberRepository(session)
-            service = SubscriberService(repo)
-            return await service.get_active_emails()
+            bulletin_repo = BulletinRepository(session)
+            bulletins = list(await bulletin_repo.list_by_date_range(week_start, week_end))
+
+            sub_repo = SubscriberRepository(session)
+            service = SubscriberService(sub_repo)
+            recipients = await service.get_active_emails()
+
+            return bulletins, recipients
 
     try:
-        generator = WeeklyDigestGenerator()
-        content = generator.generate(reference_date=reference_date)
+        bulletins, recipients = asyncio.run(load_data())
 
-        week_end = reference_date
-        week_start = reference_date - timedelta(days=generator.settings.weekly_lookback_days - 1)
+        log.info("weekly_data_loaded", bulletins=len(bulletins), recipients=len(recipients))
+
+        if not bulletins:
+            log.warning("api_weekly_no_bulletins")
+            return
+
+        content = generator.generate(bulletins=bulletins, reference_date=reference_date)
         context = generator.build_context(content, week_start, week_end)
-
-        # Get recipients from database
-        recipients = asyncio.run(get_recipients())
 
         if not recipients:
             log.warning("api_weekly_no_subscribers")
@@ -185,27 +149,6 @@ async def api_collect(
     return TaskResponse(
         status="accepted",
         message=f"Collection started for {target_date.isoformat()}",
-    )
-
-
-@router.post("/generate", response_model=TaskResponse)
-async def api_generate(
-    background_tasks: BackgroundTasks,
-    _verified: OIDCVerified,
-    collection_date: str | None = None,
-):
-    """Trigger daily newsletter generation (archive only, no send).
-
-    This endpoint is called by Cloud Scheduler daily after collect.
-    """
-    target_date = date.fromisoformat(collection_date) if collection_date else date.today()
-
-    log.info("api_generate_triggered", date=target_date.isoformat())
-    background_tasks.add_task(_run_generate, target_date)
-
-    return TaskResponse(
-        status="accepted",
-        message=f"Generation started for {target_date.isoformat()}",
     )
 
 

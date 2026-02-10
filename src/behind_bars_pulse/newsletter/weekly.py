@@ -1,9 +1,8 @@
 # ABOUTME: Weekly digest generator for BehindBarsPulse.
-# ABOUTME: Synthesizes daily newsletters into a weekly summary using narrative context.
+# ABOUTME: Synthesizes daily bulletins into a weekly summary using narrative context.
 
 import json
 from datetime import date, timedelta
-from pathlib import Path
 from typing import Any
 
 import structlog
@@ -37,7 +36,7 @@ class WeeklyDigestContent:
 
 
 class WeeklyDigestGenerator:
-    """Generates weekly digest from daily newsletters and narrative context."""
+    """Generates weekly digest from daily bulletins and narrative context."""
 
     def __init__(self, settings: Settings | None = None) -> None:
         self.settings = settings or get_settings()
@@ -46,32 +45,30 @@ class WeeklyDigestGenerator:
 
     def generate(
         self,
-        lookback_days: int | None = None,
+        bulletins: list[Any],
         reference_date: date | None = None,
     ) -> WeeklyDigestContent:
-        """Generate weekly digest content.
+        """Generate weekly digest content from daily bulletins.
 
         Args:
-            lookback_days: Number of days to include. Defaults to settings value.
+            bulletins: List of Bulletin ORM objects from the past week.
             reference_date: End date of the period. Defaults to today.
 
         Returns:
             WeeklyDigestContent with generated weekly summary.
         """
-        lookback_days = lookback_days or self.settings.weekly_lookback_days
         reference_date = reference_date or date.today()
 
         log.info(
             "generating_weekly_digest",
-            lookback_days=lookback_days,
+            bulletin_count=len(bulletins),
             reference_date=reference_date.isoformat(),
         )
 
-        # Load daily newsletter summaries
-        daily_summaries = self._load_daily_summaries(reference_date, lookback_days)
-        if not daily_summaries:
-            raise ValueError("No daily newsletters found for weekly digest")
+        if not bulletins:
+            raise ValueError("No bulletins found for weekly digest")
 
+        daily_summaries = self._build_summaries_from_bulletins(bulletins)
         log.info("daily_summaries_loaded", count=len(daily_summaries))
 
         # Load narrative context
@@ -101,72 +98,42 @@ class WeeklyDigestGenerator:
             upcoming_events=result.get("upcoming_events", []),
         )
 
-    def _load_daily_summaries(
+    def _build_summaries_from_bulletins(
         self,
-        reference_date: date,
-        lookback_days: int,
+        bulletins: list[Any],
     ) -> list[dict[str, Any]]:
-        """Load summaries from archived daily newsletters.
+        """Build daily summary dicts from Bulletin ORM objects.
 
         Args:
-            reference_date: End date of the period.
-            lookback_days: Number of days to look back.
+            bulletins: List of Bulletin objects with issue_date, title,
+                subtitle, content, press_review fields.
 
         Returns:
-            List of daily summary dicts with date and content.
+            List of summary dicts sorted by date ascending.
         """
         summaries = []
-        issues_dir = Path(self.settings.previous_issues_dir)
+        for bulletin in bulletins:
+            press_categories = []
+            if bulletin.press_review:
+                for cat in bulletin.press_review:
+                    press_categories.append(
+                        {
+                            "category": cat.get("category", ""),
+                            "comment": cat.get("comment", ""),
+                        }
+                    )
 
-        if not issues_dir.exists():
-            return summaries
-
-        for i in range(lookback_days):
-            issue_date = reference_date - timedelta(days=i)
-            file_name = f"{issue_date.strftime('%Y%m%d')}_issue.txt"
-            file_path = issues_dir / file_name
-
-            if file_path.exists():
-                content = file_path.read_text(encoding="utf-8")
-                summary = self._extract_summary_from_issue(content, issue_date)
-                summaries.append(summary)
-                log.debug("daily_summary_loaded", date=issue_date.isoformat())
+            summaries.append(
+                {
+                    "date": bulletin.issue_date.isoformat(),
+                    "title": bulletin.title,
+                    "subtitle": bulletin.subtitle or "",
+                    "editorial": bulletin.content,
+                    "press_review": press_categories,
+                }
+            )
 
         return sorted(summaries, key=lambda x: x["date"])
-
-    def _extract_summary_from_issue(self, content: str, issue_date: date) -> dict[str, Any]:
-        """Extract key information from a daily newsletter.
-
-        Args:
-            content: Full newsletter text content.
-            issue_date: Date of the newsletter.
-
-        Returns:
-            Dictionary with date and extracted summary fields.
-        """
-        lines = content.split("\n")
-        title = ""
-        subtitle = ""
-        opening = ""
-        closing = ""
-
-        for line in lines:
-            if line.startswith("Title:"):
-                title = line[6:].strip()
-            elif line.startswith("Subtitle:"):
-                subtitle = line[9:].strip()
-            elif line.startswith("Opening Comment:"):
-                opening = line[16:].strip()
-            elif line.startswith("Closing Comment:"):
-                closing = line[16:].strip()
-
-        return {
-            "date": issue_date.isoformat(),
-            "title": title,
-            "subtitle": subtitle,
-            "opening": opening,
-            "closing": closing,
-        }
 
     def _build_prompt_data(
         self,
@@ -177,7 +144,7 @@ class WeeklyDigestGenerator:
         """Build the prompt data for weekly digest generation.
 
         Args:
-            daily_summaries: List of daily newsletter summaries.
+            daily_summaries: List of daily bulletin summaries.
             narrative_context: Current narrative context.
             reference_date: Reference date for the digest.
 
