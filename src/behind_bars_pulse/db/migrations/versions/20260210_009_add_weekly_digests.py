@@ -22,29 +22,28 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    op.create_table(
-        "weekly_digests",
-        sa.Column("id", sa.Integer, primary_key=True, autoincrement=True),
-        sa.Column("week_start", sa.Date, nullable=False),
-        sa.Column("week_end", sa.Date, nullable=False, unique=True),
-        sa.Column("title", sa.String(500), nullable=False),
-        sa.Column("subtitle", sa.String(500), nullable=True),
-        sa.Column("narrative_arcs", JSONB, nullable=True),
-        sa.Column("weekly_reflection", sa.Text, nullable=True),
-        sa.Column("upcoming_events", JSONB, nullable=True),
-        sa.Column(
-            "created_at",
-            sa.DateTime(timezone=True),
-            nullable=False,
-            server_default=sa.func.now(),
-        ),
-    )
-    op.create_index("ix_weekly_digests_week_end", "weekly_digests", ["week_end"])
-    op.create_index(
-        "ix_weekly_digests_week_end_desc",
-        "weekly_digests",
-        [sa.text("week_end DESC")],
-    )
+    # Use IF NOT EXISTS to handle table already created outside Alembic
+    op.execute("""
+        CREATE TABLE IF NOT EXISTS weekly_digests (
+            id SERIAL PRIMARY KEY,
+            week_start DATE NOT NULL,
+            week_end DATE NOT NULL UNIQUE,
+            title VARCHAR(500) NOT NULL,
+            subtitle VARCHAR(500),
+            narrative_arcs JSONB,
+            weekly_reflection TEXT,
+            upcoming_events JSONB,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        )
+    """)
+    op.execute("""
+        CREATE INDEX IF NOT EXISTS ix_weekly_digests_week_end
+        ON weekly_digests (week_end)
+    """)
+    op.execute("""
+        CREATE INDEX IF NOT EXISTS ix_weekly_digests_week_end_desc
+        ON weekly_digests (week_end DESC)
+    """)
 
 
 def downgrade() -> None:
