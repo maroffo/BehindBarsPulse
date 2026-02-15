@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block title %}Archivio Digest Settimanali - BehindBars{% endblock %}
+
+{% block content %}
+<section class="archive">
+    <header class="archive-header">
+        <h1>Digest Settimanale</h1>
+        <p class="archive-subtitle">Riepilogo settimanale delle notizie dal sistema penitenziario italiano</p>
+    </header>
+
+    {% if digests %}
+    <div class="archive-list">
+        {% for digest in digests %}
+        <article class="archive-item">
+            <a href="/digest/{{ digest.week_end.strftime('%Y-%m-%d') }}" class="archive-item-link">
+                <time class="archive-item-date" datetime="{{ digest.week_end }}">
+                    {{ digest.week_start.strftime('%d %B') }} - {{ digest.week_end.strftime('%d %B %Y') }}
+                </time>
+                <h2 class="archive-item-title">{{ digest.title }}</h2>
+                {% if digest.subtitle %}
+                <p class="archive-item-subtitle">{{ digest.subtitle }}</p>
+                {% endif %}
+            </a>
+        </article>
+        {% endfor %}
+    </div>
+
+    <nav class="pagination">
+        {% if page > 1 %}
+        <a href="?page={{ page - 1 }}" class="pagination-prev">&larr; Precedente</a>
+        {% endif %}
+        <span class="pagination-current">Pagina {{ page }}</span>
+        {% if has_more %}
+        <a href="?page={{ page + 1 }}" class="pagination-next">Successiva &rarr;</a>
+        {% endif %}
+    </nav>
+    {% else %}
+    <div class="empty-state">
+        <p>Nessun digest disponibile al momento.</p>
+        <p>I digest settimanali vengono generati ogni domenica.</p>
+    </div>
+    {% endif %}
+</section>
+{% endblock %}

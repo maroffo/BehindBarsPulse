@@ -202,6 +202,35 @@ class WeeklyDigestGenerator:
             "reference_date": reference_date.isoformat(),
         }
 
+    def build_email_context(
+        self,
+        content: WeeklyDigestContent,
+        week_start: date,
+        week_end: date,
+    ) -> dict[str, Any]:
+        """Build email template context for weekly digest.
+
+        Args:
+            content: Generated weekly digest content.
+            week_start: Start date of the week.
+            week_end: End date of the week.
+
+        Returns:
+            Dict with template variables for weekly_digest_template.
+        """
+        week_str = f"{week_start.strftime('%d.%m')} - {week_end.strftime('%d.%m.%Y')}"
+        subject = f"BehindBars - Digest Settimanale - {week_str}"
+
+        return {
+            "subject": subject,
+            "week_str": week_str,
+            "weekly_title": content.weekly_title,
+            "weekly_subtitle": content.weekly_subtitle,
+            "narrative_arcs": content.narrative_arcs,
+            "weekly_reflection": content.weekly_reflection,
+            "upcoming_events": content.upcoming_events,
+        }
+
     def build_context(
         self,
         content: WeeklyDigestContent,

@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+
+{% block title %}{{ digest.title }} - Digest Settimanale - BehindBars{% endblock %}
+
+{% block content %}
+<article class="bulletin">
+    <nav class="breadcrumb">
+        <a href="/edizioni/digest">&larr; Archivio Digest</a>
+    </nav>
+
+    <header class="bulletin-header">
+        <span class="bulletin-badge digest-badge">Digest Settimanale</span>
+        <time class="bulletin-date" datetime="{{ digest.week_end }}">
+            {{ digest.week_start.strftime('%d %B') }} - {{ digest.week_end.strftime('%d %B %Y') }}
+        </time>
+        <h1 class="bulletin-title">{{ digest.title }}</h1>
+        {% if digest.subtitle %}
+        <p class="bulletin-subtitle">{{ digest.subtitle }}</p>
+        {% endif %}
+    </header>
+
+    {% if digest.narrative_arcs %}
+    <section class="digest-arcs">
+        {% for arc in digest.narrative_arcs %}
+        <div class="digest-arc">
+            <h3 class="category-title">{{ arc.arc_title }}</h3>
+            <div class="bulletin-content editorial">
+                {{ arc.summary | markdown }}
+            </div>
+        </div>
+        {% if not loop.last %}
+        <hr class="divider">
+        {% endif %}
+        {% endfor %}
+    </section>
+    {% endif %}
+
+    {% if digest.weekly_reflection %}
+    <hr class="divider-strong">
+    <section class="digest-reflection">
+        <h2 class="section-title">Riflessione Settimanale</h2>
+        <div class="bulletin-content editorial">
+            {{ digest.weekly_reflection | markdown }}
+        </div>
+    </section>
+    {% endif %}
+
+    {% if digest.upcoming_events %}
+    <hr class="divider">
+    <section class="digest-events">
+        <h2 class="section-title">Eventi in Arrivo</h2>
+        <ul class="digest-events-list">
+            {% for event in digest.upcoming_events %}
+            <li>
+                {{ event.event }}
+                {% if event.date %}
+                <span class="digest-event-date">({{ event.date }})</span>
+                {% endif %}
+            </li>
+            {% endfor %}
+        </ul>
+    </section>
+    {% endif %}
+
+    <nav class="bulletin-nav">
+        {% if prev_digest %}
+        <a href="/digest/{{ prev_digest.week_end.strftime('%Y-%m-%d') }}" class="nav-prev">
+            &larr; {{ prev_digest.week_start.strftime('%d/%m') }} - {{ prev_digest.week_end.strftime('%d/%m/%Y') }}
+        </a>
+        {% endif %}
+        {% if next_digest %}
+        <a href="/digest/{{ next_digest.week_end.strftime('%Y-%m-%d') }}" class="nav-next">
+            {{ next_digest.week_start.strftime('%d/%m') }} - {{ next_digest.week_end.strftime('%d/%m/%Y') }} &rarr;
+        </a>
+        {% endif %}
+    </nav>
+</article>
+
+<style>
+.digest-badge {
+    background-color: var(--color-text-light) !important;
+}
+.digest-arc {
+    margin-bottom: var(--spacing-lg);
+}
+.digest-events-list {
+    list-style: disc;
+    padding-left: var(--spacing-lg);
+}
+.digest-events-list li {
+    margin-bottom: var(--spacing-sm);
+    line-height: 1.6;
+}
+.digest-event-date {
+    color: var(--color-text-muted);
+    font-size: 14px;
+}
+</style>
+{% endblock %}

@@ -1,4 +1,4 @@
-# ABOUTME: RSS feed routes for bulletins and newsletters.
+# ABOUTME: RSS feed routes for bulletins, digests, and newsletters.
 # ABOUTME: Provides RSS 2.0 feeds for content syndication.
 
 from datetime import UTC, datetime
@@ -7,7 +7,7 @@ from xml.etree.ElementTree import Element, SubElement, tostring
 from fastapi import APIRouter, Request
 from fastapi.responses import Response
 
-from behind_bars_pulse.web.dependencies import BulletinRepo, NewsletterRepo
+from behind_bars_pulse.web.dependencies import BulletinRepo, NewsletterRepo, WeeklyDigestRepo
 
 router = APIRouter(prefix="/feed")
 
@@ -128,6 +128,40 @@ async def newsletter_feed(
     xml = _build_rss_feed(
         title="Newsletter - BehindBars",
         description="Rassegna stampa settimanale dal sistema penitenziario italiano",
+        link=base_url,
+        items=items,
+    )
+
+    return Response(content=xml, media_type="application/rss+xml; charset=utf-8")
+
+
+@router.get("/digest", response_class=Response)
+async def digest_feed(
+    request: Request,
+    digest_repo: WeeklyDigestRepo,
+):
+    """RSS feed for weekly digests."""
+    base_url = _get_base_url(request)
+    digests = await digest_repo.list_recent(limit=20)
+
+    items = []
+    for d in digests:
+        pub_date = datetime.combine(d.week_end, datetime.min.time(), tzinfo=UTC)
+        week_str = f"{d.week_start.strftime('%d %B')} - {d.week_end.strftime('%d %B %Y')}"
+        items.append(
+            {
+                "title": d.title or f"Digest Settimanale - {week_str}",
+                "link": f"{base_url}/digest/{d.week_end.isoformat()}",
+                "description": d.subtitle
+                or "Riepilogo settimanale delle notizie dal sistema penitenziario italiano",
+                "pub_date": pub_date.strftime("%a, %d %b %Y %H:%M:%S +0000"),
+                "guid": f"{base_url}/digest/{d.week_end.isoformat()}",
+            }
+        )
+
+    xml = _build_rss_feed(
+        title="Digest Settimanale - BehindBars",
+        description="Riepilogo settimanale delle notizie dal sistema penitenziario italiano",
         link=base_url,
         items=items,
     )

@@ -14,9 +14,10 @@ from behind_bars_pulse.db.repository import (
     EditorialCommentRepository,
     NarrativeRepository,
     NewsletterRepository,
+    WeeklyDigestRepository,
 )
 from behind_bars_pulse.db.session import get_db_session
-from behind_bars_pulse.services.newsletter_service import NewsletterService
+from behind_bars_pulse.services.embedding_service import EmbeddingService
 
 # Type aliases for common dependencies
 DbSession = Annotated[AsyncSession, Depends(get_db_session)]
@@ -60,12 +61,12 @@ async def get_narrative_repository(
 NarrativeRepo = Annotated[NarrativeRepository, Depends(get_narrative_repository)]
 
 
-def get_newsletter_service() -> NewsletterService:
-    """Get newsletter service instance."""
-    return NewsletterService()
+def get_embedding_service() -> EmbeddingService:
+    """Get embedding service instance."""
+    return EmbeddingService()
 
 
-NewsletterSvc = Annotated[NewsletterService, Depends(get_newsletter_service)]
+EmbeddingSvc = Annotated[EmbeddingService, Depends(get_embedding_service)]
 
 
 async def get_bulletin_repository(
@@ -88,3 +89,13 @@ async def get_editorial_comment_repository(
 EditorialCommentRepo = Annotated[
     EditorialCommentRepository, Depends(get_editorial_comment_repository)
 ]
+
+
+async def get_weekly_digest_repository(
+    session: DbSession,
+) -> AsyncGenerator[WeeklyDigestRepository]:
+    """Get weekly digest repository with session."""
+    yield WeeklyDigestRepository(session)
+
+
+WeeklyDigestRepo = Annotated[WeeklyDigestRepository, Depends(get_weekly_digest_repository)]

@@ -19,6 +19,7 @@ from behind_bars_pulse.db.models import (
     PrisonEvent,
     StoryThread,
     Subscriber,
+    WeeklyDigest,
 )
 
 
@@ -1113,3 +1114,69 @@ class EditorialCommentRepository:
             .where(EditorialComment.source_id == source_id)
         )
         return result.rowcount
+
+
+class WeeklyDigestRepository:
+    """Repository for WeeklyDigest CRUD operations."""
+
+    def __init__(self, session: AsyncSession):
+        self.session = session
+
+    async def save(self, digest: WeeklyDigest) -> WeeklyDigest:
+        """Save a weekly digest (insert or update)."""
+        self.session.add(digest)
+        await self.session.flush()
+        return digest
+
+    async def get_by_week_end(self, week_end: date) -> WeeklyDigest | None:
+        """Get digest by week end date."""
+        result = await self.session.execute(
+            select(WeeklyDigest).where(WeeklyDigest.week_end == week_end)
+        )
+        return result.scalar_one_or_none()
+
+    async def get_latest(self) -> WeeklyDigest | None:
+        """Get the most recent weekly digest."""
+        result = await self.session.execute(
+            select(WeeklyDigest).order_by(WeeklyDigest.week_end.desc()).limit(1)
+        )
+        return result.scalar_one_or_none()
+
+    async def list_recent(self, limit: int = 10, offset: int = 0) -> Sequence[WeeklyDigest]:
+        """List recent digests ordered by week_end descending."""
+        result = await self.session.execute(
+            select(WeeklyDigest).order_by(WeeklyDigest.week_end.desc()).limit(limit).offset(offset)
+        )
+        return result.scalars().all()
+
+    async def get_previous(self, week_end: date) -> WeeklyDigest | None:
+        """Get the digest before the given week_end."""
+        result = await self.session.execute(
+            select(WeeklyDigest)
+            .where(WeeklyDigest.week_end < week_end)
+            .order_by(WeeklyDigest.week_end.desc())
+            .limit(1)
+        )
+        return result.scalar_one_or_none()
+
+    async def get_next(self, week_end: date) -> WeeklyDigest | None:
+        """Get the digest after the given week_end."""
+        result = await self.session.execute(
+            select(WeeklyDigest)
+            .where(WeeklyDigest.week_end > week_end)
+            .order_by(WeeklyDigest.week_end.asc())
+            .limit(1)
+        )
+        return result.scalar_one_or_none()
+
+    async def count(self) -> int:
+        """Count total weekly digests."""
+        result = await self.session.execute(select(func.count(WeeklyDigest.id)))
+        return result.scalar_one()
+
+    async def delete_by_week_end(self, week_end: date) -> bool:
+        """Delete digest by week_end date. Returns True if deleted."""
+        result = await self.session.execute(
+            delete(WeeklyDigest).where(WeeklyDigest.week_end == week_end)
+        )
+        return result.rowcount > 0

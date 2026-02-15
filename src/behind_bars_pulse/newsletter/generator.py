@@ -47,11 +47,9 @@ def _load_articles_from_db(end_date: date, days_back: int = 7) -> dict[str, Enri
             return None
 
         # Use sync database connection to avoid event loop issues
-        sync_url = settings.database_url.replace("+asyncpg", "").replace(
-            "postgresql+", "postgresql://"
-        )
-        if sync_url.startswith("postgresql://"):
-            sync_url = sync_url.replace("postgresql://", "postgresql+psycopg2://", 1)
+        from behind_bars_pulse.config import make_sync_url
+
+        sync_url = make_sync_url(settings.database_url)
 
         engine = create_engine(sync_url)
         SessionLocal = sessionmaker(bind=engine)

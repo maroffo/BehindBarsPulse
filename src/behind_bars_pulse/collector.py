@@ -38,9 +38,9 @@ def _get_sync_db_session():
         return None
 
     # Convert async URL to sync psycopg2 URL
-    sync_url = settings.database_url.replace("+asyncpg", "").replace("postgresql+", "postgresql://")
-    if sync_url.startswith("postgresql://"):
-        sync_url = sync_url.replace("postgresql://", "postgresql+psycopg2://", 1)
+    from behind_bars_pulse.config import make_sync_url
+
+    sync_url = make_sync_url(settings.database_url)
 
     engine = create_engine(sync_url)
     Session = sessionmaker(bind=engine)
@@ -356,14 +356,14 @@ def _save_articles_to_db(
         from sqlalchemy import select
 
         from behind_bars_pulse.db.models import Article as DbArticle
-        from behind_bars_pulse.services.newsletter_service import NewsletterService
+        from behind_bars_pulse.services.embedding_service import EmbeddingService
 
         saved_count = 0
         skipped_count = 0
         url_to_id: dict[str, int] = {}
 
         try:
-            svc = NewsletterService()
+            svc = EmbeddingService()
 
             for url, article in articles.items():
                 # Check if article already exists

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-BehindBarsPulse is an automated Italian-language newsletter about the Italian prison system and justice reform. It combines RSS feed processing with LLM-based content generation (Google Gemini API) to produce daily and weekly newsletters with narrative continuity, distributed via AWS SES.
+BehindBarsPulse is an automated Italian-language newsletter about the Italian prison system and justice reform. It combines RSS feed processing with LLM-based content generation (Google Gemini API) to produce daily bulletins and weekly digests with narrative continuity, distributed via AWS SES.
 
 ## Running the Project
 
@@ -15,13 +15,7 @@ uv sync
 # Collect and enrich articles (updates narrative context)
 uv run python -m behind_bars_pulse collect
 
-# Generate newsletter (daily, archives without sending)
-uv run python -m behind_bars_pulse generate
-
-# Generate for a specific date
-uv run python -m behind_bars_pulse generate --date 2026-01-07 --days-back 7
-
-# Send weekly digest to subscribers
+# Send weekly digest to subscribers (reads daily bulletins from DB)
 uv run python -m behind_bars_pulse weekly
 uv run python -m behind_bars_pulse weekly --dry-run  # Preview without sending
 
@@ -48,7 +42,8 @@ RSS Feeds → Fetch/Extract → Enrich (AI) → Extract Stories/Characters
                                                 ↓
                                    [DB + Embeddings if configured]
                                                 ↓
-Generate Press Review (AI) → Generate Content (AI) → Review (AI) → Render → Send
+              Daily Bulletin: Press Review (AI) → Editorial (AI) → Review (AI) → DB → Web
+              Weekly Digest:  Bulletins from DB → Synthesize (AI) → Render → Email (SES)
 ```
 
 ### Project Structure
@@ -56,14 +51,14 @@ Generate Press Review (AI) → Generate Content (AI) → Review (AI) → Render 
 ```
 BehindBarsPulse/
 ├── pyproject.toml           # Project config, dependencies
-├── previous_issues/         # Archived newsletters (AI context)
+├── previous_issues/         # Archived newsletter previews
 ├── data/
 │   ├── narrative_context.json    # Story/character tracking
 │   └── collected_articles/       # Daily article collections
 ├── src/behind_bars_pulse/
 │   ├── __main__.py          # CLI entry point
 │   ├── config.py            # Pydantic Settings
-│   ├── models.py            # Article, NewsletterContent, PressReview
+│   ├── models.py            # Article, NewsletterContent, PressReview, NewsletterContext
 │   ├── collector.py         # Daily article collection + DB save
 │   ├── ai/
 │   │   ├── service.py       # AIService (Gemini structured output)
@@ -72,7 +67,8 @@ BehindBarsPulse/
 │   │   ├── models.py        # StoryThread, KeyCharacter, FollowUp
 │   │   └── storage.py       # JSON persistence
 │   ├── newsletter/
-│   │   └── generator.py     # Pipeline orchestration
+│   │   ├── generator.py     # Legacy daily newsletter pipeline
+│   │   └── weekly.py        # Weekly digest from daily bulletins
 │   ├── db/                  # Optional database layer
 │   │   ├── models.py        # SQLAlchemy ORM (with pgvector)
 │   │   ├── session.py       # Async session management
@@ -93,7 +89,8 @@ BehindBarsPulse/
 | `ai/service.py` | Gemini API with structured output (JSON schema validation) |
 | `ai/prompts.py` | System prompts for all AI tasks |
 | `narrative/models.py` | StoryThread, KeyCharacter, FollowUp Pydantic models |
-| `newsletter/generator.py` | Pipeline orchestration |
+| `newsletter/generator.py` | Legacy daily newsletter pipeline (not scheduled) |
+| `newsletter/weekly.py` | Weekly digest: reads bulletins from DB, synthesizes with AI |
 | `email/sender.py` | Rendering, archiving, SMTP delivery |
 | `services/newsletter_service.py` | Embedding generation, DB persistence |
 
@@ -197,8 +194,10 @@ Protected by `admin_token` (= GEMINI_API_KEY):
 | Endpoint | Description |
 |----------|-------------|
 | `POST /api/migrate?admin_token=...` | Run Alembic migrations on Cloud SQL |
-| `POST /api/regenerate?admin_token=...&collection_date=2026-01-07&days_back=3` | Regenerate newsletter |
-| `POST /api/bulletin-admin?admin_token=...&issue_date=2026-02-04` | Regenerate bulletin |
+| `POST /api/regenerate?admin_token=...&collection_date=2026-01-07&days_back=3` | Regenerate legacy newsletter |
+| `POST /api/bulletin-admin?admin_token=...&issue_date=2026-02-04` | Regenerate daily bulletin |
+| `POST /api/weekly` | Generate and send weekly digest (Cloud Scheduler, OIDC) |
+| `POST /api/bulletin` | Generate daily bulletin (Cloud Scheduler, OIDC) |
 | `POST /api/import-newsletters?admin_token=...` | Import newsletters from GCS |
 | `POST /api/normalize-facilities?admin_token=...&dry_run=true` | Normalize facility names in DB |
 | `POST /api/cleanup-events?admin_token=...&dry_run=true` | Remove duplicate events, mark aggregates |

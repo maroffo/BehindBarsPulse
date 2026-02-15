@@ -8,7 +8,7 @@ from datetime import date
 
 import structlog
 
-from behind_bars_pulse.config import get_settings
+from behind_bars_pulse.config import get_settings, make_sync_url
 
 
 def configure_logging() -> None:
@@ -86,10 +86,7 @@ def cmd_generate(args: argparse.Namespace) -> int:
     Uses collected articles if available, otherwise fetches fresh.
     Integrates narrative context when available.
     Always archives without sending - use 'weekly' command to send.
-    Saves to database when configured.
     """
-    import asyncio
-
     from behind_bars_pulse.email.sender import EmailSender
     from behind_bars_pulse.newsletter.generator import NewsletterGenerator
 
@@ -119,31 +116,6 @@ def cmd_generate(args: argparse.Namespace) -> int:
                 "newsletter_archived", title=newsletter_content.title, preview=str(preview_path)
             )
 
-            # Save to database if configured
-            settings = get_settings()
-            if settings.database_url:
-                from behind_bars_pulse.services.newsletter_service import NewsletterService
-
-                html_content = (
-                    preview_path.read_text(encoding="utf-8") if preview_path.exists() else None
-                )
-                txt_path = preview_path.with_name(preview_path.name.replace(".html", ".txt"))
-                txt_content = txt_path.read_text(encoding="utf-8") if txt_path.exists() else None
-
-                newsletter_service = NewsletterService()
-                asyncio.run(
-                    newsletter_service.save_newsletter(
-                        context=context,
-                        enriched_articles=list(enriched_articles.values()),
-                        press_review=press_review,
-                        html_content=html_content,
-                        txt_content=txt_content,
-                        issue_date=collection_date,
-                        generate_embeddings=False,
-                    )
-                )
-                log.info("newsletter_saved_to_db", date=collection_date.isoformat())
-
         log.info("cmd_generate_complete")
         return 0
 
@@ -157,59 +129,125 @@ def cmd_generate(args: argparse.Namespace) -> int:
 def cmd_weekly(args: argparse.Namespace) -> int:
     """Generate and send weekly digest to subscribers.
 
-    Summarizes the past week's newsletters using narrative context.
-    Fetches active subscribers from database and sends to them.
+    Summarizes the past week's bulletins using narrative context.
+    Fetches bulletins and active subscribers from database.
     """
-    import asyncio
     from datetime import timedelta
 
-    from behind_bars_pulse.db.repository import SubscriberRepository
-    from behind_bars_pulse.db.session import get_session
     from behind_bars_pulse.email.sender import EmailSender
     from behind_bars_pulse.newsletter.weekly import WeeklyDigestGenerator
-    from behind_bars_pulse.services.subscriber_service import SubscriberService
 
     log = structlog.get_logger()
     log.info("cmd_weekly_start")
 
     reference_date = date.fromisoformat(args.date) if args.date else date.today()
 
-    async def get_recipients() -> list[str]:
-        """Fetch active subscriber emails from database."""
-        async with get_session() as session:
-            repo = SubscriberRepository(session)
-            service = SubscriberService(repo)
-            return await service.get_active_emails()
-
-    async def get_recipients_with_timeout(timeout: float = 30.0) -> list[str]:
-        """Fetch recipients with timeout to prevent indefinite blocking."""
-        return await asyncio.wait_for(get_recipients(), timeout=timeout)
-
     try:
         generator = WeeklyDigestGenerator()
-        content = generator.generate(reference_date=reference_date)
-
+        lookback = generator.settings.weekly_lookback_days
         week_end = reference_date
-        week_start = reference_date - timedelta(days=generator.settings.weekly_lookback_days - 1)
-        context = generator.build_context(content, week_start, week_end)
+        week_start = reference_date - timedelta(days=lookback - 1)
+
+        # Load bulletins from DB (sync)
+        from sqlalchemy import create_engine, select
+        from sqlalchemy.orm import Session, sessionmaker
+
+        from behind_bars_pulse.db.models import Bulletin as BulletinORM
+        from behind_bars_pulse.db.models import WeeklyDigest as WeeklyDigestORM
+
+        settings = get_settings()
+        sync_url = make_sync_url(settings.database_url)
+        engine = create_engine(sync_url)
+        try:
+            SessionLocal = sessionmaker(bind=engine)
+
+            with SessionLocal() as session:
+                bulletins = list(
+                    session.execute(
+                        select(BulletinORM)
+                        .where(
+                            BulletinORM.issue_date >= week_start,
+                            BulletinORM.issue_date <= week_end,
+                        )
+                        .order_by(BulletinORM.issue_date.asc())
+                    )
+                    .scalars()
+                    .all()
+                )
+
+            log.info("bulletins_loaded", count=len(bulletins))
+
+            content = generator.generate(bulletins=bulletins, reference_date=reference_date)
+            email_context = generator.build_email_context(content, week_start, week_end)
+
+            # Save WeeklyDigest to DB
+            with Session(engine) as session:
+                existing = (
+                    session.query(WeeklyDigestORM)
+                    .filter(WeeklyDigestORM.week_end == week_end)
+                    .first()
+                )
+                if existing:
+                    session.delete(existing)
+                    session.commit()
+
+                digest = WeeklyDigestORM(
+                    week_start=week_start,
+                    week_end=week_end,
+                    title=content.weekly_title,
+                    subtitle=content.weekly_subtitle or None,
+                    narrative_arcs=content.narrative_arcs,
+                    weekly_reflection=content.weekly_reflection,
+                    upcoming_events=content.upcoming_events,
+                )
+                session.add(digest)
+                session.commit()
+                log.info("weekly_digest_saved", week_end=week_end.isoformat(), id=digest.id)
+        finally:
+            engine.dispose()
 
         if not args.dry_run:
-            # Fetch recipients from database (with 30s timeout)
-            recipients = asyncio.run(get_recipients_with_timeout())
+            # Fetch recipients (sync, same pattern as _run_weekly in api.py)
+            from behind_bars_pulse.db.models import Subscriber
+
+            sync_engine = create_engine(sync_url)
+            try:
+                with Session(sync_engine) as session:
+                    recipients = list(
+                        session.execute(
+                            select(Subscriber.email)
+                            .where(Subscriber.confirmed == True)  # noqa: E712
+                            .where(Subscriber.unsubscribed_at.is_(None))
+                        )
+                        .scalars()
+                        .all()
+                    )
+            finally:
+                sync_engine.dispose()
 
             if not recipients:
                 log.warning("no_active_subscribers")
-                print("\n⚠️  No active subscribers found in database.\n")
+                print("\nNo active subscribers found in database.\n")
                 return 0
 
             log.info("sending_to_subscribers", count=len(recipients))
             sender = EmailSender()
-            sender.send(context, recipients=recipients)
+            sender.send(
+                email_context,
+                recipients=recipients,
+                html_template="weekly_digest_template.html",
+                txt_template="weekly_digest_template.txt",
+            )
             log.info("weekly_digest_sent", recipient_count=len(recipients))
         else:
-            # Preview mode - just show what would be sent
+            # Preview mode
             sender = EmailSender()
-            preview_path = sender.save_preview(context, issue_date=reference_date)
+            preview_path = sender.save_preview(
+                email_context,
+                issue_date=reference_date,
+                html_template="weekly_digest_template.html",
+                txt_template="weekly_digest_template.txt",
+            )
             log.info(
                 "weekly_dry_run_complete", title=content.weekly_title, preview=str(preview_path)
             )

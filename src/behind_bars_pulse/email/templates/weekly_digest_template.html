@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <title>{{subject}}</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <style>
+        /* Reset */
+        body, table, td, p, a, li, blockquote {
+            -webkit-text-size-adjust: 100%;
+            -ms-text-size-adjust: 100%;
+        }
+        table, td {
+            mso-table-lspace: 0pt;
+            mso-table-rspace: 0pt;
+        }
+        img {
+            -ms-interpolation-mode: bicubic;
+            border: 0;
+            height: auto;
+            line-height: 100%;
+            outline: none;
+            text-decoration: none;
+        }
+
+        /* Base */
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            background-color: #f5f5f5;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            color: #1a1a1a;
+        }
+
+        /* Container */
+        .wrapper {
+            width: 100%;
+            background-color: #f5f5f5;
+            padding: 40px 0;
+        }
+        .container {
+            max-width: 680px;
+            margin: 0 auto;
+            background-color: #ffffff;
+        }
+
+        /* Header */
+        .header {
+            padding: 40px 48px 32px;
+            border-bottom: 3px solid #c0392b;
+        }
+        .header-title {
+            font-family: Georgia, 'Times New Roman', serif;
+            font-size: 28px;
+            font-weight: 700;
+            color: #1a1a1a;
+            margin: 0 0 4px 0;
+            letter-spacing: -0.5px;
+        }
+        .header-subtitle {
+            font-size: 14px;
+            color: #666666;
+            margin: 0;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .header-badge {
+            display: inline-block;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 4px 10px;
+            background-color: #c0392b;
+            color: #ffffff;
+            border-radius: 12px;
+            margin-top: 12px;
+        }
+        .header-date {
+            font-size: 13px;
+            color: #999999;
+            margin-top: 8px;
+        }
+
+        /* Content */
+        .content {
+            padding: 40px 48px;
+        }
+
+        /* Newsletter Title & Subtitle */
+        .newsletter-title {
+            font-family: Georgia, 'Times New Roman', serif;
+            font-size: 32px;
+            font-weight: 700;
+            color: #1a1a1a;
+            margin: 0 0 12px 0;
+            line-height: 1.2;
+            letter-spacing: -0.5px;
+        }
+        .newsletter-subtitle {
+            font-family: Georgia, 'Times New Roman', serif;
+            font-size: 20px;
+            font-weight: 400;
+            color: #4a4a4a;
+            margin: 0 0 32px 0;
+            line-height: 1.4;
+            font-style: italic;
+        }
+
+        /* Narrative arc */
+        .arc {
+            margin-bottom: 32px;
+        }
+        .arc-title {
+            font-family: Georgia, 'Times New Roman', serif;
+            font-size: 20px;
+            font-weight: 700;
+            color: #1a1a1a;
+            margin: 0 0 12px 0;
+            line-height: 1.3;
+        }
+        .arc-summary {
+            font-size: 16px;
+            color: #2a2a2a;
+            line-height: 1.7;
+            margin: 0;
+        }
+        .arc-summary p {
+            margin: 0 0 12px 0;
+        }
+
+        /* Reflection */
+        .reflection {
+            font-size: 17px;
+            color: #2a2a2a;
+            line-height: 1.7;
+            margin-bottom: 32px;
+        }
+        .reflection p {
+            margin: 0 0 16px 0;
+        }
+
+        /* Section Header */
+        .section-header {
+            font-family: Georgia, 'Times New Roman', serif;
+            font-size: 24px;
+            font-weight: 700;
+            color: #1a1a1a;
+            margin: 0 0 24px 0;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        /* Events */
+        .events-list {
+            margin: 0;
+            padding: 0 0 0 20px;
+        }
+        .events-list li {
+            font-size: 15px;
+            color: #2a2a2a;
+            line-height: 1.6;
+            margin-bottom: 8px;
+        }
+        .event-date {
+            color: #888888;
+            font-size: 13px;
+        }
+
+        /* Dividers */
+        .divider {
+            border: none;
+            border-top: 1px solid #e0e0e0;
+            margin: 40px 0;
+        }
+        .divider-strong {
+            border: none;
+            border-top: 2px solid #c0392b;
+            margin: 40px 0;
+        }
+
+        /* Quote */
+        .closing-quote {
+            font-family: Georgia, 'Times New Roman', serif;
+            font-size: 15px;
+            font-style: italic;
+            color: #4a4a4a;
+            text-align: left;
+            padding: 32px 48px;
+            margin: 0;
+            border-top: 1px solid #e0e0e0;
+            background-color: #fafafa;
+        }
+
+        /* Footer */
+        .footer {
+            padding: 32px 48px;
+            background-color: #2c3e50;
+            color: #b0b0b0;
+        }
+        .footer p {
+            font-size: 13px;
+            line-height: 1.6;
+            margin: 0 0 16px 0;
+        }
+        .footer a {
+            color: #ffffff;
+            text-decoration: none;
+        }
+        .footer a:hover {
+            text-decoration: underline;
+        }
+        .footer-note {
+            font-size: 12px;
+            color: #808080;
+            font-style: italic;
+        }
+        .footer-brand {
+            font-size: 11px;
+            color: #606060;
+            margin-top: 24px;
+            padding-top: 16px;
+            border-top: 1px solid #3d4f5f;
+        }
+
+        /* Responsive */
+        @media only screen and (max-width: 680px) {
+            .container {
+                width: 100% !important;
+            }
+            .header, .content, .closing-quote, .footer {
+                padding-left: 24px !important;
+                padding-right: 24px !important;
+            }
+            .newsletter-title {
+                font-size: 26px !important;
+            }
+            .newsletter-subtitle {
+                font-size: 18px !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="wrapper">
+        <table class="container" cellpadding="0" cellspacing="0" role="presentation">
+            <!-- Header -->
+            <tr>
+                <td class="header">
+                    <p class="header-title">BehindBars</p>
+                    <p class="header-subtitle">Giustizia e Sistema Carcerario</p>
+                    <span class="header-badge">Digest Settimanale</span>
+                    <p class="header-date">{{week_str}}</p>
+                </td>
+            </tr>
+
+            <!-- Main Content -->
+            <tr>
+                <td class="content">
+                    <h1 class="newsletter-title">{{weekly_title}}</h1>
+                    {% if weekly_subtitle %}
+                    <p class="newsletter-subtitle">{{weekly_subtitle}}</p>
+                    {% endif %}
+
+                    <!-- Narrative Arcs -->
+                    {% for arc in narrative_arcs %}
+                    <div class="arc">
+                        <h3 class="arc-title">{{arc.arc_title}}</h3>
+                        <div class="arc-summary">
+                            <p>{{arc.summary | replace('\n\n', '</p><p>') | replace('\n', '<br>') | safe}}</p>
+                        </div>
+                    </div>
+                    {% if not loop.last %}
+                    <hr class="divider">
+                    {% endif %}
+                    {% endfor %}
+
+                    <hr class="divider-strong">
+
+                    <!-- Weekly Reflection -->
+                    <h2 class="section-header">Riflessione Settimanale</h2>
+                    <div class="reflection">
+                        <p>{{weekly_reflection | replace('\n\n', '</p><p>') | replace('\n', '<br>') | safe}}</p>
+                    </div>
+
+                    {% if upcoming_events %}
+                    <hr class="divider">
+                    <h2 class="section-header">Eventi in Arrivo</h2>
+                    <ul class="events-list">
+                        {% for event in upcoming_events %}
+                        <li>
+                            {{event.event}}
+                            {% if event.date %}
+                            <span class="event-date">({{event.date}})</span>
+                            {% endif %}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% endif %}
+                </td>
+            </tr>
+
+            <!-- Quote -->
+            <tr>
+                <td class="closing-quote">
+                    "Il grado di civiltà di un Paese si misura osservando la condizione delle sue carceri."
+                </td>
+            </tr>
+
+            <!-- Footer -->
+            <tr>
+                <td class="footer">
+                    <p>
+                        <strong><a href="https://github.com/maroffo/BehindBarsPulse">BehindBarsPulse</a></strong> è un progetto personale che utilizza l'intelligenza artificiale per raccogliere e sintetizzare notizie sul sistema carcerario e la giustizia in Italia.
+                    </p>
+                    <p class="footer-note">
+                        I contenuti sono generati con l'ausilio di modelli linguistici avanzati e supervisionati. I riassunti riflettono i temi degli articoli originali, non necessariamente le opinioni dell'autore.
+                    </p>
+                    <p class="footer-brand">
+                        Creato con cura in Sardegna
+                    </p>
+                </td>
+            </tr>
+        </table>
+    </div>
+</body>
+</html>
