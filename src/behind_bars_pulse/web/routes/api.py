@@ -80,80 +80,31 @@ def _run_collect(collection_date: date) -> None:
 def _run_weekly(reference_date: date) -> None:
     """Run weekly digest and send in background.
 
-    Uses sync DB access to avoid event loop conflicts in background tasks.
+    Delegates to run_weekly_pipeline for data loading, generation, and DB save.
     """
-    from datetime import timedelta
-
-    from sqlalchemy import create_engine, select
-    from sqlalchemy.orm import sessionmaker
-
-    from behind_bars_pulse.config import get_settings
-    from behind_bars_pulse.db.models import Bulletin as BulletinORM
-    from behind_bars_pulse.db.models import Subscriber
     from behind_bars_pulse.email.sender import EmailSender
-    from behind_bars_pulse.newsletter.weekly import WeeklyDigestGenerator
+    from behind_bars_pulse.newsletter.weekly import run_weekly_pipeline
 
     log.info("api_weekly_start", date=reference_date.isoformat())
 
-    settings = get_settings()
-    generator = WeeklyDigestGenerator(settings)
-    lookback = generator.settings.weekly_lookback_days
-    week_end = reference_date
-    week_start = reference_date - timedelta(days=lookback - 1)
-
     try:
-        # Sync DB access (background tasks can't share the async engine)
-        sync_url = settings.database_url.replace("+asyncpg", "").replace(
-            "postgresql+", "postgresql+psycopg2://"
-        )
-        if sync_url.startswith("postgresql://"):
-            sync_url = sync_url.replace("postgresql://", "postgresql+psycopg2://", 1)
-        engine = create_engine(sync_url)
-        SessionLocal = sessionmaker(bind=engine)
+        result = run_weekly_pipeline(reference_date)
 
-        with SessionLocal() as session:
-            bulletins = list(
-                session.execute(
-                    select(BulletinORM)
-                    .where(
-                        BulletinORM.issue_date >= week_start,
-                        BulletinORM.issue_date <= week_end,
-                    )
-                    .order_by(BulletinORM.issue_date.asc())
-                )
-                .scalars()
-                .all()
-            )
-
-            recipients = list(
-                session.execute(
-                    select(Subscriber.email)
-                    .where(Subscriber.confirmed == True)  # noqa: E712
-                    .where(Subscriber.unsubscribed_at.is_(None))
-                )
-                .scalars()
-                .all()
-            )
-
-        engine.dispose()
-
-        log.info("weekly_data_loaded", bulletins=len(bulletins), recipients=len(recipients))
-
-        if not bulletins:
-            log.warning("api_weekly_no_bulletins")
-            return
-
-        content = generator.generate(bulletins=bulletins, reference_date=reference_date)
-        context = generator.build_context(content, week_start, week_end)
-
-        if not recipients:
+        if not result.recipients:
             log.warning("api_weekly_no_subscribers")
             return
 
         sender = EmailSender()
-        sender.send(context, recipients=recipients)
-        log.info("api_weekly_complete", recipient_count=len(recipients))
+        sender.send(
+            result.email_context,
+            recipients=result.recipients,
+            html_template="weekly_digest_template.html",
+            txt_template="weekly_digest_template.txt",
+        )
+        log.info("api_weekly_complete", recipient_count=len(result.recipients))
 
+    except ValueError:
+        log.warning("api_weekly_no_bulletins")
     except Exception:
         log.exception("api_weekly_failed")
 
@@ -197,7 +148,7 @@ def _load_articles_for_batch(end_date: date, days_back: int = 7) -> dict:
     from sqlalchemy import create_engine, select
     from sqlalchemy.orm import sessionmaker
 
-    from behind_bars_pulse.config import get_settings
+    from behind_bars_pulse.config import get_settings, make_sync_url
     from behind_bars_pulse.db.models import Article
     from behind_bars_pulse.models import EnrichedArticle
 
@@ -206,10 +157,7 @@ def _load_articles_for_batch(end_date: date, days_back: int = 7) -> dict:
         raise ValueError("Database not configured")
 
     # Use sync database connection
-    sync_url = settings.database_url.replace("+asyncpg", "").replace("postgresql+", "postgresql://")
-    if sync_url.startswith("postgresql://"):
-        sync_url = sync_url.replace("postgresql://", "postgresql+psycopg2://", 1)
-
+    sync_url = make_sync_url(settings.database_url)
     engine = create_engine(sync_url)
     SessionLocal = sessionmaker(bind=engine)
 
@@ -431,7 +379,7 @@ def _run_import_newsletters() -> None:
     from sqlalchemy import create_engine, select
     from sqlalchemy.orm import sessionmaker
 
-    from behind_bars_pulse.config import get_settings
+    from behind_bars_pulse.config import get_settings, make_sync_url
     from behind_bars_pulse.db.models import Newsletter
     from behind_bars_pulse.services.storage import StorageService
 
@@ -448,9 +396,7 @@ def _run_import_newsletters() -> None:
         return
 
     # Create a fresh SYNC engine (not tied to FastAPI's event loop)
-    sync_url = settings.database_url.replace("+asyncpg", "").replace("postgresql+", "postgresql://")
-    if sync_url.startswith("postgresql://"):
-        sync_url = sync_url.replace("postgresql://", "postgresql+psycopg2://", 1)
+    sync_url = make_sync_url(settings.database_url)
     engine = create_engine(sync_url)
     SessionLocal = sessionmaker(bind=engine)
 
@@ -538,7 +484,7 @@ def _run_regenerate(collection_date: date, days_back: int, first_issue: bool) ->
     from sqlalchemy import create_engine, delete
     from sqlalchemy.orm import sessionmaker
 
-    from behind_bars_pulse.config import get_settings
+    from behind_bars_pulse.config import get_settings, make_sync_url
     from behind_bars_pulse.db.models import Newsletter
     from behind_bars_pulse.email.sender import EmailSender
     from behind_bars_pulse.newsletter.generator import NewsletterGenerator
@@ -553,11 +499,7 @@ def _run_regenerate(collection_date: date, days_back: int, first_issue: bool) ->
 
     try:
         # Delete existing newsletter for this date (sync, fresh connection)
-        sync_url = settings.database_url.replace("+asyncpg", "").replace(
-            "postgresql+", "postgresql://"
-        )
-        if sync_url.startswith("postgresql://"):
-            sync_url = sync_url.replace("postgresql://", "postgresql+psycopg2://", 1)
+        sync_url = make_sync_url(settings.database_url)
         engine = create_engine(sync_url)
         SessionLocal = sessionmaker(bind=engine)
 
@@ -711,10 +653,10 @@ def _run_bulletin(issue_date: date) -> None:
     from sqlalchemy.orm import Session
 
     from behind_bars_pulse.bulletin.generator import BulletinGenerator
-    from behind_bars_pulse.config import get_settings
+    from behind_bars_pulse.config import get_settings, make_sync_url
     from behind_bars_pulse.db.models import Bulletin as BulletinORM
     from behind_bars_pulse.db.models import EditorialComment as EditorialCommentORM
-    from behind_bars_pulse.services.newsletter_service import NewsletterService
+    from behind_bars_pulse.services.embedding_service import EmbeddingService
 
     settings = get_settings()
     log.info("api_bulletin_start", date=issue_date.isoformat())
@@ -729,12 +671,7 @@ def _run_bulletin(issue_date: date) -> None:
             return
 
         # Save to database
-        sync_url = settings.database_url.replace("+asyncpg", "").replace(
-            "postgresql+", "postgresql://"
-        )
-        if sync_url.startswith("postgresql://"):
-            sync_url = sync_url.replace("postgresql://", "postgresql+psycopg2://", 1)
-
+        sync_url = make_sync_url(settings.database_url)
         engine = create_engine(sync_url)
 
         with Session(engine) as session:
@@ -782,8 +719,8 @@ def _run_bulletin(issue_date: date) -> None:
 
             # Generate embedding for bulletin
             try:
-                newsletter_service = NewsletterService()
-                embedding = newsletter_service._embed_text(bulletin.content)
+                embedding_service = EmbeddingService()
+                embedding = embedding_service._embed_text(bulletin.content)
                 if embedding:
                     db_bulletin.embedding = embedding
             except Exception as e:
@@ -805,7 +742,7 @@ def _run_bulletin(issue_date: date) -> None:
 
                 # Generate embedding for comment
                 try:
-                    embedding = newsletter_service._embed_text(chunk.content)
+                    embedding = embedding_service._embed_text(chunk.content)
                     if embedding:
                         db_comment.embedding = embedding
                 except Exception as e:
@@ -882,9 +819,9 @@ def _run_regenerate_embeddings() -> None:
     from sqlalchemy import create_engine, select, update
     from sqlalchemy.orm import sessionmaker
 
-    from behind_bars_pulse.config import get_settings
+    from behind_bars_pulse.config import get_settings, make_sync_url
     from behind_bars_pulse.db.models import Article, EditorialComment
-    from behind_bars_pulse.services.newsletter_service import EMBEDDING_MODEL
+    from behind_bars_pulse.services.embedding_service import EMBEDDING_MODEL
 
     settings = get_settings()
     log.info("regenerate_embeddings_start", model=EMBEDDING_MODEL)
@@ -895,9 +832,7 @@ def _run_regenerate_embeddings() -> None:
 
     client = genai.Client(api_key=settings.gemini_api_key.get_secret_value())
 
-    sync_url = settings.database_url.replace("+asyncpg", "").replace("postgresql+", "postgresql://")
-    if sync_url.startswith("postgresql://"):
-        sync_url = sync_url.replace("postgresql://", "postgresql+psycopg2://", 1)
+    sync_url = make_sync_url(settings.database_url)
     engine = create_engine(sync_url)
     Session = sessionmaker(bind=engine)
 

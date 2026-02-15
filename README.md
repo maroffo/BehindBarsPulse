@@ -1,11 +1,11 @@
 # BehindBarsPulse
 
-**BehindBarsPulse** is an automated Italian-language newsletter about the Italian prison system and justice reform. It combines RSS feed processing with LLM-based content generation to produce daily and weekly newsletters with narrative continuity.
+**BehindBarsPulse** is an automated Italian-language newsletter about the Italian prison system and justice reform. It combines RSS feed processing with LLM-based content generation to produce daily bulletins and weekly digests with narrative continuity.
 
 ## Features
 
-- **Il Bollettino (Daily)**: Automated daily editorial commentary on prison news, generated at 8:00 AM with thematic categorization
-- **Newsletter (Weekly)**: Weekly digest sent to subscribers via email, synthesizing major narrative arcs
+- **Il Bollettino (Daily)**: Automated daily editorial commentary on prison news, generated at 8:00 AM with thematic press review categories
+- **Digest Settimanale (Weekly)**: Weekly digest sent to subscribers via email, synthesizing daily bulletins into narrative arcs
 - **Narrative Memory System**: Tracks ongoing stories, key characters, and follow-up events across issues
 - **Statistics Dashboard**: Prison incident visualization (suicides, assaults, protests) and capacity data by facility/region
 - **Semantic Search**: pgvector-powered search across articles and editorial content
@@ -82,21 +82,15 @@ The web app will be available at http://localhost:8000
 
 ## Usage
 
-BehindBarsPulse provides four CLI commands:
+BehindBarsPulse provides CLI commands and scheduled Cloud Run endpoints:
 
 ```bash
 # Collect and enrich articles (run daily, e.g., 6:00 AM)
 # Saves to DB with embeddings if configured
 uv run python -m behind_bars_pulse collect
 
-# Generate and send daily newsletter
-uv run python -m behind_bars_pulse generate
-uv run python -m behind_bars_pulse generate --dry-run  # Preview without sending
-
-# Generate for a specific date range (useful for weekly newsletters)
-uv run python -m behind_bars_pulse generate --date 2026-01-07 --days-back 7 --first-issue
-
 # Generate and send weekly digest (run weekly, e.g., Sunday 8:00 AM)
+# Reads daily bulletins from DB for the past week
 uv run python -m behind_bars_pulse weekly
 uv run python -m behind_bars_pulse weekly --dry-run
 
@@ -104,33 +98,31 @@ uv run python -m behind_bars_pulse weekly --dry-run
 uv run python -m behind_bars_pulse status
 ```
 
+Daily bulletins are generated via Cloud Scheduler calling `POST /api/bulletin` (OIDC-authenticated).
+
 ### CLI Options
 
 | Option | Description |
 |--------|-------------|
 | `--dry-run` | Preview without sending email |
-| `--date YYYY-MM-DD` | Generate for specific date |
-| `--days-back N` | Include articles from past N days |
-| `--first-issue` | Include special intro for first newsletter in series |
+| `--date YYYY-MM-DD` | Reference date for collection or digest |
 
 ### Typical Workflow
 
-1. **Daily collection** (cron: every morning)
-   - Fetches RSS feed
-   - Enriches articles with AI summaries
-   - Extracts and updates narrative context (stories, characters, follow-ups)
-   - Saves to `data/collected_articles/`
+1. **Daily collection** (Cloud Scheduler, 6:00 AM)
+   - Fetches RSS feed, enriches articles with AI
+   - Extracts stories, characters, follow-ups into narrative context
+   - Saves articles to DB with embeddings
 
-2. **Daily generation** (cron: after collection)
-   - Loads collected articles
-   - Uses narrative context for continuity
-   - Generates newsletter with AI commentary
-   - Sends via email, archives to `previous_issues/`
+2. **Daily bulletin** (Cloud Scheduler, 8:00 AM)
+   - Generates press review with thematic categories from collected articles
+   - Generates editorial commentary using narrative context
+   - Saves bulletin to DB, publishes on web at `/bollettino/`
 
-3. **Weekly digest** (cron: Sunday)
-   - Loads past 7 days of archived newsletters
+3. **Weekly digest** (Cloud Scheduler, Sunday)
+   - Loads past 7 days of daily bulletins from DB
    - Synthesizes major narrative arcs
-   - Highlights upcoming events and trends
+   - Sends to subscribers via email (AWS SES)
 
 ## Architecture
 
@@ -139,7 +131,8 @@ RSS Feed → Fetch → Enrich (AI) → Extract Stories/Characters
                                         ↓
                               Narrative Context (JSON)
                                         ↓
-Generate Content (AI) → Review (AI) → Render (Jinja2) → Archive → Send (SES)
+Daily Bulletin:  Press Review (AI) → Editorial (AI) → Review (AI) → DB → Web
+Weekly Digest:   Bulletins from DB → Synthesize (AI) → Render (Jinja2) → Email (SES)
 ```
 
 ### Project Structure
@@ -172,8 +165,8 @@ BehindBarsPulse/
 │   │   ├── storage.py       # JSON persistence
 │   │   └── matching.py      # Story matching logic
 │   ├── newsletter/
-│   │   ├── generator.py     # Daily newsletter pipeline
-│   │   └── weekly.py        # Weekly digest generator
+│   │   ├── generator.py     # Legacy daily newsletter pipeline
+│   │   └── weekly.py        # Weekly digest (from daily bulletins)
 │   ├── feeds/
 │   │   └── fetcher.py       # RSS fetching
 │   └── email/
@@ -190,7 +183,7 @@ BehindBarsPulse/
 ├── data/                    # Runtime data
 │   ├── narrative_context.json
 │   └── collected_articles/
-├── previous_issues/         # Archived newsletters
+├── previous_issues/         # Archived newsletter previews
 ├── docker-compose.yml       # Local development
 ├── Dockerfile               # Container image
 └── tests/
@@ -200,9 +193,9 @@ BehindBarsPulse/
 
 The web frontend at `behindbars.news` provides:
 
-- **Home**: Project overview with latest bollettino and newsletter
-- **Il Bollettino**: Daily AI-generated editorial commentary with thematic categories
-- **Newsletter Archive**: Browse all past weekly newsletters by date
+- **Home**: Project overview with latest bollettino
+- **Il Bollettino**: Daily AI-generated editorial commentary with thematic press review categories
+- **Edizioni**: Browse past bulletins by date
 - **Articles**: Searchable article database with semantic search (pgvector)
 - **Statistics**: Prison incident dashboard with charts (by type, region, facility) and capacity data
 - **Search**: HTMX-powered instant search across articles and editorial content
@@ -219,7 +212,7 @@ The narrative memory system tracks:
 - **Key Characters**: Important figures with their roles and evolving positions
 - **Follow-ups**: Upcoming events and deadlines to monitor
 
-This enables the newsletter to:
+This enables daily bulletins and weekly digests to:
 - Reference previous coverage: *"Come abbiamo seguito nelle ultime settimane..."*
 - Track story evolution: *"Il Ministro Nordio, che la settimana scorsa aveva dichiarato X, oggi..."*
 - Alert readers to upcoming events: *"Ricordiamo che domani è previsto..."*

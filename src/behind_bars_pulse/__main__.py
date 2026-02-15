@@ -86,10 +86,7 @@ def cmd_generate(args: argparse.Namespace) -> int:
     Uses collected articles if available, otherwise fetches fresh.
     Integrates narrative context when available.
     Always archives without sending - use 'weekly' command to send.
-    Saves to database when configured.
     """
-    import asyncio
-
     from behind_bars_pulse.email.sender import EmailSender
     from behind_bars_pulse.newsletter.generator import NewsletterGenerator
 
@@ -119,31 +116,6 @@ def cmd_generate(args: argparse.Namespace) -> int:
                 "newsletter_archived", title=newsletter_content.title, preview=str(preview_path)
             )
 
-            # Save to database if configured
-            settings = get_settings()
-            if settings.database_url:
-                from behind_bars_pulse.services.newsletter_service import NewsletterService
-
-                html_content = (
-                    preview_path.read_text(encoding="utf-8") if preview_path.exists() else None
-                )
-                txt_path = preview_path.with_name(preview_path.name.replace(".html", ".txt"))
-                txt_content = txt_path.read_text(encoding="utf-8") if txt_path.exists() else None
-
-                newsletter_service = NewsletterService()
-                asyncio.run(
-                    newsletter_service.save_newsletter(
-                        context=context,
-                        enriched_articles=list(enriched_articles.values()),
-                        press_review=press_review,
-                        html_content=html_content,
-                        txt_content=txt_content,
-                        issue_date=collection_date,
-                        generate_embeddings=False,
-                    )
-                )
-                log.info("newsletter_saved_to_db", date=collection_date.isoformat())
-
         log.info("cmd_generate_complete")
         return 0
 
@@ -157,62 +129,48 @@ def cmd_generate(args: argparse.Namespace) -> int:
 def cmd_weekly(args: argparse.Namespace) -> int:
     """Generate and send weekly digest to subscribers.
 
-    Summarizes the past week's newsletters using narrative context.
-    Fetches active subscribers from database and sends to them.
+    Summarizes the past week's bulletins using narrative context.
+    Fetches bulletins and active subscribers from database.
     """
-    import asyncio
-    from datetime import timedelta
-
-    from behind_bars_pulse.db.repository import SubscriberRepository
-    from behind_bars_pulse.db.session import get_session
     from behind_bars_pulse.email.sender import EmailSender
-    from behind_bars_pulse.newsletter.weekly import WeeklyDigestGenerator
-    from behind_bars_pulse.services.subscriber_service import SubscriberService
+    from behind_bars_pulse.newsletter.weekly import run_weekly_pipeline
 
     log = structlog.get_logger()
     log.info("cmd_weekly_start")
 
     reference_date = date.fromisoformat(args.date) if args.date else date.today()
 
-    async def get_recipients() -> list[str]:
-        """Fetch active subscriber emails from database."""
-        async with get_session() as session:
-            repo = SubscriberRepository(session)
-            service = SubscriberService(repo)
-            return await service.get_active_emails()
-
-    async def get_recipients_with_timeout(timeout: float = 30.0) -> list[str]:
-        """Fetch recipients with timeout to prevent indefinite blocking."""
-        return await asyncio.wait_for(get_recipients(), timeout=timeout)
-
     try:
-        generator = WeeklyDigestGenerator()
-        content = generator.generate(reference_date=reference_date)
+        result = run_weekly_pipeline(reference_date)
 
-        week_end = reference_date
-        week_start = reference_date - timedelta(days=generator.settings.weekly_lookback_days - 1)
-        context = generator.build_context(content, week_start, week_end)
-
-        if not args.dry_run:
-            # Fetch recipients from database (with 30s timeout)
-            recipients = asyncio.run(get_recipients_with_timeout())
-
-            if not recipients:
+        if args.dry_run:
+            sender = EmailSender()
+            preview_path = sender.save_preview(
+                result.email_context,
+                issue_date=reference_date,
+                html_template="weekly_digest_template.html",
+                txt_template="weekly_digest_template.txt",
+            )
+            log.info(
+                "weekly_dry_run_complete",
+                title=result.content.weekly_title,
+                preview=str(preview_path),
+            )
+        else:
+            if not result.recipients:
                 log.warning("no_active_subscribers")
-                print("\n⚠️  No active subscribers found in database.\n")
+                print("\nNo active subscribers found in database.\n")
                 return 0
 
-            log.info("sending_to_subscribers", count=len(recipients))
+            log.info("sending_to_subscribers", count=len(result.recipients))
             sender = EmailSender()
-            sender.send(context, recipients=recipients)
-            log.info("weekly_digest_sent", recipient_count=len(recipients))
-        else:
-            # Preview mode - just show what would be sent
-            sender = EmailSender()
-            preview_path = sender.save_preview(context, issue_date=reference_date)
-            log.info(
-                "weekly_dry_run_complete", title=content.weekly_title, preview=str(preview_path)
+            sender.send(
+                result.email_context,
+                recipients=result.recipients,
+                html_template="weekly_digest_template.html",
+                txt_template="weekly_digest_template.txt",
             )
+            log.info("weekly_digest_sent", recipient_count=len(result.recipients))
 
         log.info("cmd_weekly_complete")
         return 0

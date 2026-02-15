@@ -38,31 +38,31 @@
             {% endif %}
         </section>
 
-        <!-- Newsletter settimanali -->
+        <!-- Digest settimanale -->
         <section class="edizioni-section">
             <header class="edizioni-section-header">
-                <h2>Newsletter</h2>
+                <h2>Digest Settimanale</h2>
                 <span class="edizioni-badge">Settimanale</span>
             </header>
             <p class="edizioni-description">
-                Rassegna stampa settimanale con commento editoriale,
+                Sintesi settimanale dei bollettini quotidiani,
                 inviata via email ogni domenica.
             </p>
 
-            {% if newsletters %}
+            {% if digests %}
             <ul class="edizioni-list">
-                {% for newsletter in newsletters %}
+                {% for digest in digests %}
                 <li class="edizioni-item">
-                    <a href="/archive/{{ newsletter.issue_date.strftime('%Y-%m-%d') }}">
-                        <time>{{ newsletter.issue_date.strftime('%d %B %Y') }}</time>
-                        <span class="edizioni-item-title">{{ newsletter.title }}</span>
+                    <a href="/digest/{{ digest.week_end.strftime('%Y-%m-%d') }}">
+                        <time>{{ digest.week_start.strftime('%d %B') }} - {{ digest.week_end.strftime('%d %B %Y') }}</time>
+                        <span class="edizioni-item-title">{{ digest.title }}</span>
                     </a>
                 </li>
                 {% endfor %}
             </ul>
-            <a href="/edizioni/newsletter" class="edizioni-more">Tutte le newsletter &rarr;</a>
+            <a href="/edizioni/digest" class="edizioni-more">Tutti i digest &rarr;</a>
             {% else %}
-            <p class="empty-message">Nessuna newsletter disponibile.</p>
+            <p class="empty-message">Nessun digest disponibile.</p>
             {% endif %}
         </section>
     </div>

@@ -1,5 +1,5 @@
 # ABOUTME: Tests for CLI argument parsing and command dispatch.
-# ABOUTME: Validates argparse configuration and subcommand routing.
+# ABOUTME: Validates argparse configuration, subcommand routing, and cmd_weekly behavior.
 
 import argparse
 from datetime import date
@@ -9,8 +9,12 @@ from unittest.mock import MagicMock, patch
 import pytest
 from pydantic import SecretStr
 
-from behind_bars_pulse.__main__ import cmd_status, create_parser, main
+from behind_bars_pulse.__main__ import cmd_status, cmd_weekly, create_parser, main
 from behind_bars_pulse.config import Settings
+from behind_bars_pulse.newsletter.weekly import (
+    WeeklyDigestContent,
+    WeeklyPipelineResult,
+)
 
 
 @pytest.fixture
@@ -189,3 +193,111 @@ class TestMain:
 
         mock_status.assert_called_once()
         assert result == 0
+
+
+class TestCmdWeekly:
+    """Tests for cmd_weekly command."""
+
+    @pytest.fixture
+    def weekly_content(self) -> WeeklyDigestContent:
+        """Sample WeeklyDigestContent for testing."""
+        return WeeklyDigestContent(
+            weekly_title="Titolo Settimanale",
+            weekly_subtitle="Sottotitolo",
+            narrative_arcs=[{"arc_title": "Arco 1", "summary": "Riassunto."}],
+            weekly_reflection="Riflessione.",
+            upcoming_events=[{"event": "Evento", "date": "2026-02-20"}],
+        )
+
+    @pytest.fixture
+    def pipeline_result(self, weekly_content) -> WeeklyPipelineResult:
+        """Sample pipeline result for cmd_weekly tests."""
+        return WeeklyPipelineResult(
+            content=weekly_content,
+            email_context={"subject": "Test Subject"},
+            recipients=["a@b.com"],
+            week_start=date(2026, 2, 4),
+            week_end=date(2026, 2, 10),
+        )
+
+    @patch("behind_bars_pulse.email.sender.EmailSender")
+    @patch("behind_bars_pulse.newsletter.weekly.run_weekly_pipeline")
+    def test_dry_run_passes_weekly_templates_to_save_preview(
+        self,
+        mock_pipeline: MagicMock,
+        mock_sender_cls: MagicMock,
+        pipeline_result: WeeklyPipelineResult,
+    ) -> None:
+        """cmd_weekly dry-run passes weekly templates to save_preview."""
+        mock_pipeline.return_value = pipeline_result
+
+        mock_sender = MagicMock()
+        mock_sender.save_preview.return_value = Path("/tmp/preview.html")
+        mock_sender_cls.return_value = mock_sender
+
+        args = argparse.Namespace(date="2026-02-10", dry_run=True)
+        result = cmd_weekly(args)
+
+        assert result == 0
+        mock_sender.save_preview.assert_called_once()
+        call_kwargs = mock_sender.save_preview.call_args
+        assert call_kwargs.kwargs["html_template"] == "weekly_digest_template.html"
+        assert call_kwargs.kwargs["txt_template"] == "weekly_digest_template.txt"
+
+    @patch("behind_bars_pulse.newsletter.weekly.run_weekly_pipeline")
+    def test_no_bulletins_returns_1(
+        self,
+        mock_pipeline: MagicMock,
+    ) -> None:
+        """cmd_weekly returns 1 when pipeline raises ValueError."""
+        mock_pipeline.side_effect = ValueError("No bulletins found for weekly digest")
+
+        args = argparse.Namespace(date="2026-02-10", dry_run=True)
+        result = cmd_weekly(args)
+
+        assert result == 1
+
+    @patch("behind_bars_pulse.email.sender.EmailSender")
+    @patch("behind_bars_pulse.newsletter.weekly.run_weekly_pipeline")
+    def test_send_mode_passes_weekly_templates(
+        self,
+        mock_pipeline: MagicMock,
+        mock_sender_cls: MagicMock,
+        pipeline_result: WeeklyPipelineResult,
+    ) -> None:
+        """cmd_weekly send mode passes weekly templates to sender.send()."""
+        mock_pipeline.return_value = pipeline_result
+
+        mock_sender = MagicMock()
+        mock_sender_cls.return_value = mock_sender
+
+        args = argparse.Namespace(date="2026-02-10", dry_run=False)
+        result = cmd_weekly(args)
+
+        assert result == 0
+        mock_sender.send.assert_called_once()
+        call_kwargs = mock_sender.send.call_args
+        assert call_kwargs.kwargs["html_template"] == "weekly_digest_template.html"
+        assert call_kwargs.kwargs["txt_template"] == "weekly_digest_template.txt"
+        assert call_kwargs.kwargs["recipients"] == ["a@b.com"]
+
+    @patch("behind_bars_pulse.email.sender.EmailSender")
+    @patch("behind_bars_pulse.newsletter.weekly.run_weekly_pipeline")
+    def test_no_recipients_returns_0_without_sending(
+        self,
+        mock_pipeline: MagicMock,
+        mock_sender_cls: MagicMock,
+        pipeline_result: WeeklyPipelineResult,
+    ) -> None:
+        """cmd_weekly returns 0 and skips send when no recipients."""
+        pipeline_result.recipients = []
+        mock_pipeline.return_value = pipeline_result
+
+        mock_sender = MagicMock()
+        mock_sender_cls.return_value = mock_sender
+
+        args = argparse.Namespace(date="2026-02-10", dry_run=False)
+        result = cmd_weekly(args)
+
+        assert result == 0
+        mock_sender.send.assert_not_called()

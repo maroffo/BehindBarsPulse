@@ -73,7 +73,29 @@
       "Bash(gcloud run jobs execute:*)",
       "Bash(gcloud run jobs delete:*)",
       "Bash(gcloud run jobs create:*)",
-      "Bash(DATABASE_URL=\"$DATABASE_URL\" uv run alembic upgrade:*)"
+      "Bash(DATABASE_URL=\"$DATABASE_URL\" uv run alembic upgrade:*)",
+      "Skill(commit)",
+      "Bash(git checkout:*)",
+      "Bash(git merge:*)",
+      "Bash(git worktree:*)",
+      "Bash(gcloud functions describe:*)",
+      "Bash(gcloud functions deploy:*)",
+      "Bash(gcloud scheduler jobs list:*)",
+      "Bash(gcloud ai batch-prediction-jobs describe:*)",
+      "Bash(JOB=\"projects/208669631335/locations/global/batchPredictionJobs/9020711153134731264\")",
+      "Bash(gcloud functions logs read:*)",
+      "Bash(wc:*)",
+      "Bash(cut:*)",
+      "Bash(gcloud run jobs list:*)",
+      "Bash(gcloud functions list:*)",
+      "Bash(gcloud iam service-accounts list:*)",
+      "Bash(git -C /Users/maroffo/Development/private/BehindBarsPulse add functions/process-batch/main.py)",
+      "Bash(git -C /Users/maroffo/Development/private/BehindBarsPulse commit -m \"$\\(cat <<''EOF''\nfix\\(process-batch\\): set created_at explicitly for articles\n\nThe articles table has no server default for created_at, so SQLAlchemy''s\nserver_default=func.now\\(\\) causes NULL insertion. Set it explicitly like\nother models \\(PrisonEvent, FacilitySnapshot\\) already do.\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git -C /Users/maroffo/Development/private/BehindBarsPulse push)",
+      "Bash(for region in us-central1 europe-west1 europe-west4)",
+      "Bash(do)",
+      "Bash(echo:*)",
+      "Bash(test:*)"
     ]
   }
 }

@@ -108,3 +108,14 @@ def get_settings() -> Settings:
     SES credentials (ses_usr, ses_pwd) are optional - only required for email sending.
     """
     return Settings()
+
+
+def make_sync_url(database_url: str) -> str:
+    """Convert an async database URL to a sync psycopg2 URL.
+
+    Handles various forms: postgresql+asyncpg://, postgresql://, etc.
+    """
+    from sqlalchemy.engine import make_url
+
+    url = make_url(database_url)
+    return url.set(drivername="postgresql+psycopg2").render_as_string(hide_password=False)

@@ -285,3 +285,60 @@ class TestWeeklyDigestGenerator:
         assert "Test Arc" in context.newsletter_opening
         assert "Reflection" in context.newsletter_closing
         assert "Test Event" in context.newsletter_closing
+
+    def test_build_email_context(
+        self,
+        weekly_settings: Settings,
+    ) -> None:
+        """build_email_context creates dict for weekly digest template."""
+        generator = WeeklyDigestGenerator(weekly_settings)
+
+        content = WeeklyDigestContent(
+            weekly_title="Weekly Title",
+            weekly_subtitle="Weekly Subtitle",
+            narrative_arcs=[{"arc_title": "Test Arc", "summary": "Arc summary."}],
+            weekly_reflection="Reflection text.",
+            upcoming_events=[{"event": "Test Event", "date": "2026-02-15"}],
+        )
+
+        ctx = generator.build_email_context(
+            content,
+            week_start=date(2026, 2, 3),
+            week_end=date(2026, 2, 9),
+        )
+
+        assert isinstance(ctx, dict)
+        assert ctx["subject"] == "BehindBars - Digest Settimanale - 03.02 - 09.02.2026"
+        assert ctx["week_str"] == "03.02 - 09.02.2026"
+        assert ctx["weekly_title"] == "Weekly Title"
+        assert ctx["weekly_subtitle"] == "Weekly Subtitle"
+        assert len(ctx["narrative_arcs"]) == 1
+        assert ctx["narrative_arcs"][0]["arc_title"] == "Test Arc"
+        assert ctx["weekly_reflection"] == "Reflection text."
+        assert len(ctx["upcoming_events"]) == 1
+        assert ctx["upcoming_events"][0]["event"] == "Test Event"
+
+    def test_build_email_context_empty_subtitle(
+        self,
+        weekly_settings: Settings,
+    ) -> None:
+        """build_email_context handles empty subtitle."""
+        generator = WeeklyDigestGenerator(weekly_settings)
+
+        content = WeeklyDigestContent(
+            weekly_title="Title Only",
+            weekly_subtitle="",
+            narrative_arcs=[],
+            weekly_reflection="Reflection.",
+            upcoming_events=[],
+        )
+
+        ctx = generator.build_email_context(
+            content,
+            week_start=date(2026, 1, 6),
+            week_end=date(2026, 1, 12),
+        )
+
+        assert ctx["weekly_subtitle"] == ""
+        assert ctx["narrative_arcs"] == []
+        assert ctx["upcoming_events"] == []

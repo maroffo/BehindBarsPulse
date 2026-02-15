@@ -1,0 +1,48 @@
+{{subject}}
+
+═══════════════════════════════════════════════════════════════════════════════
+
+BEHINDBARS
+Giustizia e Sistema Carcerario
+Digest Settimanale - {{week_str}}
+
+═══════════════════════════════════════════════════════════════════════════════
+
+{{weekly_title}}
+{% if weekly_subtitle %}{{weekly_subtitle}}{% endif %}
+
+{% for arc in narrative_arcs %}
+┌─ {{arc.arc_title | upper}} ─────────────────────────────────────────────────
+│
+│  {{arc.summary}}
+│
+└──────────────────────────────────────────────────────────────────────────────
+
+{% endfor %}
+═══════════════════════════════════════════════════════════════════════════════
+
+RIFLESSIONE SETTIMANALE
+
+{{weekly_reflection}}
+
+{% if upcoming_events %}
+───────────────────────────────────────────────────────────────────────────────
+
+EVENTI IN ARRIVO
+
+{% for event in upcoming_events %}  → {{event.event}}{% if event.date %} ({{event.date}}){% endif %}
+{% endfor %}
+{% endif %}
+───────────────────────────────────────────────────────────────────────────────
+
+"Il grado di civiltà di un Paese si misura osservando la condizione delle sue carceri."
+
+───────────────────────────────────────────────────────────────────────────────
+
+BehindBarsPulse - https://github.com/maroffo/BehindBarsPulse
+Un progetto che utilizza l'IA per raccogliere notizie sul sistema carcerario italiano.
+
+I contenuti sono generati con modelli linguistici avanzati e supervisionati.
+I riassunti riflettono i temi degli articoli, non le opinioni dell'autore.
+
+Creato con cura in Sardegna

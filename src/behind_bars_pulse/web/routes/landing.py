@@ -1,10 +1,10 @@
 # ABOUTME: Home page route with hero, subscribe CTA, and latest editions.
-# ABOUTME: Displays project intro, subscription form, latest bulletin and newsletter.
+# ABOUTME: Displays project intro, subscription form, latest bulletin and weekly digest.
 
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 
-from behind_bars_pulse.web.dependencies import BulletinRepo, NewsletterRepo, Templates
+from behind_bars_pulse.web.dependencies import BulletinRepo, Templates, WeeklyDigestRepo
 
 router = APIRouter()
 
@@ -13,13 +13,12 @@ router = APIRouter()
 async def landing(
     request: Request,
     templates: Templates,
-    newsletter_repo: NewsletterRepo,
+    digest_repo: WeeklyDigestRepo,
     bulletin_repo: BulletinRepo,
 ):
     """Display the home page with subscription form and latest editions."""
-    # Get latest newsletter and bulletin for preview
-    recent_newsletters = await newsletter_repo.list_recent(limit=1)
-    latest_newsletter = recent_newsletters[0] if recent_newsletters else None
+    # Get latest digest and bulletin for preview
+    latest_digest = await digest_repo.get_latest()
 
     latest_bulletin = await bulletin_repo.get_latest()
 
@@ -27,7 +26,7 @@ async def landing(
         request=request,
         name="landing.html",
         context={
-            "latest_newsletter": latest_newsletter,
+            "latest_digest": latest_digest,
             "latest_bulletin": latest_bulletin,
         },
     )

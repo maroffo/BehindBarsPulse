@@ -97,8 +97,9 @@ class BulletinGenerator:
             return {}
 
         # Use sync connection to avoid event loop issues
-        async_url = str(self.settings.database_url)
-        sync_url = async_url.replace("+asyncpg", "").replace("postgresql+asyncpg", "postgresql")
+        from behind_bars_pulse.config import make_sync_url
+
+        sync_url = make_sync_url(self.settings.database_url)
 
         try:
             engine = create_engine(sync_url)

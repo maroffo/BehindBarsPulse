@@ -35,7 +35,7 @@
     <div id="form-result"></div>
 </div>
 
-{% if latest_bulletin or latest_newsletter %}
+{% if latest_bulletin or latest_digest %}
 <hr class="divider-strong">
 
 <section class="landing-editions">
@@ -58,17 +58,19 @@
         </div>
         {% endif %}
 
-        {% if latest_newsletter %}
+        {% if latest_digest %}
         <div class="edition-card">
             <span class="edition-badge edition-badge-secondary">Settimanale</span>
-            <span class="edition-date">{{ latest_newsletter.issue_date.strftime('%d %B %Y') }}</span>
+            <span class="edition-date">{{ latest_digest.week_start.strftime('%d %B') }} - {{ latest_digest.week_end.strftime('%d %B %Y') }}</span>
             <h3 class="edition-title">
-                <a href="/archive/{{ latest_newsletter.issue_date.strftime('%Y-%m-%d') }}">{{ latest_newsletter.title }}</a>
+                <a href="/digest/{{ latest_digest.week_end.strftime('%Y-%m-%d') }}">{{ latest_digest.title }}</a>
             </h3>
-            <p class="edition-subtitle">{{ latest_newsletter.subtitle }}</p>
+            {% if latest_digest.subtitle %}
+            <p class="edition-subtitle">{{ latest_digest.subtitle }}</p>
+            {% endif %}
             <div class="edition-actions">
-                <a href="/archive/{{ latest_newsletter.issue_date.strftime('%Y-%m-%d') }}" class="btn btn-outline">Leggi la newsletter</a>
-                <a href="/edizioni/newsletter" class="edition-archive-link">Tutte le newsletter &rarr;</a>
+                <a href="/digest/{{ latest_digest.week_end.strftime('%Y-%m-%d') }}" class="btn btn-outline">Leggi il digest</a>
+                <a href="/edizioni/digest" class="edition-archive-link">Tutti i digest &rarr;</a>
             </div>
         </div>
         {% endif %}

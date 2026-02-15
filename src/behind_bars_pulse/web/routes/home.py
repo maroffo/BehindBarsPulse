@@ -1,33 +1,13 @@
-# ABOUTME: Home route displaying the latest newsletter.
-# ABOUTME: Serves the latest edition page with most recent newsletter.
+# ABOUTME: Legacy redirect from /latest to /digest.
+# ABOUTME: Redirects to the latest weekly digest page.
 
-from datetime import date
-
-from fastapi import APIRouter, Request
-from fastapi.responses import HTMLResponse
-
-from behind_bars_pulse.web.dependencies import NewsletterRepo, Templates
+from fastapi import APIRouter
+from fastapi.responses import RedirectResponse
 
 router = APIRouter()
 
 
-@router.get("/latest", response_class=HTMLResponse)
-async def latest(
-    request: Request,
-    templates: Templates,
-    newsletter_repo: NewsletterRepo,
-):
-    """Display the latest newsletter (today or most recent)."""
-    # Try to get today's newsletter first
-    newsletter = await newsletter_repo.get_by_date(date.today())
-
-    # Fall back to most recent if none for today
-    if not newsletter:
-        recent = await newsletter_repo.list_recent(limit=1)
-        newsletter = recent[0] if recent else None
-
-    return templates.TemplateResponse(
-        request=request,
-        name="home.html",
-        context={"newsletter": newsletter},
-    )
+@router.get("/latest")
+async def latest():
+    """Redirect /latest to /digest."""
+    return RedirectResponse(url="/digest", status_code=302)

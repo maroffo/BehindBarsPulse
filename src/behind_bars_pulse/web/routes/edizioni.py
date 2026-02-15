@@ -1,4 +1,4 @@
-# ABOUTME: Edizioni routes for overview of bulletins and newsletters.
+# ABOUTME: Edizioni routes for overview of bulletins, digests, and newsletters.
 # ABOUTME: Unified entry point for all editorial content archives.
 
 from collections.abc import Awaitable, Callable, Sequence
@@ -6,7 +6,12 @@ from collections.abc import Awaitable, Callable, Sequence
 from fastapi import APIRouter, Query, Request
 from fastapi.responses import HTMLResponse
 
-from behind_bars_pulse.web.dependencies import BulletinRepo, NewsletterRepo, Templates
+from behind_bars_pulse.web.dependencies import (
+    BulletinRepo,
+    NewsletterRepo,
+    Templates,
+    WeeklyDigestRepo,
+)
 
 router = APIRouter(prefix="/edizioni")
 
@@ -30,18 +35,18 @@ async def edizioni_overview(
     request: Request,
     templates: Templates,
     bulletin_repo: BulletinRepo,
-    newsletter_repo: NewsletterRepo,
+    digest_repo: WeeklyDigestRepo,
 ):
-    """Overview page showing recent bulletins and newsletters."""
+    """Overview page showing recent bulletins and digests."""
     bulletins = await bulletin_repo.list_recent(limit=5)
-    newsletters = await newsletter_repo.list_recent(limit=5)
+    digests = await digest_repo.list_recent(limit=5)
 
     return templates.TemplateResponse(
         request=request,
         name="edizioni.html",
         context={
             "bulletins": bulletins,
-            "newsletters": newsletters,
+            "digests": digests,
         },
     )
 
@@ -61,6 +66,27 @@ async def bulletin_archive(
         name="bulletin_archive.html",
         context={
             "bulletins": bulletins,
+            "page": page,
+            "has_more": has_more,
+        },
+    )
+
+
+@router.get("/digest", response_class=HTMLResponse)
+async def digest_archive(
+    request: Request,
+    templates: Templates,
+    digest_repo: WeeklyDigestRepo,
+    page: int = Query(1, ge=1),
+):
+    """List all weekly digests with pagination."""
+    digests, has_more = await _paginate(digest_repo.list_recent, page)
+
+    return templates.TemplateResponse(
+        request=request,
+        name="digest_archive.html",
+        context={
+            "digests": digests,
             "page": page,
             "has_more": has_more,
         },

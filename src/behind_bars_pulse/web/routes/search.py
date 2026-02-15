@@ -12,7 +12,7 @@ from behind_bars_pulse.db.models import Article, EditorialComment
 from behind_bars_pulse.web.dependencies import (
     ArticleRepo,
     EditorialCommentRepo,
-    NewsletterSvc,
+    EmbeddingSvc,
     Templates,
 )
 
@@ -73,7 +73,7 @@ async def search_results(
     templates: Templates,
     article_repo: ArticleRepo,
     editorial_repo: EditorialCommentRepo,
-    newsletter_svc: NewsletterSvc,
+    embedding_svc: EmbeddingSvc,
     q: str = Query("", min_length=0),
     offset: int = Query(0, ge=0),
     content_type: str = Query("all"),
@@ -86,7 +86,7 @@ async def search_results(
     if q.strip():
         try:
             # Generate embedding for query
-            query_embedding = await newsletter_svc.generate_embedding(q)
+            query_embedding = await embedding_svc.generate_embedding(q)
 
             if content_type == ContentType.ARTICLES.value:
                 # Search only articles

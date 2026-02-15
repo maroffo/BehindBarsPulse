@@ -349,6 +349,29 @@ class Bulletin(Base):
         return f"<Bulletin {self.issue_date}: {self.title[:50]}...>"
 
 
+class WeeklyDigest(Base):
+    """A weekly digest summarizing daily bulletins with narrative arcs."""
+
+    __tablename__ = "weekly_digests"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    week_start: Mapped[date] = mapped_column(Date, nullable=False)
+    week_end: Mapped[date] = mapped_column(Date, nullable=False, unique=True, index=True)
+    title: Mapped[str] = mapped_column(String(500), nullable=False)
+    subtitle: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    narrative_arcs: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    weekly_reflection: Mapped[str | None] = mapped_column(Text, nullable=True)
+    upcoming_events: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC)
+    )
+
+    __table_args__ = (Index("ix_weekly_digests_week_end_desc", week_end.desc()),)
+
+    def __repr__(self) -> str:
+        return f"<WeeklyDigest {self.week_start} - {self.week_end}: {self.title[:50]}...>"
+
+
 class EditorialComment(Base):
     """An editorial comment extracted from bulletins or newsletters for search."""
 

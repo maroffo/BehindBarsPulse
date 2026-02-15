@@ -55,31 +55,42 @@ class EmailSender:
 
     def send(
         self,
-        context: NewsletterContext,
+        context: NewsletterContext | dict,
         recipients: list[str] | None = None,
+        html_template: str | None = None,
+        txt_template: str | None = None,
     ) -> None:
         """Send newsletter email to recipients.
 
         Args:
-            context: Complete newsletter context for rendering.
+            context: Newsletter context (Pydantic model or plain dict) for rendering.
             recipients: List of email addresses. Defaults to context list or default recipient.
+            html_template: Override HTML template name. Defaults to daily template.
+            txt_template: Override text template name. Defaults to daily template.
         """
-        recipients = recipients or context.notification_address_list
+        html_tpl_name = html_template or HTML_TEMPLATE
+        txt_tpl_name = txt_template or TXT_TEMPLATE
+
+        if isinstance(context, dict):
+            template_context = context
+            subject = context.get("subject", "BehindBars")
+        else:
+            template_context = context.model_dump()
+            subject = context.subject
+            if not recipients:
+                recipients = context.notification_address_list
+
         if not recipients:
             recipients = [self.settings.default_recipient]
 
-        log.info("sending_newsletter", subject=context.subject, recipient_count=len(recipients))
+        log.info("sending_newsletter", subject=subject, recipient_count=len(recipients))
 
         # Render templates
-        template_context = context.model_dump()
-        template_context["html_template"] = HTML_TEMPLATE
-        template_context["txt_template"] = TXT_TEMPLATE
+        html_tpl = self.jinja_env.get_template(html_tpl_name)
+        txt_tpl = self.jinja_env.get_template(txt_tpl_name)
 
-        html_template = self.jinja_env.get_template(HTML_TEMPLATE)
-        txt_template = self.jinja_env.get_template(TXT_TEMPLATE)
-
-        html_content = html_template.render(**template_context)
-        txt_content = txt_template.render(**template_context)
+        html_content = html_tpl.render(**template_context)
+        txt_content = txt_tpl.render(**template_context)
 
         # Archive newsletter
         self._archive_newsletter(txt_content, "txt")
@@ -87,7 +98,7 @@ class EmailSender:
 
         # Build email message
         message = EmailMessage()
-        message["Subject"] = context.subject
+        message["Subject"] = subject
         message["From"] = f"{self.settings.sender_name} <{self.settings.sender_email}>"
         message["To"] = f"iungo <{self.settings.default_recipient}>"
         message.add_header("Return-Path", self.settings.bounce_email)
@@ -171,30 +182,44 @@ class EmailSender:
 
         return file_path
 
-    def save_preview(self, context: NewsletterContext, issue_date: date | None = None) -> Path:
+    def save_preview(
+        self,
+        context: NewsletterContext | dict,
+        issue_date: date | None = None,
+        html_template: str | None = None,
+        txt_template: str | None = None,
+    ) -> Path:
         """Save newsletter preview without sending.
 
         Renders templates and saves to previous_issues/ with _preview suffix.
 
         Args:
-            context: Complete newsletter context for rendering.
+            context: Newsletter context (Pydantic model or plain dict) for rendering.
             issue_date: Date for the filename. Defaults to today.
+            html_template: Override HTML template name. Defaults to daily template.
+            txt_template: Override text template name. Defaults to daily template.
 
         Returns:
             Path to the saved HTML preview file.
         """
-        log.info("saving_preview", subject=context.subject)
+        html_tpl_name = html_template or HTML_TEMPLATE
+        txt_tpl_name = txt_template or TXT_TEMPLATE
+
+        if isinstance(context, dict):
+            template_context = context
+            subject = context.get("subject", "BehindBars")
+        else:
+            template_context = context.model_dump()
+            subject = context.subject
+
+        log.info("saving_preview", subject=subject)
 
         # Render templates
-        template_context = context.model_dump()
-        template_context["html_template"] = HTML_TEMPLATE
-        template_context["txt_template"] = TXT_TEMPLATE
+        html_tpl = self.jinja_env.get_template(html_tpl_name)
+        txt_tpl = self.jinja_env.get_template(txt_tpl_name)
 
-        html_template = self.jinja_env.get_template(HTML_TEMPLATE)
-        txt_template = self.jinja_env.get_template(TXT_TEMPLATE)
-
-        html_content = html_template.render(**template_context)
-        txt_content = txt_template.render(**template_context)
+        html_content = html_tpl.render(**template_context)
+        txt_content = txt_tpl.render(**template_context)
 
         # Save with _preview suffix
         self._archive_newsletter(txt_content, "txt", "_preview", issue_date)
