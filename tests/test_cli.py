@@ -4,7 +4,6 @@
 import argparse
 from datetime import date
 from pathlib import Path
-from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -12,7 +11,10 @@ from pydantic import SecretStr
 
 from behind_bars_pulse.__main__ import cmd_status, cmd_weekly, create_parser, main
 from behind_bars_pulse.config import Settings
-from behind_bars_pulse.newsletter.weekly import WeeklyDigestContent
+from behind_bars_pulse.newsletter.weekly import (
+    WeeklyDigestContent,
+    WeeklyPipelineResult,
+)
 
 
 @pytest.fixture
@@ -208,92 +210,30 @@ class TestCmdWeekly:
         )
 
     @pytest.fixture
-    def mock_cli_db_env(self):
-        """Set up mock DB environment for cmd_weekly tests."""
-        mock_engine = MagicMock()
-
-        mock_query_session = MagicMock()
-        mock_query_session.__enter__ = MagicMock(return_value=mock_query_session)
-        mock_query_session.__exit__ = MagicMock(return_value=False)
-
-        mock_save_session = MagicMock()
-        mock_save_session.__enter__ = MagicMock(return_value=mock_save_session)
-        mock_save_session.__exit__ = MagicMock(return_value=False)
-        mock_save_session.query.return_value.filter.return_value.first.return_value = None
-
-        mock_sessionmaker_instance = MagicMock(return_value=mock_query_session)
-
-        mock_settings = MagicMock()
-        mock_settings.database_url = "postgresql+asyncpg://localhost/test"
-
-        with (
-            patch("sqlalchemy.create_engine", return_value=mock_engine),
-            patch("sqlalchemy.orm.sessionmaker", return_value=mock_sessionmaker_instance),
-            patch("sqlalchemy.orm.Session", return_value=mock_save_session),
-            patch("behind_bars_pulse.__main__.get_settings", return_value=mock_settings),
-        ):
-            yield SimpleNamespace(
-                engine=mock_engine,
-                query_session=mock_query_session,
-                save_session=mock_save_session,
-                settings=mock_settings,
-            )
-
-    def _setup_bulletins(self, mock_query_session, bulletins):
-        """Configure session.execute() to return bulletins."""
-        mock_result = MagicMock()
-        mock_result.scalars.return_value.all.return_value = bulletins
-        mock_query_session.execute.return_value = mock_result
+    def pipeline_result(self, weekly_content) -> WeeklyPipelineResult:
+        """Sample pipeline result for cmd_weekly tests."""
+        return WeeklyPipelineResult(
+            content=weekly_content,
+            email_context={"subject": "Test Subject"},
+            recipients=["a@b.com"],
+            week_start=date(2026, 2, 4),
+            week_end=date(2026, 2, 10),
+        )
 
     @patch("behind_bars_pulse.email.sender.EmailSender")
-    @patch("behind_bars_pulse.newsletter.weekly.WeeklyDigestGenerator")
-    def test_uses_build_email_context(
-        self,
-        mock_generator_cls: MagicMock,
-        mock_sender_cls: MagicMock,
-        mock_cli_db_env,
-        weekly_content: WeeklyDigestContent,
-    ) -> None:
-        """cmd_weekly calls build_email_context instead of build_context."""
-        mock_generator = MagicMock()
-        mock_generator.settings.weekly_lookback_days = 7
-        mock_generator.generate.return_value = weekly_content
-        mock_generator.build_email_context.return_value = {"subject": "Test Subject"}
-        mock_generator_cls.return_value = mock_generator
-        mock_sender_cls.return_value = MagicMock()
-
-        bulletins = [SimpleNamespace(issue_date=date(2026, 2, 4))]
-        self._setup_bulletins(mock_cli_db_env.query_session, bulletins)
-
-        args = argparse.Namespace(date="2026-02-10", dry_run=True)
-        result = cmd_weekly(args)
-
-        assert result == 0
-        mock_generator.build_email_context.assert_called_once()
-        mock_generator.build_context.assert_not_called()
-
-    @patch("behind_bars_pulse.email.sender.EmailSender")
-    @patch("behind_bars_pulse.newsletter.weekly.WeeklyDigestGenerator")
+    @patch("behind_bars_pulse.newsletter.weekly.run_weekly_pipeline")
     def test_dry_run_passes_weekly_templates_to_save_preview(
         self,
-        mock_generator_cls: MagicMock,
+        mock_pipeline: MagicMock,
         mock_sender_cls: MagicMock,
-        mock_cli_db_env,
-        weekly_content: WeeklyDigestContent,
+        pipeline_result: WeeklyPipelineResult,
     ) -> None:
         """cmd_weekly dry-run passes weekly templates to save_preview."""
-        mock_generator = MagicMock()
-        mock_generator.settings.weekly_lookback_days = 7
-        mock_generator.generate.return_value = weekly_content
-        mock_generator.build_email_context.return_value = {"subject": "Test"}
-        mock_generator_cls.return_value = mock_generator
+        mock_pipeline.return_value = pipeline_result
 
         mock_sender = MagicMock()
         mock_sender.save_preview.return_value = Path("/tmp/preview.html")
         mock_sender_cls.return_value = mock_sender
-
-        bulletins = [SimpleNamespace(issue_date=date(2026, 2, 4))]
-        self._setup_bulletins(mock_cli_db_env.query_session, bulletins)
 
         args = argparse.Namespace(date="2026-02-10", dry_run=True)
         result = cmd_weekly(args)
@@ -304,48 +244,13 @@ class TestCmdWeekly:
         assert call_kwargs.kwargs["html_template"] == "weekly_digest_template.html"
         assert call_kwargs.kwargs["txt_template"] == "weekly_digest_template.txt"
 
-    @patch("behind_bars_pulse.email.sender.EmailSender")
-    @patch("behind_bars_pulse.newsletter.weekly.WeeklyDigestGenerator")
-    def test_saves_digest_to_db(
+    @patch("behind_bars_pulse.newsletter.weekly.run_weekly_pipeline")
+    def test_no_bulletins_returns_1(
         self,
-        mock_generator_cls: MagicMock,
-        mock_sender_cls: MagicMock,
-        mock_cli_db_env,
-        weekly_content: WeeklyDigestContent,
+        mock_pipeline: MagicMock,
     ) -> None:
-        """cmd_weekly saves WeeklyDigest to database."""
-        mock_generator = MagicMock()
-        mock_generator.settings.weekly_lookback_days = 7
-        mock_generator.generate.return_value = weekly_content
-        mock_generator.build_email_context.return_value = {"subject": "Test"}
-        mock_generator_cls.return_value = mock_generator
-        mock_sender_cls.return_value = MagicMock(
-            save_preview=MagicMock(return_value=Path("/tmp/preview.html"))
-        )
-
-        bulletins = [SimpleNamespace(issue_date=date(2026, 2, 4))]
-        self._setup_bulletins(mock_cli_db_env.query_session, bulletins)
-
-        args = argparse.Namespace(date="2026-02-10", dry_run=True)
-        result = cmd_weekly(args)
-
-        assert result == 0
-        mock_cli_db_env.save_session.add.assert_called_once()
-        mock_cli_db_env.save_session.commit.assert_called()
-
-    @patch("behind_bars_pulse.newsletter.weekly.WeeklyDigestGenerator")
-    def test_no_bulletins_raises_value_error(
-        self,
-        mock_generator_cls: MagicMock,
-        mock_cli_db_env,
-    ) -> None:
-        """cmd_weekly returns 1 when no bulletins found (generator raises ValueError)."""
-        mock_generator = MagicMock()
-        mock_generator.settings.weekly_lookback_days = 7
-        mock_generator.generate.side_effect = ValueError("No bulletins found for weekly digest")
-        mock_generator_cls.return_value = mock_generator
-
-        self._setup_bulletins(mock_cli_db_env.query_session, [])
+        """cmd_weekly returns 1 when pipeline raises ValueError."""
+        mock_pipeline.side_effect = ValueError("No bulletins found for weekly digest")
 
         args = argparse.Namespace(date="2026-02-10", dry_run=True)
         result = cmd_weekly(args)
@@ -353,32 +258,18 @@ class TestCmdWeekly:
         assert result == 1
 
     @patch("behind_bars_pulse.email.sender.EmailSender")
-    @patch("behind_bars_pulse.newsletter.weekly.WeeklyDigestGenerator")
+    @patch("behind_bars_pulse.newsletter.weekly.run_weekly_pipeline")
     def test_send_mode_passes_weekly_templates(
         self,
-        mock_generator_cls: MagicMock,
+        mock_pipeline: MagicMock,
         mock_sender_cls: MagicMock,
-        mock_cli_db_env,
-        weekly_content: WeeklyDigestContent,
+        pipeline_result: WeeklyPipelineResult,
     ) -> None:
         """cmd_weekly send mode passes weekly templates to sender.send()."""
-        mock_generator = MagicMock()
-        mock_generator.settings.weekly_lookback_days = 7
-        mock_generator.generate.return_value = weekly_content
-        mock_generator.build_email_context.return_value = {"subject": "Test"}
-        mock_generator_cls.return_value = mock_generator
+        mock_pipeline.return_value = pipeline_result
 
         mock_sender = MagicMock()
         mock_sender_cls.return_value = mock_sender
-
-        bulletins = [SimpleNamespace(issue_date=date(2026, 2, 4))]
-        self._setup_bulletins(mock_cli_db_env.query_session, bulletins)
-
-        # Configure save_session.execute() to return subscriber emails
-        # (used by the sync recipient query via Session(engine))
-        mock_recipient_result = MagicMock()
-        mock_recipient_result.scalars.return_value.all.return_value = ["a@b.com"]
-        mock_cli_db_env.save_session.execute.return_value = mock_recipient_result
 
         args = argparse.Namespace(date="2026-02-10", dry_run=False)
         result = cmd_weekly(args)
@@ -388,3 +279,25 @@ class TestCmdWeekly:
         call_kwargs = mock_sender.send.call_args
         assert call_kwargs.kwargs["html_template"] == "weekly_digest_template.html"
         assert call_kwargs.kwargs["txt_template"] == "weekly_digest_template.txt"
+        assert call_kwargs.kwargs["recipients"] == ["a@b.com"]
+
+    @patch("behind_bars_pulse.email.sender.EmailSender")
+    @patch("behind_bars_pulse.newsletter.weekly.run_weekly_pipeline")
+    def test_no_recipients_returns_0_without_sending(
+        self,
+        mock_pipeline: MagicMock,
+        mock_sender_cls: MagicMock,
+        pipeline_result: WeeklyPipelineResult,
+    ) -> None:
+        """cmd_weekly returns 0 and skips send when no recipients."""
+        pipeline_result.recipients = []
+        mock_pipeline.return_value = pipeline_result
+
+        mock_sender = MagicMock()
+        mock_sender_cls.return_value = mock_sender
+
+        args = argparse.Namespace(date="2026-02-10", dry_run=False)
+        result = cmd_weekly(args)
+
+        assert result == 0
+        mock_sender.send.assert_not_called()

@@ -80,107 +80,31 @@ def _run_collect(collection_date: date) -> None:
 def _run_weekly(reference_date: date) -> None:
     """Run weekly digest and send in background.
 
-    Uses sync DB access to avoid event loop conflicts in background tasks.
+    Delegates to run_weekly_pipeline for data loading, generation, and DB save.
     """
-    from datetime import timedelta
-
-    from sqlalchemy import create_engine, select
-    from sqlalchemy.orm import Session, sessionmaker
-
-    from behind_bars_pulse.config import get_settings, make_sync_url
-    from behind_bars_pulse.db.models import Bulletin as BulletinORM
-    from behind_bars_pulse.db.models import Subscriber
-    from behind_bars_pulse.db.models import WeeklyDigest as WeeklyDigestORM
     from behind_bars_pulse.email.sender import EmailSender
-    from behind_bars_pulse.newsletter.weekly import WeeklyDigestGenerator
+    from behind_bars_pulse.newsletter.weekly import run_weekly_pipeline
 
     log.info("api_weekly_start", date=reference_date.isoformat())
 
-    settings = get_settings()
-    generator = WeeklyDigestGenerator(settings)
-    lookback = generator.settings.weekly_lookback_days
-    week_end = reference_date
-    week_start = reference_date - timedelta(days=lookback - 1)
-
     try:
-        # Sync DB access (background tasks can't share the async engine)
-        sync_url = make_sync_url(settings.database_url)
-        engine = create_engine(sync_url)
-        try:
-            SessionLocal = sessionmaker(bind=engine)
+        result = run_weekly_pipeline(reference_date)
 
-            with SessionLocal() as session:
-                bulletins = list(
-                    session.execute(
-                        select(BulletinORM)
-                        .where(
-                            BulletinORM.issue_date >= week_start,
-                            BulletinORM.issue_date <= week_end,
-                        )
-                        .order_by(BulletinORM.issue_date.asc())
-                    )
-                    .scalars()
-                    .all()
-                )
-
-                recipients = list(
-                    session.execute(
-                        select(Subscriber.email)
-                        .where(Subscriber.confirmed == True)  # noqa: E712
-                        .where(Subscriber.unsubscribed_at.is_(None))
-                    )
-                    .scalars()
-                    .all()
-                )
-
-            log.info("weekly_data_loaded", bulletins=len(bulletins), recipients=len(recipients))
-
-            if not bulletins:
-                log.warning("api_weekly_no_bulletins")
-                return
-
-            content = generator.generate(bulletins=bulletins, reference_date=reference_date)
-            email_context = generator.build_email_context(content, week_start, week_end)
-
-            # Save WeeklyDigest to DB
-            with Session(engine) as session:
-                existing = (
-                    session.query(WeeklyDigestORM)
-                    .filter(WeeklyDigestORM.week_end == week_end)
-                    .first()
-                )
-                if existing:
-                    session.delete(existing)
-                    session.commit()
-
-                digest = WeeklyDigestORM(
-                    week_start=week_start,
-                    week_end=week_end,
-                    title=content.weekly_title,
-                    subtitle=content.weekly_subtitle or None,
-                    narrative_arcs=content.narrative_arcs,
-                    weekly_reflection=content.weekly_reflection,
-                    upcoming_events=content.upcoming_events,
-                )
-                session.add(digest)
-                session.commit()
-                log.info("weekly_digest_saved", week_end=week_end.isoformat(), id=digest.id)
-        finally:
-            engine.dispose()
-
-        if not recipients:
+        if not result.recipients:
             log.warning("api_weekly_no_subscribers")
             return
 
         sender = EmailSender()
         sender.send(
-            email_context,
-            recipients=recipients,
+            result.email_context,
+            recipients=result.recipients,
             html_template="weekly_digest_template.html",
             txt_template="weekly_digest_template.txt",
         )
-        log.info("api_weekly_complete", recipient_count=len(recipients))
+        log.info("api_weekly_complete", recipient_count=len(result.recipients))
 
+    except ValueError:
+        log.warning("api_weekly_no_bulletins")
     except Exception:
         log.exception("api_weekly_failed")
 

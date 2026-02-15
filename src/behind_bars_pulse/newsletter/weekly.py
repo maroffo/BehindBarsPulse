@@ -1,7 +1,10 @@
-# ABOUTME: Weekly digest generator for BehindBarsPulse.
-# ABOUTME: Synthesizes daily bulletins into a weekly summary using narrative context.
+# ABOUTME: Weekly digest generator and pipeline for BehindBarsPulse.
+# ABOUTME: Synthesizes daily bulletins into a weekly summary, saves to DB, returns results.
+
+from __future__ import annotations
 
 import json
+from dataclasses import dataclass
 from datetime import date, timedelta
 from typing import Any
 
@@ -275,3 +278,107 @@ class WeeklyDigestGenerator:
             newsletter_closing=closing,
             press_review=[],  # Weekly digest doesn't have press review categories
         )
+
+
+@dataclass
+class WeeklyPipelineResult:
+    """Result of the weekly digest pipeline."""
+
+    content: WeeklyDigestContent
+    email_context: dict[str, Any]
+    recipients: list[str]
+    week_start: date
+    week_end: date
+
+
+def run_weekly_pipeline(
+    reference_date: date,
+    settings: Settings | None = None,
+) -> WeeklyPipelineResult:
+    """Run the full weekly digest pipeline: load data, generate, save to DB.
+
+    Loads bulletins and subscribers from the database, generates the weekly
+    digest via AI, saves the digest to DB (replacing any existing one for
+    the same week_end), and returns the result for callers to send or preview.
+
+    Raises:
+        ValueError: If no bulletins found for the given week.
+    """
+    from sqlalchemy import create_engine, select
+    from sqlalchemy.orm import Session, sessionmaker
+
+    from behind_bars_pulse.config import make_sync_url
+    from behind_bars_pulse.db.models import Bulletin as BulletinORM
+    from behind_bars_pulse.db.models import Subscriber
+    from behind_bars_pulse.db.models import WeeklyDigest as WeeklyDigestORM
+
+    settings = settings or get_settings()
+    generator = WeeklyDigestGenerator(settings)
+    lookback = generator.settings.weekly_lookback_days
+    week_end = reference_date
+    week_start = reference_date - timedelta(days=lookback - 1)
+
+    sync_url = make_sync_url(settings.database_url)
+    engine = create_engine(sync_url)
+    try:
+        SessionLocal = sessionmaker(bind=engine)
+
+        with SessionLocal() as session:
+            bulletins = list(
+                session.execute(
+                    select(BulletinORM)
+                    .where(
+                        BulletinORM.issue_date >= week_start,
+                        BulletinORM.issue_date <= week_end,
+                    )
+                    .order_by(BulletinORM.issue_date.asc())
+                )
+                .scalars()
+                .all()
+            )
+
+            recipients = list(
+                session.execute(
+                    select(Subscriber.email)
+                    .where(Subscriber.confirmed == True)  # noqa: E712
+                    .where(Subscriber.unsubscribed_at.is_(None))
+                )
+                .scalars()
+                .all()
+            )
+
+        log.info("weekly_data_loaded", bulletins=len(bulletins), recipients=len(recipients))
+
+        content = generator.generate(bulletins=bulletins, reference_date=reference_date)
+        email_context = generator.build_email_context(content, week_start, week_end)
+
+        # Save WeeklyDigest to DB (atomic: delete + add in one transaction)
+        with Session(engine) as session:
+            existing = (
+                session.query(WeeklyDigestORM).filter(WeeklyDigestORM.week_end == week_end).first()
+            )
+            if existing:
+                session.delete(existing)
+
+            digest = WeeklyDigestORM(
+                week_start=week_start,
+                week_end=week_end,
+                title=content.weekly_title,
+                subtitle=content.weekly_subtitle or None,
+                narrative_arcs=content.narrative_arcs,
+                weekly_reflection=content.weekly_reflection,
+                upcoming_events=content.upcoming_events,
+            )
+            session.add(digest)
+            session.commit()
+            log.info("weekly_digest_saved", week_end=week_end.isoformat(), id=digest.id)
+    finally:
+        engine.dispose()
+
+    return WeeklyPipelineResult(
+        content=content,
+        email_context=email_context,
+        recipients=recipients,
+        week_start=week_start,
+        week_end=week_end,
+    )

@@ -8,7 +8,7 @@ from datetime import date
 
 import structlog
 
-from behind_bars_pulse.config import get_settings, make_sync_url
+from behind_bars_pulse.config import get_settings
 
 
 def configure_logging() -> None:
@@ -132,10 +132,8 @@ def cmd_weekly(args: argparse.Namespace) -> int:
     Summarizes the past week's bulletins using narrative context.
     Fetches bulletins and active subscribers from database.
     """
-    from datetime import timedelta
-
     from behind_bars_pulse.email.sender import EmailSender
-    from behind_bars_pulse.newsletter.weekly import WeeklyDigestGenerator
+    from behind_bars_pulse.newsletter.weekly import run_weekly_pipeline
 
     log = structlog.get_logger()
     log.info("cmd_weekly_start")
@@ -143,114 +141,36 @@ def cmd_weekly(args: argparse.Namespace) -> int:
     reference_date = date.fromisoformat(args.date) if args.date else date.today()
 
     try:
-        generator = WeeklyDigestGenerator()
-        lookback = generator.settings.weekly_lookback_days
-        week_end = reference_date
-        week_start = reference_date - timedelta(days=lookback - 1)
+        result = run_weekly_pipeline(reference_date)
 
-        # Load bulletins from DB (sync)
-        from sqlalchemy import create_engine, select
-        from sqlalchemy.orm import Session, sessionmaker
-
-        from behind_bars_pulse.db.models import Bulletin as BulletinORM
-        from behind_bars_pulse.db.models import WeeklyDigest as WeeklyDigestORM
-
-        settings = get_settings()
-        sync_url = make_sync_url(settings.database_url)
-        engine = create_engine(sync_url)
-        try:
-            SessionLocal = sessionmaker(bind=engine)
-
-            with SessionLocal() as session:
-                bulletins = list(
-                    session.execute(
-                        select(BulletinORM)
-                        .where(
-                            BulletinORM.issue_date >= week_start,
-                            BulletinORM.issue_date <= week_end,
-                        )
-                        .order_by(BulletinORM.issue_date.asc())
-                    )
-                    .scalars()
-                    .all()
-                )
-
-            log.info("bulletins_loaded", count=len(bulletins))
-
-            content = generator.generate(bulletins=bulletins, reference_date=reference_date)
-            email_context = generator.build_email_context(content, week_start, week_end)
-
-            # Save WeeklyDigest to DB
-            with Session(engine) as session:
-                existing = (
-                    session.query(WeeklyDigestORM)
-                    .filter(WeeklyDigestORM.week_end == week_end)
-                    .first()
-                )
-                if existing:
-                    session.delete(existing)
-                    session.commit()
-
-                digest = WeeklyDigestORM(
-                    week_start=week_start,
-                    week_end=week_end,
-                    title=content.weekly_title,
-                    subtitle=content.weekly_subtitle or None,
-                    narrative_arcs=content.narrative_arcs,
-                    weekly_reflection=content.weekly_reflection,
-                    upcoming_events=content.upcoming_events,
-                )
-                session.add(digest)
-                session.commit()
-                log.info("weekly_digest_saved", week_end=week_end.isoformat(), id=digest.id)
-        finally:
-            engine.dispose()
-
-        if not args.dry_run:
-            # Fetch recipients (sync, same pattern as _run_weekly in api.py)
-            from behind_bars_pulse.db.models import Subscriber
-
-            sync_engine = create_engine(sync_url)
-            try:
-                with Session(sync_engine) as session:
-                    recipients = list(
-                        session.execute(
-                            select(Subscriber.email)
-                            .where(Subscriber.confirmed == True)  # noqa: E712
-                            .where(Subscriber.unsubscribed_at.is_(None))
-                        )
-                        .scalars()
-                        .all()
-                    )
-            finally:
-                sync_engine.dispose()
-
-            if not recipients:
-                log.warning("no_active_subscribers")
-                print("\nNo active subscribers found in database.\n")
-                return 0
-
-            log.info("sending_to_subscribers", count=len(recipients))
-            sender = EmailSender()
-            sender.send(
-                email_context,
-                recipients=recipients,
-                html_template="weekly_digest_template.html",
-                txt_template="weekly_digest_template.txt",
-            )
-            log.info("weekly_digest_sent", recipient_count=len(recipients))
-        else:
-            # Preview mode
+        if args.dry_run:
             sender = EmailSender()
             preview_path = sender.save_preview(
-                email_context,
+                result.email_context,
                 issue_date=reference_date,
                 html_template="weekly_digest_template.html",
                 txt_template="weekly_digest_template.txt",
             )
             log.info(
-                "weekly_dry_run_complete", title=content.weekly_title, preview=str(preview_path)
+                "weekly_dry_run_complete",
+                title=result.content.weekly_title,
+                preview=str(preview_path),
             )
+        else:
+            if not result.recipients:
+                log.warning("no_active_subscribers")
+                print("\nNo active subscribers found in database.\n")
+                return 0
+
+            log.info("sending_to_subscribers", count=len(result.recipients))
+            sender = EmailSender()
+            sender.send(
+                result.email_context,
+                recipients=result.recipients,
+                html_template="weekly_digest_template.html",
+                txt_template="weekly_digest_template.txt",
+            )
+            log.info("weekly_digest_sent", recipient_count=len(result.recipients))
 
         log.info("cmd_weekly_complete")
         return 0
