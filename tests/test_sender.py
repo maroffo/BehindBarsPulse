@@ -77,6 +77,44 @@ def sample_weekly_dict() -> dict:
     }
 
 
+@pytest.fixture
+def sample_weekly_dict_with_articles() -> dict:
+    """Create a weekly digest email context dict with article links."""
+    return {
+        "subject": "BehindBars - Digest Settimanale - 03.02 - 09.02.2026",
+        "week_str": "03.02 - 09.02.2026",
+        "weekly_title": "Weekly Title",
+        "weekly_subtitle": "Weekly Subtitle",
+        "narrative_arcs": [
+            {
+                "arc_title": "Arc One",
+                "summary": "Summary of arc one.",
+                "articles": [
+                    {
+                        "title": "Articolo Giustizia",
+                        "link": "https://example.com/giustizia",
+                        "author": "Mario Rossi",
+                        "source": "Il Dubbio",
+                    },
+                    {
+                        "title": "Articolo Carceri",
+                        "link": "https://example.com/carceri",
+                        "author": "",
+                        "source": "Avvenire",
+                    },
+                ],
+            },
+            {
+                "arc_title": "Arc Two",
+                "summary": "Summary of arc two.",
+                "articles": [],
+            },
+        ],
+        "weekly_reflection": "Reflection on the week.",
+        "upcoming_events": [],
+    }
+
+
 class TestSendWithNewsletterContext:
     """Tests for send() with Pydantic NewsletterContext (backwards compatibility)."""
 
@@ -373,3 +411,91 @@ class TestWeeklyTemplateRendering:
         html = tpl.render(**sample_weekly_dict)
 
         assert "<p>Prima parte.</p><p>Seconda parte.</p>" in html
+
+
+class TestWeeklyTemplateArticleLinks:
+    """Tests for article links rendering in weekly digest templates."""
+
+    def test_html_renders_article_links(
+        self,
+        sender: EmailSender,
+        sample_weekly_dict_with_articles: dict,
+    ) -> None:
+        """HTML template renders article links under arcs that have them."""
+        tpl = sender.jinja_env.get_template("weekly_digest_template.html")
+        html = tpl.render(**sample_weekly_dict_with_articles)
+
+        assert "Articolo Giustizia" in html
+        assert "https://example.com/giustizia" in html
+        assert "Mario Rossi" in html
+        assert "Il Dubbio" in html
+        assert "Articolo Carceri" in html
+        assert "Avvenire" in html
+
+    def test_html_omits_articles_when_empty(
+        self,
+        sender: EmailSender,
+        sample_weekly_dict_with_articles: dict,
+    ) -> None:
+        """HTML template omits article links section for arcs without articles."""
+        tpl = sender.jinja_env.get_template("weekly_digest_template.html")
+        html = tpl.render(**sample_weekly_dict_with_articles)
+
+        # Arc Two has no articles; check no article link appears near it
+        # The simplest check: "Arc Two" appears but no link follows it before footer
+        arc_two_pos = html.index("Arc Two")
+        reflection_pos = html.index("Riflessione Settimanale")
+        between = html[arc_two_pos:reflection_pos]
+        assert "example.com" not in between
+
+    def test_html_omits_author_meta_when_missing(
+        self,
+        sender: EmailSender,
+        sample_weekly_dict_with_articles: dict,
+    ) -> None:
+        """HTML template handles articles with empty author gracefully."""
+        tpl = sender.jinja_env.get_template("weekly_digest_template.html")
+        html = tpl.render(**sample_weekly_dict_with_articles)
+
+        # "Articolo Carceri" has empty author, so no middot before source
+        carceri_pos = html.index("Articolo Carceri")
+        next_chunk = html[carceri_pos : carceri_pos + 300]
+        assert "&middot;" not in next_chunk
+
+    def test_txt_renders_article_links(
+        self,
+        sender: EmailSender,
+        sample_weekly_dict_with_articles: dict,
+    ) -> None:
+        """TXT template renders article links under arcs."""
+        tpl = sender.jinja_env.get_template("weekly_digest_template.txt")
+        txt = tpl.render(**sample_weekly_dict_with_articles)
+
+        assert "Fonti:" in txt
+        assert "Articolo Giustizia" in txt
+        assert "Il Dubbio" in txt
+        assert "https://example.com/giustizia" in txt
+
+    def test_txt_omits_articles_when_empty(
+        self,
+        sender: EmailSender,
+        sample_weekly_dict: dict,
+    ) -> None:
+        """TXT template omits Fonti section when arcs have no articles."""
+        tpl = sender.jinja_env.get_template("weekly_digest_template.txt")
+        txt = tpl.render(**sample_weekly_dict)
+
+        assert "Fonti:" not in txt
+
+    def test_html_backward_compatible_without_articles(
+        self,
+        sender: EmailSender,
+        sample_weekly_dict: dict,
+    ) -> None:
+        """HTML template renders fine when arcs have no articles key."""
+        tpl = sender.jinja_env.get_template("weekly_digest_template.html")
+        html = tpl.render(**sample_weekly_dict)
+
+        # Should render normally without errors
+        assert "Arc One" in html
+        assert "Summary of arc one." in html

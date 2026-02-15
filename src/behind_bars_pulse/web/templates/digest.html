@@ -27,6 +27,22 @@
             <div class="bulletin-content editorial">
                 {{ arc.summary | markdown }}
             </div>
+            {% if arc.articles %}
+            <div class="article-links">
+                {% for article in arc.articles %}
+                <div class="article-link">
+                    <p class="article-link-title">
+                        <a href="{{ article.link }}" target="_blank" rel="noopener">{{ article.title }}</a>
+                    </p>
+                    <p class="article-link-meta">
+                        {% if article.author %}{{ article.author }}{% endif %}
+                        {% if article.author and article.source %} · {% endif %}
+                        {% if article.source %}{{ article.source }}{% endif %}
+                    </p>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
         </div>
         {% if not loop.last %}
         <hr class="divider">

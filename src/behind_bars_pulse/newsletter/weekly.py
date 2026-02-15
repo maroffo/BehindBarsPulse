@@ -74,6 +74,10 @@ class WeeklyDigestGenerator:
         daily_summaries = self._build_summaries_from_bulletins(bulletins)
         log.info("daily_summaries_loaded", count=len(daily_summaries))
 
+        # Build flat deduplicated article list from all bulletins
+        all_articles = _build_article_list(daily_summaries)
+        log.info("articles_collected_for_weekly", count=len(all_articles))
+
         # Load narrative context
         narrative_context = self.storage.load_context()
         log.info(
@@ -83,7 +87,9 @@ class WeeklyDigestGenerator:
         )
 
         # Generate weekly digest content
-        prompt_data = self._build_prompt_data(daily_summaries, narrative_context, reference_date)
+        prompt_data = self._build_prompt_data(
+            daily_summaries, narrative_context, reference_date, all_articles
+        )
 
         response = self.ai_service._generate(
             prompt=json.dumps(prompt_data, indent=2, ensure_ascii=False),
@@ -93,10 +99,13 @@ class WeeklyDigestGenerator:
         result = json.loads(response)
         log.info("weekly_digest_generated")
 
+        # Resolve article_refs indices to full article objects
+        narrative_arcs = _resolve_article_refs(result.get("narrative_arcs", []), all_articles)
+
         return WeeklyDigestContent(
             weekly_title=result.get("weekly_title", "Digest Settimanale"),
             weekly_subtitle=result.get("weekly_subtitle", ""),
-            narrative_arcs=result.get("narrative_arcs", []),
+            narrative_arcs=narrative_arcs,
             weekly_reflection=result.get("weekly_reflection", ""),
             upcoming_events=result.get("upcoming_events", []),
         )
@@ -123,6 +132,7 @@ class WeeklyDigestGenerator:
                         {
                             "category": cat.get("category", ""),
                             "comment": cat.get("comment", ""),
+                            "articles": cat.get("articles", []),
                         }
                     )
 
@@ -143,6 +153,7 @@ class WeeklyDigestGenerator:
         daily_summaries: list[dict[str, Any]],
         narrative_context: NarrativeContext,
         reference_date: date,
+        all_articles: list[dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
         """Build the prompt data for weekly digest generation.
 
@@ -150,6 +161,7 @@ class WeeklyDigestGenerator:
             daily_summaries: List of daily bulletin summaries.
             narrative_context: Current narrative context.
             reference_date: Reference date for the digest.
+            all_articles: Flat deduplicated article list with indices.
 
         Returns:
             Dictionary to be JSON-serialized as prompt.
@@ -169,7 +181,7 @@ class WeeklyDigestGenerator:
             and f.expected_date <= reference_date + timedelta(days=14)
         ]
 
-        return {
+        prompt = {
             "daily_summaries": daily_summaries,
             "narrative_context": {
                 "top_stories": [
@@ -204,6 +216,11 @@ class WeeklyDigestGenerator:
             },
             "reference_date": reference_date.isoformat(),
         }
+
+        if all_articles:
+            prompt["all_articles"] = all_articles
+
+        return prompt
 
     def build_email_context(
         self,
@@ -278,6 +295,69 @@ class WeeklyDigestGenerator:
             newsletter_closing=closing,
             press_review=[],  # Weekly digest doesn't have press review categories
         )
+
+
+def _build_article_list(daily_summaries: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Build a flat deduplicated article list from all bulletin summaries.
+
+    Each article gets a sequential index for AI reference. Deduplicates by link URL.
+
+    Returns:
+        List of article dicts with idx, title, link, author, source, published_date.
+    """
+    all_articles: list[dict[str, Any]] = []
+    seen_links: set[str] = set()
+    for summary in daily_summaries:
+        for cat in summary.get("press_review", []):
+            for art in cat.get("articles", []):
+                link = art.get("link", "")
+                if link and link not in seen_links:
+                    seen_links.add(link)
+                    all_articles.append(
+                        {
+                            "idx": len(all_articles),
+                            "title": art.get("title", ""),
+                            "link": link,
+                            "author": art.get("author", ""),
+                            "source": art.get("source", ""),
+                            "published_date": art.get("published_date", ""),
+                        }
+                    )
+    return all_articles
+
+
+def _resolve_article_refs(
+    narrative_arcs: list[dict[str, Any]],
+    all_articles: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Resolve article_refs indices in narrative arcs to full article objects.
+
+    Replaces each arc's ``article_refs`` (list of ints) with ``articles``
+    (list of dicts with title, link, author, source). Invalid indices are skipped.
+
+    Returns:
+        The narrative_arcs list with ``articles`` populated and ``article_refs`` removed.
+    """
+    for arc in narrative_arcs:
+        refs = arc.pop("article_refs", [])
+        articles = []
+        for raw_idx in refs:
+            try:
+                idx = int(raw_idx)
+            except (ValueError, TypeError):
+                continue
+            if 0 <= idx < len(all_articles):
+                art = all_articles[idx]
+                articles.append(
+                    {
+                        "title": art["title"],
+                        "link": art["link"],
+                        "author": art.get("author", ""),
+                        "source": art.get("source", ""),
+                    }
+                )
+        arc["articles"] = articles
+    return narrative_arcs
 
 
 @dataclass

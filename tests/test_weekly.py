@@ -15,7 +15,12 @@ from behind_bars_pulse.narrative.models import (
     NarrativeContext,
     StoryThread,
 )
-from behind_bars_pulse.newsletter.weekly import WeeklyDigestContent, WeeklyDigestGenerator
+from behind_bars_pulse.newsletter.weekly import (
+    WeeklyDigestContent,
+    WeeklyDigestGenerator,
+    _build_article_list,
+    _resolve_article_refs,
+)
 
 
 @pytest.fixture
@@ -54,8 +59,32 @@ def sample_bulletins() -> list:
             subtitle="Sottotitolo sabato",
             content="Editoriale del sabato con analisi.",
             press_review=[
-                {"category": "Giustizia", "comment": "Commento giustizia."},
-                {"category": "Carceri", "comment": "Commento carceri."},
+                {
+                    "category": "Giustizia",
+                    "comment": "Commento giustizia.",
+                    "articles": [
+                        {
+                            "title": "Articolo Giustizia 1",
+                            "link": "https://example.com/giustizia-1",
+                            "author": "Mario Rossi",
+                            "source": "Il Dubbio",
+                            "published_date": "2026-02-08",
+                        },
+                    ],
+                },
+                {
+                    "category": "Carceri",
+                    "comment": "Commento carceri.",
+                    "articles": [
+                        {
+                            "title": "Articolo Carceri 1",
+                            "link": "https://example.com/carceri-1",
+                            "author": "Anna Bianchi",
+                            "source": "Avvenire",
+                            "published_date": "2026-02-08",
+                        },
+                    ],
+                },
             ],
         ),
         SimpleNamespace(
@@ -64,7 +93,19 @@ def sample_bulletins() -> list:
             subtitle="Sottotitolo venerdì",
             content="Editoriale del venerdì.",
             press_review=[
-                {"category": "Riforme", "comment": "Commento riforme."},
+                {
+                    "category": "Riforme",
+                    "comment": "Commento riforme.",
+                    "articles": [
+                        {
+                            "title": "Articolo Riforme 1",
+                            "link": "https://example.com/riforme-1",
+                            "author": "Luca Verdi",
+                            "source": "La Repubblica",
+                            "published_date": "2026-02-07",
+                        },
+                    ],
+                },
             ],
         ),
         SimpleNamespace(
@@ -162,6 +203,8 @@ class TestWeeklyDigestGenerator:
         assert saturday["editorial"] == "Editoriale del sabato con analisi."
         assert len(saturday["press_review"]) == 2
         assert saturday["press_review"][0]["category"] == "Giustizia"
+        assert len(saturday["press_review"][0]["articles"]) == 1
+        assert saturday["press_review"][0]["articles"][0]["title"] == "Articolo Giustizia 1"
 
     def test_build_summaries_handles_null_fields(
         self,
@@ -218,13 +261,13 @@ class TestWeeklyDigestGenerator:
         sample_narrative_context: NarrativeContext,
     ) -> None:
         """generate creates weekly digest content from bulletins."""
-        # Setup mock AI
+        # Setup mock AI (article_refs [0, 2] reference first and third articles)
         mock_ai = MagicMock()
         mock_ai._generate.return_value = """{
             "weekly_title": "Weekly Test Title",
             "weekly_subtitle": "Weekly Subtitle",
             "narrative_arcs": [
-                {"arc_title": "Test Arc", "summary": "Arc summary"}
+                {"arc_title": "Test Arc", "summary": "Arc summary", "article_refs": [0, 2]}
             ],
             "weekly_reflection": "Weekly reflection text.",
             "upcoming_events": []
@@ -244,6 +287,12 @@ class TestWeeklyDigestGenerator:
 
         assert content.weekly_title == "Weekly Test Title"
         assert len(content.narrative_arcs) == 1
+        # article_refs should be resolved to full article objects
+        arc = content.narrative_arcs[0]
+        assert "article_refs" not in arc
+        assert len(arc["articles"]) == 2
+        assert arc["articles"][0]["link"] == "https://example.com/riforme-1"
+        assert arc["articles"][1]["link"] == "https://example.com/carceri-1"
 
     def test_generate_raises_when_no_bulletins(
         self,
@@ -342,3 +391,168 @@ class TestWeeklyDigestGenerator:
         assert ctx["weekly_subtitle"] == ""
         assert ctx["narrative_arcs"] == []
         assert ctx["upcoming_events"] == []
+
+
+class TestBuildArticleList:
+    """Tests for _build_article_list helper."""
+
+    def test_builds_flat_list_from_summaries(self) -> None:
+        """_build_article_list collects articles with sequential indices."""
+        summaries = [
+            {
+                "date": "2026-02-07",
+                "press_review": [
+                    {
+                        "articles": [
+                            {
+                                "title": "Art A",
+                                "link": "https://a.com",
+                                "author": "A",
+                                "source": "S1",
+                            },
+                            {
+                                "title": "Art B",
+                                "link": "https://b.com",
+                                "author": "B",
+                                "source": "S2",
+                            },
+                        ],
+                    },
+                ],
+            },
+            {
+                "date": "2026-02-08",
+                "press_review": [
+                    {
+                        "articles": [
+                            {
+                                "title": "Art C",
+                                "link": "https://c.com",
+                                "author": "C",
+                                "source": "S3",
+                            },
+                        ],
+                    },
+                ],
+            },
+        ]
+        result = _build_article_list(summaries)
+        assert len(result) == 3
+        assert result[0]["idx"] == 0
+        assert result[0]["title"] == "Art A"
+        assert result[2]["idx"] == 2
+        assert result[2]["link"] == "https://c.com"
+
+    def test_deduplicates_by_link(self) -> None:
+        """_build_article_list skips duplicate URLs."""
+        summaries = [
+            {
+                "date": "2026-02-07",
+                "press_review": [
+                    {"articles": [{"title": "Art A", "link": "https://a.com"}]},
+                ],
+            },
+            {
+                "date": "2026-02-08",
+                "press_review": [
+                    {"articles": [{"title": "Art A copy", "link": "https://a.com"}]},
+                ],
+            },
+        ]
+        result = _build_article_list(summaries)
+        assert len(result) == 1
+
+    def test_skips_empty_links(self) -> None:
+        """_build_article_list skips articles without links."""
+        summaries = [
+            {
+                "date": "2026-02-07",
+                "press_review": [
+                    {"articles": [{"title": "No link", "link": ""}]},
+                ],
+            },
+        ]
+        result = _build_article_list(summaries)
+        assert len(result) == 0
+
+    def test_handles_missing_articles_key(self) -> None:
+        """_build_article_list handles categories without articles."""
+        summaries = [
+            {
+                "date": "2026-02-07",
+                "press_review": [
+                    {"category": "Cat", "comment": "Comment"},
+                ],
+            },
+        ]
+        result = _build_article_list(summaries)
+        assert len(result) == 0
+
+
+class TestResolveArticleRefs:
+    """Tests for _resolve_article_refs helper."""
+
+    def test_resolves_valid_indices(self) -> None:
+        """_resolve_article_refs maps indices to article objects."""
+        all_articles = [
+            {"idx": 0, "title": "Art A", "link": "https://a.com", "author": "A", "source": "S1"},
+            {"idx": 1, "title": "Art B", "link": "https://b.com", "author": "B", "source": "S2"},
+            {"idx": 2, "title": "Art C", "link": "https://c.com", "author": "C", "source": "S3"},
+        ]
+        arcs = [
+            {"arc_title": "Arc 1", "summary": "Sum", "article_refs": [0, 2]},
+        ]
+        result = _resolve_article_refs(arcs, all_articles)
+        assert len(result[0]["articles"]) == 2
+        assert result[0]["articles"][0]["title"] == "Art A"
+        assert result[0]["articles"][1]["link"] == "https://c.com"
+        assert "article_refs" not in result[0]
+
+    def test_skips_invalid_indices(self) -> None:
+        """_resolve_article_refs skips out-of-range and non-parseable indices."""
+        all_articles = [
+            {"idx": 0, "title": "Art A", "link": "https://a.com"},
+        ]
+        arcs = [
+            {"arc_title": "Arc", "summary": "Sum", "article_refs": [0, 5, -1, "bad", None]},
+        ]
+        result = _resolve_article_refs(arcs, all_articles)
+        assert len(result[0]["articles"]) == 1
+
+    def test_handles_stringified_indices(self) -> None:
+        """_resolve_article_refs handles string indices from LLM output."""
+        all_articles = [
+            {"idx": 0, "title": "Art A", "link": "https://a.com", "author": "A", "source": "S1"},
+            {"idx": 1, "title": "Art B", "link": "https://b.com", "author": "B", "source": "S2"},
+        ]
+        arcs = [
+            {"arc_title": "Arc", "summary": "Sum", "article_refs": ["0", "1"]},
+        ]
+        result = _resolve_article_refs(arcs, all_articles)
+        assert len(result[0]["articles"]) == 2
+        assert result[0]["articles"][0]["title"] == "Art A"
+        assert result[0]["articles"][1]["title"] == "Art B"
+
+    def test_handles_missing_article_refs(self) -> None:
+        """_resolve_article_refs handles arcs without article_refs."""
+        arcs = [
+            {"arc_title": "Arc", "summary": "Sum"},
+        ]
+        result = _resolve_article_refs(arcs, [])
+        assert result[0]["articles"] == []
+
+    def test_preserves_other_arc_fields(self) -> None:
+        """_resolve_article_refs keeps arc_title, summary, outlook, etc."""
+        arcs = [
+            {
+                "arc_title": "Arc",
+                "summary": "Sum",
+                "outlook": "Next week",
+                "key_developments": ["Dev 1"],
+                "article_refs": [],
+            },
+        ]
+        result = _resolve_article_refs(arcs, [])
+        assert result[0]["arc_title"] == "Arc"
+        assert result[0]["outlook"] == "Next week"
+        assert result[0]["key_developments"] == ["Dev 1"]
