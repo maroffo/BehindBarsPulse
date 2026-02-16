@@ -230,6 +230,114 @@ Articles are embedded using Vertex AI's `text-multilingual-embedding-002` model 
 | **Trend Analysis** | Track topic evolution over time via embedding drift |
 | **Chatbot** | Q&A interface over historical coverage |
 
+## Operations
+
+### Deployment
+
+Build, push, and deploy to Cloud Run (use `docker buildx` on Mac for linux/amd64):
+
+```bash
+# Build and push to GCR
+docker buildx build --platform linux/amd64 \
+  -t gcr.io/playground-maroffo/behindbars:latest \
+  --push .
+
+# Deploy to Cloud Run
+gcloud run deploy behindbars-prod \
+  --image gcr.io/playground-maroffo/behindbars:latest \
+  --region europe-west1 \
+  --project playground-maroffo
+```
+
+If the deploy includes schema changes, apply migrations after:
+
+```bash
+curl -X POST "https://behindbars.news/api/migrate?admin_token=YOUR_GEMINI_API_KEY"
+```
+
+The local `.env` uses `DB_HOST=localhost` (local PostgreSQL, not Cloud SQL). Never run `alembic upgrade` locally expecting it to affect production.
+
+### Cloud Scheduler Jobs
+
+| Job | Schedule | Description |
+|-----|----------|-------------|
+| `behindbars-prod-collect` | Every 30 min | Fetch RSS feed, enrich articles, save to DB |
+| `bulletin-daily` | 10:00 daily | Generate daily bulletin from collected articles |
+| `behindbars-prod-generate-batch` | 10:00 daily | Batch generation pipeline |
+| `behindbars-prod-weekly` | 08:00 Sunday | Generate and send weekly digest to subscribers |
+
+Manual trigger:
+
+```bash
+gcloud scheduler jobs run <JOB_NAME> --project playground-maroffo --location europe-west1
+```
+
+### Admin API Endpoints
+
+Protected by `admin_token` (= GEMINI_API_KEY):
+
+| Endpoint | Description |
+|----------|-------------|
+| `POST /api/migrate?admin_token=...` | Run Alembic migrations on Cloud SQL |
+| `POST /api/bulletin-admin?admin_token=...&issue_date=2026-02-04` | Regenerate daily bulletin |
+| `POST /api/regenerate?admin_token=...&collection_date=2026-01-07&days_back=3` | Regenerate legacy newsletter |
+| `POST /api/import-newsletters?admin_token=...` | Import newsletters from GCS |
+| `POST /api/normalize-facilities?admin_token=...&dry_run=true` | Normalize facility names in DB |
+| `POST /api/cleanup-events?admin_token=...&dry_run=true` | Remove duplicate events, mark aggregates |
+
+Scheduler-triggered (OIDC auth, no admin_token):
+
+| Endpoint | Description |
+|----------|-------------|
+| `POST /api/bulletin` | Generate daily bulletin |
+| `POST /api/weekly` | Generate and send weekly digest |
+
+### Stats API
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /stats/api/by-type` | Event counts by type |
+| `GET /stats/api/by-region` | Event counts by region |
+| `GET /stats/api/by-facility` | Top facilities by incident count |
+| `GET /stats/api/by-month` | Monthly trends |
+| `GET /stats/api/capacity/latest` | Latest capacity per facility |
+| `GET /stats/api/capacity/by-region` | Regional capacity summary |
+| `GET /stats/api/capacity/trend` | National capacity trend |
+
+### Facility Name Normalization
+
+Prison names appear in various forms (e.g., "Brescia Canton Mombello", "Canton Mombello"). The normalization system in `utils/facilities.py` consolidates them to canonical names.
+
+```bash
+# Analyze current state (dry run)
+uv run python scripts/normalize_facilities.py --dry-run
+
+# Show facilities without aliases
+uv run python scripts/normalize_facilities.py --show-missing
+
+# Apply in production
+curl -X POST "https://behindbars.news/api/normalize-facilities?admin_token=KEY&dry_run=false"
+```
+
+Add new aliases in `src/behind_bars_pulse/utils/facilities.py` (`FACILITY_ALIASES` dict).
+
+### Event Cleanup
+
+Events can be duplicated when multiple sources report the same incident. The collector deduplicates at ingestion time (by date + facility + type), and aggregate statistics (e.g., "80 suicides in 2025") are marked with `is_aggregate=True` and excluded from stats by default.
+
+For existing data:
+
+```bash
+# Preview cleanup
+uv run python scripts/cleanup_prison_events.py --dry-run
+
+# Apply cleanup (removes duplicates, marks aggregates)
+uv run python scripts/cleanup_prison_events.py
+
+# In production
+curl -X POST "https://behindbars.news/api/cleanup-events?admin_token=KEY&dry_run=false"
+```
+
 ## Development
 
 ```bash

@@ -271,6 +271,20 @@
                         <div class="arc-summary">
                             <p>{{arc.summary | replace('\n\n', '</p><p>') | replace('\n', '<br>') | safe}}</p>
                         </div>
+                        {% if arc.articles %}
+                        <div style="margin-top: 12px; padding-left: 8px; border-left: 2px solid #e0e0e0;">
+                            {% for article in arc.articles %}
+                            <p style="margin: 4px 0; font-size: 14px;">
+                                <a href="{{article.link}}" style="color: #1a5276;">{{article.title}}</a>
+                                {% if article.author or article.source %}
+                                <br><span style="color: #888; font-size: 12px;">
+                                    {{article.author}}{% if article.author and article.source %} &middot; {% endif %}{{article.source}}
+                                </span>
+                                {% endif %}
+                            </p>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
                     </div>
                     {% if not loop.last %}
                     <hr class="divider">

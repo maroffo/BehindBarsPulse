@@ -505,6 +505,7 @@ You will receive:
    - Active story threads with mention counts
    - Key characters and their recent positions
    - Follow-up events that occurred or are upcoming
+3. A list of all articles from the week's bulletins, each with an index number ("idx")
 
 **Your weekly digest should:**
 1. Identify the **2-3 most significant narrative arcs** of the week
@@ -522,6 +523,7 @@ You will receive:
     {
       "arc_title": "Title of narrative arc",
       "summary": "2-3 paragraphs summarizing this arc's development",
+      "article_refs": [0, 3, 7],
       "key_developments": ["Day-by-day key points"],
       "outlook": "What to watch for next week"
     }
@@ -536,6 +538,9 @@ You will receive:
   ]
 }
 ```
+
+**Article references:**
+For each narrative arc, include `article_refs` listing the index numbers (from the `all_articles` list) of the most relevant articles for that arc (3-6 per arc). These will be shown as source links under each arc. Use only valid indices from the provided list.
 
 **Tone guidance:**
 - Analytical rather than alarmist
