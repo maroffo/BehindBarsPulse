@@ -439,6 +439,7 @@ def run_weekly_pipeline(
             )
             if existing:
                 session.delete(existing)
+                session.flush()
 
             digest = WeeklyDigestORM(
                 week_start=week_start,
