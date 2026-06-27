@@ -49,10 +49,21 @@ class BulletinGenerator:
             log.warning("no_articles_for_bulletin", date=articles_date)
             return None
 
+        # Retrieve historical RAG context first
+        try:
+            from behind_bars_pulse.services.rag_service import RAGService
+            rag_service = RAGService()
+            query_text = " ".join([a.title for a in articles.values()])
+            historical_context = rag_service.retrieve_historical_context_sync(query_text)
+        except Exception as e:
+            log.warning("rag_context_generation_failed", error=str(e))
+            historical_context = None
+
         # Generate bulletin content via AI
         bulletin_content = self.ai_service.generate_bulletin(
             articles=articles,
             issue_date=issue_date.isoformat(),
+            historical_context=historical_context,
         )
 
         # Generate press review with thematic categories (like newsletter)

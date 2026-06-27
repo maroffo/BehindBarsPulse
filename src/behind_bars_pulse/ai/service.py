@@ -837,19 +837,21 @@ class AIService:
         self,
         articles: dict[str, EnrichedArticle],
         issue_date: str,
+        historical_context: str | None = None,
     ) -> BulletinContent:
         """Generate daily editorial bulletin from articles.
 
         Args:
             articles: Dictionary of enriched articles to analyze.
             issue_date: Date string for the bulletin (YYYY-MM-DD).
+            historical_context: Optional RAG context from historical editorial commentaries.
 
         Returns:
             BulletinContent with generated editorial commentary.
         """
         from pydantic import TypeAdapter
 
-        log.info("generating_bulletin", article_count=len(articles), issue_date=issue_date)
+        log.info("generating_bulletin", article_count=len(articles), issue_date=issue_date, has_rag_context=historical_context is not None)
 
         # Prepare articles for the prompt
         articles_data = []
@@ -865,8 +867,12 @@ class AIService:
                 }
             )
 
+        prompt_dict = {"articles": articles_data, "date": issue_date}
+        if historical_context:
+            prompt_dict["historical_context"] = historical_context
+
         prompt = json.dumps(
-            {"articles": articles_data, "date": issue_date},
+            prompt_dict,
             indent=2,
             ensure_ascii=False,
         )
