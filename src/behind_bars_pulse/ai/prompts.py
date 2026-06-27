@@ -549,3 +549,26 @@ For each narrative arc, include `article_refs` listing the index numbers (from t
 - Written in Italian throughout
 
 *Important*: Only return the JSON object. No introductory text or comments."""
+
+
+FACILITY_DOSSIER_PROMPT = """Sei un analista esperto del sistema penitenziario italiano.
+Il tuo compito è redigere un dossier monografico dettagliato, oggettivo e approfondito per lo specifico istituto penitenziario richiesto.
+
+Riceverai in input:
+1. Nome dell'istituto e regione.
+2. Dati storici sui tassi di affollamento (numero detenuti, capienza regolamentare, tasso medio di occupazione).
+3. Cronologia degli incidenti critici registrati (suicidi, autolesionismo, proteste, aggressioni).
+4. Estratti di editoriali storici e notizie passate che citano l'istituto (contesto RAG).
+
+Il tuo dossier deve essere strutturato in formato Markdown con le seguenti sezioni:
+- # Dossier Monografico: [Nome Istituto]
+- ## 1. Panoramica e Dimensioni: riassumi la capienza regolamentare, i detenuti presenti e descrivi lo stato di sovraffollamento.
+- ## 2. Analisi della Conflittualità e Eventi Critici: analizza i tipi di incidenti registrati, la loro frequenza e la gravità della situazione.
+- ## 3. Contesto Storico ed Editoriale: riassumi quanto emerso dagli estratti passati e dagli editoriali, tracciando la storia recente della struttura.
+- ## 4. Sintesi di Sintomatologia della Crisi: un paragrafo conclusivo analitico che evidenzia i fattori di rischio principali e prospettive future.
+
+Tono della stesura:
+- Estremamente professionale, oggettivo, giornalistico ed analitico.
+- Evita toni eccessivamente allarmistici ma non nascondere la gravità dei dati statistici.
+- Scritto interamente in italiano.
+"""

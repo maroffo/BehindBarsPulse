@@ -887,3 +887,46 @@ class AIService:
         )
 
         return BulletinContent(**json.loads(response))
+
+    def generate_facility_dossier(
+        self,
+        facility_name: str,
+        region: str,
+        capacity_data: list[dict[str, Any]],
+        incident_data: list[dict[str, Any]],
+        historical_comments: str,
+    ) -> str:
+        """Generate a comprehensive editorial dossier for a specific prison facility.
+
+        Args:
+            facility_name: Name of the prison facility.
+            region: Region where the facility is located.
+            capacity_data: List of historical capacity snapshots.
+            incident_data: List of historical incidents.
+            historical_comments: RAG context string of past editorial mentions.
+
+        Returns:
+            Generated dossier in Markdown format.
+        """
+        from behind_bars_pulse.ai.prompts import FACILITY_DOSSIER_PROMPT
+
+        log.info("generating_facility_dossier_via_ai", facility=facility_name)
+
+        payload = {
+            "facility_name": facility_name,
+            "region": region,
+            "historical_capacity_snapshots": capacity_data,
+            "historical_incidents": incident_data,
+            "historical_editorial_mentions": historical_comments,
+        }
+
+        prompt = json.dumps(payload, indent=2, ensure_ascii=False)
+
+        # Generate text/markdown output (not JSON structure since it's a markdown report)
+        response = self._generate(
+            prompt=prompt,
+            system_prompt=FACILITY_DOSSIER_PROMPT,
+            response_mime_type="text/plain",  # Plain text markdown report
+        )
+
+        return response

@@ -23,6 +23,7 @@ from behind_bars_pulse.web.routes import (
     digest,
     edizioni,
     export,
+    facilities,
     feeds,
     home,
     landing,
@@ -112,6 +113,7 @@ def create_app() -> FastAPI:
     app.include_router(search.router)
     app.include_router(stats.router)
     app.include_router(export.router)
+    app.include_router(facilities.router)
     app.include_router(feeds.router)
     app.include_router(api.router)
 

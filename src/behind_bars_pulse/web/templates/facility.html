@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+
+{% block title %}Monografia {{ facility_name }} - BehindBars{% endblock %}
+
+{% block content %}
+<section class="facility-monograph" style="padding-top: var(--spacing-md); text-align: left; max-width: 900px; margin-left: auto; margin-right: auto;">
+    
+    <!-- Back Navigation -->
+    <a href="/istituti" style="display: inline-flex; align-items: center; gap: 0.5rem; color: #1a1a2e; text-decoration: none; font-weight: 600; font-size: 0.95rem; margin-bottom: 2rem;">
+        ← Torna alla lista degli istituti
+    </a>
+
+    <!-- Header Block -->
+    <header class="monograph-header" style="display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 1.5rem; margin-bottom: 2rem; border-bottom: 1px solid #e9ecef; padding-bottom: 1.5rem;">
+        <div>
+            <h1 style="font-size: 2.25rem; font-weight: 800; color: #1a1a2e; margin: 0; letter-spacing: -0.75px;">{{ facility_name }}</h1>
+            <p style="font-size: 1.15rem; color: #6c757d; margin: 0.25rem 0 0 0;">Regione: <strong>{{ latest_snapshot.region if latest_snapshot else 'Sconosciuta' }}</strong></p>
+        </div>
+        <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+            <a href="?refresh=true" class="btn btn-outline" style="font-size: 0.85rem; padding: 0.4rem 1rem; border: 1px solid #1a1a2e; color: #1a1a2e; background: white; text-decoration: none; border-radius: 4px; display: inline-flex; align-items: center; gap: 0.5rem;">
+                🔄 Rigenera Dossier via AI
+            </a>
+        </div>
+    </header>
+
+    <!-- Key Metrics Grid -->
+    <div class="metrics-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.25rem; margin-bottom: 3rem;">
+        <!-- Inmates -->
+        <div class="metric-card" style="background: white; border-radius: 8px; border: 1px solid #e9ecef; padding: 1.25rem; box-shadow: 0 4px 6px rgba(0,0,0,0.02); text-align: center;">
+            <span style="font-size: 0.8rem; font-weight: 600; color: #6c757d; text-transform: uppercase; letter-spacing: 0.5px;">Detenuti Presenti</span>
+            <div style="font-size: 2rem; font-weight: 700; color: #1a1a2e; margin-top: 0.25rem;">
+                {{ latest_snapshot.inmates if latest_snapshot and latest_snapshot.inmates else '-' }}
+            </div>
+        </div>
+        <!-- Capacity -->
+        <div class="metric-card" style="background: white; border-radius: 8px; border: 1px solid #e9ecef; padding: 1.25rem; box-shadow: 0 4px 6px rgba(0,0,0,0.02); text-align: center;">
+            <span style="font-size: 0.8rem; font-weight: 600; color: #6c757d; text-transform: uppercase; letter-spacing: 0.5px;">Capienza Regolamentare</span>
+            <div style="font-size: 2rem; font-weight: 700; color: #1a1a2e; margin-top: 0.25rem;">
+                {{ latest_snapshot.capacity if latest_snapshot and latest_snapshot.capacity else '-' }}
+            </div>
+        </div>
+        <!-- Occupancy Rate -->
+        {% set rate = latest_snapshot.occupancy_rate if latest_snapshot else None %}
+        {% set rate_color = "#28a745" %}
+        {% if rate %}
+            {% if rate >= 150 %}{% set rate_color = "#dc3545" %}
+            {% elif rate >= 120 %}{% set rate_color = "#fd7e14" %}
+            {% elif rate >= 100 %}{% set rate_color = "#ffc107" %}
+            {% endif %}
+        {% endif %}
+        <div class="metric-card" style="background: white; border-radius: 8px; border: 1px solid #e9ecef; padding: 1.25rem; box-shadow: 0 4px 6px rgba(0,0,0,0.02); text-align: center; border-top: 4px solid {{ rate_color }};">
+            <span style="font-size: 0.8rem; font-weight: 600; color: #6c757d; text-transform: uppercase; letter-spacing: 0.5px;">Tasso di Occupazione</span>
+            <div style="font-size: 2rem; font-weight: 700; color: {{ rate_color }}; margin-top: 0.25rem;">
+                {{ rate|round(1) if rate else '-' }}{% if rate %}%{% endif %}
+            </div>
+        </div>
+        <!-- Total incidents -->
+        <div class="metric-card" style="background: white; border-radius: 8px; border: 1px solid #e9ecef; padding: 1.25rem; box-shadow: 0 4px 6px rgba(0,0,0,0.02); text-align: center;">
+            <span style="font-size: 0.8rem; font-weight: 600; color: #6c757d; text-transform: uppercase; letter-spacing: 0.5px;">Incidenti in Archivio</span>
+            <div style="font-size: 2rem; font-weight: 700; color: #1a1a2e; margin-top: 0.25rem;">
+                {{ total_incidents }}
+            </div>
+        </div>
+    </div>
+
+    <!-- Alert / Refreshed note -->
+    {% if refreshed %}
+    <div style="background-color: #d4edda; border: 1px solid #c3e6cb; color: #155724; padding: 1rem 1.25rem; border-radius: 6px; margin-bottom: 2rem; font-size: 0.95rem; font-weight: 500;">
+        ✨ Il dossier monografico è stato rigenerato con successo utilizzando i dati più aggiornati ed elaborato in tempo reale tramite Gemini 3.5 Flash!
+    </div>
+    {% endif %}
+
+    <!-- Dossier Content Render (Markdown) -->
+    <article class="monograph-content" style="background: white; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.04); border: 1px solid #e9ecef; padding: 3rem 2.5rem; margin-bottom: 4rem; line-height: 1.7; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #333;">
+        
+        <!-- Inside Markdown container, styled nicely -->
+        <div class="dossier-markdown" style="font-size: 1.05rem;">
+            {{ dossier|markdown }}
+        </div>
+    </article>
+</section>
+
+<!-- Standard styles for markdown tags inside our container -->
+<style>
+.dossier-markdown h1 {
+    font-size: 2rem;
+    font-weight: 800;
+    color: #1a1a2e;
+    margin-top: 0;
+    margin-bottom: 1.5rem;
+    border-bottom: 2px solid #1a1a2e;
+    padding-bottom: 0.5rem;
+}
+.dossier-markdown h2 {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: #1a1a2e;
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid #dee2e6;
+    padding-bottom: 0.35rem;
+}
+.dossier-markdown h3 {
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: #1a1a2e;
+    margin-top: 1.5rem;
+    margin-bottom: 0.75rem;
+}
+.dossier-markdown p {
+    margin-top: 0;
+    margin-bottom: 1.25rem;
+    color: #333;
+}
+.dossier-markdown ul, .dossier-markdown ol {
+    margin-top: 0;
+    margin-bottom: 1.25rem;
+    padding-left: 1.5rem;
+}
+.dossier-markdown li {
+    margin-bottom: 0.5rem;
+}
+.dossier-markdown blockquote {
+    margin: 1.5rem 0;
+    padding: 0.5rem 1rem;
+    border-left: 4px solid #1a1a2e;
+    background: #f8f9fa;
+    color: #495057;
+    font-style: italic;
+    border-radius: 0 4px 4px 0;
+}
+.dossier-markdown strong {
+    color: #1a1a2e;
+}
+</style>
+{% endblock %}
