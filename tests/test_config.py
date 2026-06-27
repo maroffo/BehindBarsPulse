@@ -22,7 +22,7 @@ class TestSettings:
 
         assert settings.gemini_api_key is not None
         assert settings.gemini_api_key.get_secret_value() == "test-api-key"
-        assert settings.gemini_model == "gemini-3-flash-preview"
+        assert settings.gemini_model == "gemini-3.5-flash"
         assert settings.ses_usr.get_secret_value() == "test-user"
 
     def test_settings_default_values(self, mock_settings: Settings) -> None:

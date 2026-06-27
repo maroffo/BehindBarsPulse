@@ -19,8 +19,8 @@ class Settings(BaseSettings):
 
     # AI / Gemini
     gemini_api_key: SecretStr | None = None
-    gemini_model: str = "gemini-3-flash-preview"
-    gemini_fallback_model: str = "gemini-3-flash-preview"
+    gemini_model: str = "gemini-3.5-flash"
+    gemini_fallback_model: str = "gemini-3.5-flash"
     google_project_id: str | None = None
     google_region: str = "us-central1"
     ai_sleep_between_calls: int = 30

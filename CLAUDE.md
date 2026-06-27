@@ -135,7 +135,7 @@ All settings via Pydantic Settings, loaded from `.env`:
 | Setting | Default | Description |
 |---------|---------|-------------|
 | `gemini_api_key` | (required) | Gemini API key |
-| `gemini_model` | `gemini-3-flash-preview` | Primary model |
+| `gemini_model` | `gemini-3.5-flash` | Primary model |
 | `embedding_model` | `text-multilingual-embedding-002` | Embedding model (768d) |
 | `ai_sleep_between_calls` | `30` | Rate limiting (seconds) |
 | `feed_url` | `ristretti.org` | RSS feed URL |

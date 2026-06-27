@@ -6,7 +6,7 @@ This document describes how BehindBarsPulse uses Google Gemini for content gener
 
 | Model | Purpose |
 |-------|---------|
-| `gemini-3-flash-preview` | All text generation (content, press review, enrichment) |
+| `gemini-3.5-flash` | All text generation (content, press review, enrichment) |
 | `text-multilingual-embedding-002` | Article embeddings (768 dimensions, Italian-optimized) |
 
 ## Structured Output
