@@ -120,6 +120,35 @@
         </div>
     </section>
 
+    <!-- Advanced Analytics Section -->
+    <section class="stats-section">
+        <h2 class="section-title">Analisi Avanzata</h2>
+
+        <div class="stats-grid">
+            <!-- Early Warning Card -->
+            <div class="stat-card" style="grid-column: span 1;">
+                <h3>⚠️ Istituti sotto Osservazione (Allerte Incidenti)</h3>
+                <p style="font-size: 0.9rem; color: #6c757d; margin-bottom: 1rem; text-align: left;">
+                    Rileva deviazioni statistiche insolite (Z-score rolling) paragonando l'ultimo mese allo storico dei mesi precedenti.
+                </p>
+                <div id="anomalies-container" class="table-container" style="max-height: 400px; overflow-y: auto;">
+                    <p class="loading">Calcolo anomalie in corso...</p>
+                </div>
+            </div>
+
+            <!-- Correlation Card -->
+            <div class="stat-card" style="grid-column: span 1;">
+                <h3>📊 Correlazione: Sovraffollamento vs Incidenti</h3>
+                <div class="chart-container" style="height: 300px; position: relative;">
+                    <canvas id="correlation-chart"></canvas>
+                </div>
+                <div id="correlation-message" style="font-size: 0.85rem; padding: 0.75rem; background: #f8f9fa; border-radius: 4px; border-left: 4px solid #1a1a2e; margin-top: 1rem; line-height: 1.4; text-align: left; color: #495057;">
+                    <p class="loading" style="margin: 0;">Calcolo coefficiente di correlazione...</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <div class="stats-note">
         <p>
             <strong>Nota:</strong> I dati sono estratti automaticamente dagli articoli usando intelligenza artificiale.
@@ -147,7 +176,7 @@ const LABELS = {
     natural_death: 'Morti naturali',
 };
 
-let byTypeChart, monthlyChart, byRegionChart, byFacilityChart, capacityRegionChart;
+let byTypeChart, monthlyChart, byRegionChart, byFacilityChart, capacityRegionChart, correlationChart;
 
 function getFilters() {
     const days = document.getElementById('days-filter').value;
@@ -466,6 +495,137 @@ async function loadCapacityTable() {
     }
 }
 
+async function loadAnomalies() {
+    const container = document.getElementById('anomalies-container');
+    try {
+        const data = await fetchData('/stats/api/anomalies');
+
+        if (data.anomalies.length === 0) {
+            container.innerHTML = '<p class="no-data" style="padding: 2rem; color: #6c757d; text-align: center; margin: 0;">Nessun istituto in stato di allerta anomala negli ultimi 30 giorni.</p>';
+            return;
+        }
+
+        const getStatusClass = (severity) => {
+            if (severity === 'Critica') return 'status-critical';
+            if (severity === 'Alta') return 'status-high';
+            if (severity === 'Media') return 'status-over';
+            return 'status-ok';
+        };
+
+        const html = `
+            <table class="capacity-table">
+                <thead>
+                    <tr>
+                        <th>Istituto</th>
+                        <th>Regione</th>
+                        <th>Incidenti (30g)</th>
+                        <th>Media Storica</th>
+                        <th>Stato</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${data.anomalies.map(a => `
+                        <tr class="${getStatusClass(a.severity)}">
+                            <td><strong>${a.facility}</strong></td>
+                            <td>${a.region}</td>
+                            <td style="text-align: center;">${a.active_count}</td>
+                            <td style="text-align: center;">${a.baseline_monthly_rate.toFixed(1)}/mese</td>
+                            <td style="text-align: center; font-weight: bold;">
+                                <span class="severity-badge severity-${a.severity.toLowerCase()}" style="padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.75rem; background: rgba(0,0,0,0.06); text-transform: uppercase;">${a.severity}</span>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+        container.innerHTML = html;
+    } catch (error) {
+        container.innerHTML = '<p class="error" style="padding: 1rem; text-align: center;">Errore nel calcolo delle anomalie.</p>';
+        console.error('Anomalies error:', error);
+    }
+}
+
+async function loadCorrelationChart() {
+    const canvas = document.getElementById('correlation-chart');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const msgContainer = document.getElementById('correlation-message');
+
+    try {
+        const data = await fetchData('/stats/api/correlation');
+
+        if (correlationChart) correlationChart.destroy();
+
+        if (data.data_points.length === 0) {
+            ctx.canvas.parentElement.innerHTML = '<p class="no-data">Nessun dato di correlazione disponibile.</p>';
+            msgContainer.innerHTML = '<p>Dati insufficienti per il calcolo.</p>';
+            return;
+        }
+
+        msgContainer.innerHTML = `<p style="margin: 0; line-height: 1.5;">${data.message}</p>`;
+
+        // Map data points into coordinates {x, y}
+        const scatterData = data.data_points.map(p => ({
+            x: p.occupancy_rate,
+            y: p.incident_count,
+            facility: p.facility,
+            region: p.region
+        }));
+
+        correlationChart = new Chart(ctx, {
+            type: 'scatter',
+            data: {
+                datasets: [{
+                    label: 'Istituti Carcerari',
+                    data: scatterData,
+                    backgroundColor: 'rgba(26, 26, 46, 0.7)',
+                    borderColor: 'rgba(26, 26, 46, 1)',
+                    borderWidth: 1,
+                    pointRadius: 6,
+                    pointHoverRadius: 8
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: (ctx) => {
+                                const p = ctx.raw;
+                                return `${p.facility} (${p.region}): Affollamento ${p.x.toFixed(1)}%, Incidenti ${p.y}`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Tasso di Occupazione (%)',
+                            font: { weight: 'bold', size: 11 }
+                        },
+                        beginAtZero: false,
+                        suggestedMin: 80
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: 'Numero Totale di Incidenti (180g)',
+                            font: { weight: 'bold', size: 11 }
+                        },
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    } catch (error) {
+        ctx.canvas.parentElement.innerHTML = '<p class="error" style="text-align: center; padding: 2rem 0;">Errore nel caricamento del grafico di correlazione.</p>';
+        console.error('Correlation chart error:', error);
+    }
+}
+
 async function loadAllCharts() {
     await Promise.all([
         loadByTypeChart(),
@@ -474,7 +634,9 @@ async function loadAllCharts() {
         loadByFacilityChart(),
         loadTimeline(),
         loadCapacityByRegion(),
-        loadCapacityTable()
+        loadCapacityTable(),
+        loadAnomalies(),
+        loadCorrelationChart()
     ]);
 }
 

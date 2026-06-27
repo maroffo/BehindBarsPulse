@@ -10,6 +10,7 @@ from pydantic import BaseModel
 
 from behind_bars_pulse.db.repository import FacilitySnapshotRepository, PrisonEventRepository
 from behind_bars_pulse.db.session import get_session
+from behind_bars_pulse.services.analytics_service import AnalyticsService
 
 router = APIRouter(tags=["stats"])
 log = structlog.get_logger()
@@ -311,4 +312,104 @@ async def api_capacity_by_region():
             )
             for region, inmates, cap, occ in summary
         ]
+    )
+
+
+# --- Analytics & Advanced Statistics Models ---
+
+
+class AnomalyItem(BaseModel):
+    """Calculated anomaly statistic for a single facility."""
+
+    facility: str
+    region: str
+    active_count: int
+    active_monthly_rate: float
+    baseline_monthly_rate: float
+    z_score: float
+    severity: str
+    is_anomaly: bool
+
+
+class AnomalyResponse(BaseModel):
+    """Response containing list of anomalous facilities."""
+
+    anomalies: list[AnomalyItem]
+
+
+class CorrelationDataPoint(BaseModel):
+    """Data point correlating occupancy and incidents for a facility."""
+
+    facility: str
+    region: str
+    occupancy_rate: float
+    incident_count: int
+
+
+class CorrelationResponse(BaseModel):
+    """Response containing correlation index, data points, and message."""
+
+    correlation_coefficient: float
+    data_points: list[CorrelationDataPoint]
+    message: str
+
+
+# --- Analytics & Advanced Statistics Endpoints ---
+
+
+@router.get("/stats/api/anomalies", response_model=AnomalyResponse)
+async def api_anomalies(
+    lookback_days: int = Query(180, ge=60, le=365, description="Lookback days for baseline"),
+    active_days: int = Query(30, ge=7, le=60, description="Active observation window"),
+):
+    """Calculate and return facilities showing anomalous spikes in incidents."""
+    analytics_svc = AnalyticsService()
+    async with get_session() as session:
+        anomalies = await analytics_svc.calculate_facility_anomalies(
+            session=session,
+            lookback_days=lookback_days,
+            active_days=active_days,
+        )
+
+    return AnomalyResponse(
+        anomalies=[
+            AnomalyItem(
+                facility=a["facility"],
+                region=a["region"],
+                active_count=a["active_count"],
+                active_monthly_rate=a["active_monthly_rate"],
+                baseline_monthly_rate=a["baseline_monthly_rate"],
+                z_score=a["z_score"],
+                severity=a["severity"],
+                is_anomaly=a["is_anomaly"],
+            )
+            for a in anomalies
+        ]
+    )
+
+
+@router.get("/stats/api/correlation", response_model=CorrelationResponse)
+async def api_correlation(
+    lookback_days: int = Query(180, ge=60, le=365, description="Lookback days for correlation analysis"),
+):
+    """Calculate and return correlation metrics between occupancy rate and incident count."""
+    analytics_svc = AnalyticsService()
+    async with get_session() as session:
+        correlation = await analytics_svc.calculate_occupancy_incident_correlation(
+            session=session,
+            lookback_days=lookback_days,
+        )
+
+    return CorrelationResponse(
+        correlation_coefficient=correlation["correlation_coefficient"],
+        message=correlation["message"],
+        data_points=[
+            CorrelationDataPoint(
+                facility=dp["facility"],
+                region=dp["region"],
+                occupancy_rate=dp["occupancy_rate"],
+                incident_count=dp["incident_count"],
+            )
+            for dp in correlation["data_points"]
+        ],
     )
