@@ -102,6 +102,13 @@ async def test_get_or_generate_dossier_queries_ai_on_cache_miss(tmp_path, mock_d
     
     # Mock database executes (snapshots and events)
     mock_db_session.execute = AsyncMock()
+    
+    mock_snap_names = MagicMock()
+    mock_snap_names.all.return_value = [("Poggioreale",)]
+    
+    mock_event_names = MagicMock()
+    mock_event_names.all.return_value = [("Poggioreale",)]
+    
     mock_snapshots_res = MagicMock()
     mock_snapshots_res.scalars.return_value.all.return_value = [
         FacilitySnapshot(facility="Poggioreale", region="Campania", snapshot_date=date.today(), inmates=2000, capacity=1400)
@@ -110,7 +117,13 @@ async def test_get_or_generate_dossier_queries_ai_on_cache_miss(tmp_path, mock_d
     mock_events_res.scalars.return_value.all.return_value = [
         PrisonEvent(facility="Poggioreale", region="Campania", event_date=date.today(), event_type="suicide")
     ]
-    mock_db_session.execute.side_effect = [mock_snapshots_res, mock_events_res]
+    
+    mock_db_session.execute.side_effect = [
+        mock_snap_names,
+        mock_event_names,
+        mock_snapshots_res,
+        mock_events_res,
+    ]
     
     # Mock RAG Service
     with patch.object(service.rag_service, "retrieve_historical_context", AsyncMock(return_value="RAG Comment")):
@@ -238,16 +251,31 @@ def test_view_facility_route(test_client, mock_db_session):
     )
     
     mock_db_session.execute = AsyncMock()
+    
+    # Setup the 5 database execution results sequentially:
+    # 1. select distinct snapshot facilities
+    mock_snap_names = MagicMock()
+    mock_snap_names.all.return_value = [("Sollicciano",)]
+    
+    # 2. select distinct event facilities
+    mock_event_names = MagicMock()
+    mock_event_names.all.return_value = [("Sollicciano",)]
+    
+    # 3. select latest snapshot
     mock_snapshot_res = MagicMock()
     mock_snapshot_res.scalar_one_or_none.return_value = mock_snapshot
     
+    # 4. select total incidents sum
     mock_count_res = MagicMock()
     mock_count_res.scalar.return_value = 12
     
+    # 5. select mentioned articles
     mock_articles_res = MagicMock()
     mock_articles_res.scalars.return_value.all.return_value = [mock_article]
     
     mock_db_session.execute.side_effect = [
+        mock_snap_names,
+        mock_event_names,
         mock_snapshot_res,
         mock_count_res,
         mock_articles_res,
@@ -266,3 +294,13 @@ def test_view_facility_route(test_client, mock_db_session):
         assert "Drammatica situazione a Sollicciano" in response.text
         assert "Sintesi degli incidenti" in response.text
         assert "/article/5" in response.text
+
+
+def test_view_facility_redirect_non_canonical(test_client):
+    """Test that visiting a non-canonical facility URL redirects to the canonical URL."""
+    # "Firenze - Sollicciano" should normalize/canonicalize to "Sollicciano (Firenze)"
+    response = test_client.get("/istituto/Firenze - Sollicciano", follow_redirects=False)
+    
+    assert response.status_code == 301
+    assert response.headers["Location"] == "/istituto/Sollicciano%20%28Firenze%29"
+

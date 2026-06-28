@@ -131,11 +131,27 @@ class FacilityDossierService:
 
         log.info("generating_new_dossier", facility=facility_name)
 
+        # Find all raw facility names in database that map to this canonical name
+        from behind_bars_pulse.utils.facilities import normalize_facility_name
+        
+        snap_names_res = await session.execute(select(FacilitySnapshot.facility).distinct())
+        raw_names = {row[0] for row in snap_names_res.all() if row[0]}
+        
+        event_names_res = await session.execute(select(PrisonEvent.facility).distinct())
+        raw_names.update({row[0] for row in event_names_res.all() if row[0]})
+        
+        matching_names = [
+            name for name in raw_names 
+            if normalize_facility_name(name) == facility_name
+        ]
+        if facility_name not in matching_names:
+            matching_names.append(facility_name)
+
         # 1. Fetch capacity snapshots of the past 180 days for this facility
         cutoff_date = date.today() - timedelta(days=180)
         snapshots_res = await session.execute(
             select(FacilitySnapshot)
-            .where(FacilitySnapshot.facility == facility_name)
+            .where(FacilitySnapshot.facility.in_(matching_names))
             .where(FacilitySnapshot.snapshot_date >= cutoff_date)
             .order_by(FacilitySnapshot.snapshot_date.desc())
         )
@@ -144,7 +160,7 @@ class FacilityDossierService:
         # 2. Fetch critical events of the past 180 days for this facility
         events_res = await session.execute(
             select(PrisonEvent)
-            .where(PrisonEvent.facility == facility_name)
+            .where(PrisonEvent.facility.in_(matching_names))
             .where(PrisonEvent.event_date >= cutoff_date)
             .order_by(PrisonEvent.event_date.desc().nulls_last())
         )

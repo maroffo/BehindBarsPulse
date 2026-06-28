@@ -128,21 +128,48 @@ async def view_facility(
     refresh: bool = Query(False, description="Forza rigenerazione dossier via AI"),
 ):
     """Render details and AI monograph dossier for a specific facility."""
-    log.info("rendering_facility_monograph", facility=facility_name, force_refresh=refresh)
+    from behind_bars_pulse.utils.facilities import normalize_facility_name
+    from fastapi.responses import RedirectResponse
+    import urllib.parse
 
-    # 1. Fetch latest statistics for the facility
+    # Normalize the facility name to find its canonical form
+    canonical_name = normalize_facility_name(facility_name) or facility_name
+
+    # If the requested name is not the canonical form, redirect permanently (301)
+    if canonical_name != facility_name:
+        log.info("redirecting_to_canonical_facility", requested=facility_name, canonical=canonical_name)
+        encoded_name = urllib.parse.quote(canonical_name)
+        return RedirectResponse(url=f"/istituto/{encoded_name}", status_code=301)
+
+    log.info("rendering_facility_monograph", facility=canonical_name, force_refresh=refresh)
+
+    # Find all raw facility names in database that map to this canonical name
+    snap_names_res = await session.execute(select(FacilitySnapshot.facility).distinct())
+    raw_names = {row[0] for row in snap_names_res.all() if row[0]}
+    
+    event_names_res = await session.execute(select(PrisonEvent.facility).distinct())
+    raw_names.update({row[0] for row in event_names_res.all() if row[0]})
+    
+    matching_names = [
+        name for name in raw_names 
+        if normalize_facility_name(name) == canonical_name
+    ]
+    if canonical_name not in matching_names:
+        matching_names.append(canonical_name)
+
+    # 1. Fetch latest statistics for the facility (using any of the matching names)
     snapshots_res = await session.execute(
         select(FacilitySnapshot)
-        .where(FacilitySnapshot.facility == facility_name)
+        .where(FacilitySnapshot.facility.in_(matching_names))
         .order_by(FacilitySnapshot.snapshot_date.desc())
         .limit(1)
     )
     latest_snapshot = snapshots_res.scalar_one_or_none()
 
-    # 2. Get total incidents in DB
+    # 2. Get total incidents in DB (using any of the matching names)
     events_count_res = await session.execute(
         select(func.sum(PrisonEvent.count))
-        .where(PrisonEvent.facility == facility_name)
+        .where(PrisonEvent.facility.in_(matching_names))
     )
     total_incidents = events_count_res.scalar() or 0
 
@@ -150,17 +177,18 @@ async def view_facility(
     dossier_svc = FacilityDossierService()
     dossier_md = await dossier_svc.get_or_generate_dossier(
         session=session,
-        facility_name=facility_name,
+        facility_name=canonical_name,
         force_refresh=refresh,
     )
 
     # 4. Fetch all articles mentioning this facility name (case-insensitive)
     from behind_bars_pulse.db.models import Article
+    from sqlalchemy import or_
+    
     articles_res = await session.execute(
         select(Article)
         .where(
-            Article.title.ilike(f"%{facility_name}%") | 
-            Article.content.ilike(f"%{facility_name}%")
+            or_(*[Article.title.ilike(f"%{name}%") | Article.content.ilike(f"%{name}%") for name in matching_names[:5]])
         )
         .order_by(Article.published_date.desc().nulls_last())
         .limit(20)  # Limit to top 20 recent articles to keep page lightweight
@@ -171,7 +199,7 @@ async def view_facility(
         "facility.html",
         {
             "request": request,
-            "facility_name": facility_name,
+            "facility_name": canonical_name,
             "latest_snapshot": latest_snapshot,
             "total_incidents": total_incidents,
             "dossier": dossier_md,
