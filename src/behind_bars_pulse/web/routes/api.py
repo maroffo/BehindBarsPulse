@@ -1043,27 +1043,38 @@ async def normalize_facilities(
 
             # Analyze and normalize facility_snapshots
             snaps_result = await session.execute(
-                text("SELECT id, facility FROM facility_snapshots WHERE facility IS NOT NULL")
+                text("SELECT id, facility, snapshot_date, source_url FROM facility_snapshots WHERE facility IS NOT NULL")
             )
             snapshots = snaps_result.fetchall()
 
             before_counts = Counter()
             after_counts = Counter()
-            snap_changes = []
+            snap_updates = []
+            snap_deletes = []
+            existing_snapshots = set()
 
-            for snap_id, facility in snapshots:
+            for snap_id, facility, snap_date, source_url in snapshots:
                 before_counts[facility] += 1
-                normalized = normalize_facility_name(facility)
+                normalized = normalize_facility_name(facility) or facility
                 after_counts[normalized] += 1
-                if facility != normalized:
-                    snap_changes.append((snap_id, facility, normalized))
+                
+                key = (normalized, str(snap_date), source_url)
+                if facility == normalized:
+                    existing_snapshots.add(key)
+                else:
+                    if key in existing_snapshots:
+                        snap_deletes.append(snap_id)
+                    else:
+                        snap_updates.append((snap_id, facility, normalized))
+                        existing_snapshots.add(key)
 
             results["facility_snapshots"]["before"] = len(before_counts)
             results["facility_snapshots"]["after"] = len(after_counts)
-            results["facility_snapshots"]["changes"] = len(snap_changes)
+            results["facility_snapshots"]["changes"] = len(snap_updates)
+            results["facility_snapshots"]["deletes"] = len(snap_deletes)
 
             # Sample changes for preview
-            all_changes = event_changes[:5] + snap_changes[:5]
+            all_changes = event_changes[:5] + snap_updates[:5]
             results["sample_changes"] = [
                 {"id": c[0], "old": c[1], "new": c[2]} for c in all_changes[:10]
             ]
@@ -1076,17 +1087,24 @@ async def normalize_facilities(
                         {"facility": normalized, "id": event_id},
                     )
 
-                for snap_id, _, normalized in snap_changes:
+                for snap_id, _, normalized in snap_updates:
                     await session.execute(
                         text("UPDATE facility_snapshots SET facility = :facility WHERE id = :id"),
                         {"facility": normalized, "id": snap_id},
+                    )
+
+                if snap_deletes:
+                    await session.execute(
+                        text("DELETE FROM facility_snapshots WHERE id = ANY(:ids)"),
+                        {"ids": snap_deletes},
                     )
 
                 await session.commit()
                 log.info(
                     "api_normalize_facilities_applied",
                     events_updated=len(event_changes),
-                    snapshots_updated=len(snap_changes),
+                    snapshots_updated=len(snap_updates),
+                    snapshots_deleted=len(snap_deletes),
                 )
 
         return results
