@@ -930,3 +930,44 @@ class AIService:
         )
 
         return response
+
+    def generate_monthly_themes(self, month_label: str, titles: list[str]) -> list[str]:
+        """Generate 3 dominant keywords/themes for a month based on article titles.
+
+        Args:
+            month_label: The month name/label (e.g. "Gennaio 2026").
+            titles: A list of article titles for that month.
+
+        Returns:
+            List of 3 strings representing the dominant themes.
+        """
+        from behind_bars_pulse.ai.prompts import MONTHLY_THEMES_PROMPT
+
+        log.info("generating_monthly_themes_via_ai", month=month_label, title_count=len(titles))
+
+        # Truncate titles list to avoid exceeding context
+        short_titles = titles[:40]
+
+        payload = {
+            "month": month_label,
+            "titles": short_titles,
+        }
+
+        prompt = json.dumps(payload, indent=2, ensure_ascii=False)
+
+        response = self._generate(
+            prompt=prompt,
+            system_prompt=MONTHLY_THEMES_PROMPT,
+            response_mime_type="application/json",
+        )
+
+        try:
+            themes = json.loads(response)
+            if isinstance(themes, list):
+                # Ensure exactly 3 elements and return strings
+                return [str(t) for t in themes[:3]]
+        except Exception as e:
+            log.warning("failed_to_parse_monthly_themes", error=str(e))
+            
+        # Fallback in case of parse failure
+        return ["Notizie Generali", "Gestione Penitenziaria", "Criticità Carcerarie"]

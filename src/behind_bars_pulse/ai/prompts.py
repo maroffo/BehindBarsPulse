@@ -572,3 +572,23 @@ Tono della stesura:
 - Evita toni eccessivamente allarmistici ma non nascondere la gravità dei dati statistici.
 - Scritto interamente in italiano.
 """
+
+
+MONTHLY_THEMES_PROMPT = """Sei un analista dei media esperto del sistema carcerario italiano.
+Ti verranno forniti i titoli degli articoli pubblicati in un determinato mese.
+Il tuo compito è analizzare questi titoli e identificare i 3 temi dominanti o parole chiave più rappresentative di quel mese.
+
+Linee guida:
+1. Restituisci esattamente 3 temi/parole chiave.
+2. Ciascun tema deve essere una breve frase descrittiva o parola chiave (es. "Suicidi a Sollicciano", "Riforma della Giustizia", "Carenza personale di polizia").
+3. Sii specifico e descrittivo.
+4. Rispondi esclusivamente in lingua italiana.
+5. Il formato di output deve essere una lista JSON di stringhe, esattamente così:
+   [
+     "Tema 1",
+     "Tema 2",
+     "Tema 3"
+   ]
+
+*Importante*: Restituisci SOLO il JSON valido, senza testi introduttivi, spiegazioni o blocchi di codice markdown.
+"""

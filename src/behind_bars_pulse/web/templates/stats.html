@@ -146,6 +146,25 @@
                     <p class="loading" style="margin: 0;">Calcolo coefficiente di correlazione...</p>
                 </div>
             </div>
+
+            <!-- Semantic Trends Card -->
+            <div class="stat-card" style="grid-column: span 2; margin-top: 1.5rem;">
+                <h3>🗺️ Evoluzione Semantica dei Temi Caldi (Embedding Drift)</h3>
+                <p style="font-size: 0.9rem; color: #6c757d; margin-bottom: 1.5rem; text-align: left;">
+                    Misura matematicamente la distanza di coseno (drift) tra i vettori medi degli articoli di mesi consecutivi. Un drift più elevato segnala un brusco cambiamento nei temi trattati dai media.
+                </p>
+                <div class="stats-grid" style="grid-template-columns: 2fr 1fr; gap: 1.5rem; display: grid;">
+                    <div class="chart-container" style="height: 320px; position: relative;">
+                        <canvas id="semantic-drift-chart"></canvas>
+                    </div>
+                    <div style="text-align: left;">
+                        <h4 style="font-size: 0.95rem; font-weight: 700; color: #1a1a2e; margin: 0 0 0.75rem 0;">Tematiche Dominanti per Mese</h4>
+                        <div id="monthly-themes-container" style="font-size: 0.85rem; display: flex; flex-direction: column; gap: 0.75rem; max-height: 300px; overflow-y: auto; padding-right: 0.5rem;">
+                            <p class="loading">Estrazione temi in corso...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </section>
 
@@ -176,7 +195,7 @@ const LABELS = {
     natural_death: 'Morti naturali',
 };
 
-let byTypeChart, monthlyChart, byRegionChart, byFacilityChart, capacityRegionChart, correlationChart;
+let byTypeChart, monthlyChart, byRegionChart, byFacilityChart, capacityRegionChart, correlationChart, semanticDriftChart;
 
 function getFilters() {
     const days = document.getElementById('days-filter').value;
@@ -626,6 +645,95 @@ async function loadCorrelationChart() {
     }
 }
 
+async function loadSemanticDriftChart() {
+    const canvas = document.getElementById('semantic-drift-chart');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const themesContainer = document.getElementById('monthly-themes-container');
+
+    try {
+        const data = await fetchData('/stats/api/semantic-drift');
+
+        if (semanticDriftChart) semanticDriftChart.destroy();
+
+        if (data.trends.length === 0) {
+            ctx.canvas.parentElement.innerHTML = '<p class="no-data">Nessun dato di trend semantico disponibile.</p>';
+            themesContainer.innerHTML = '<p class="no-data">Nessun dato.</p>';
+            return;
+        }
+
+        // Render monthly themes list on the right side
+        const themesHtml = data.trends.map(t => `
+            <div style="background: #f8f9fa; border-left: 3px solid #1a1a2e; padding: 0.5rem 0.75rem; border-radius: 0 4px 4px 0; margin-bottom: 0.5rem;">
+                <strong style="color: #1a1a2e; font-size: 0.8rem; display: block; margin-bottom: 0.25rem;">${t.label}</strong>
+                <ul style="margin: 0; padding-left: 1rem; color: #495057; font-size: 0.75rem; line-height: 1.4;">
+                    ${t.keywords.map(kw => `<li>${kw}</li>`).join('')}
+                </ul>
+                ${t.drift > 0 ? `<div style="font-size: 0.7rem; color: #868e96; margin-top: 0.25rem; font-style: italic;">Drift rispetto al mese precedente: ${(t.drift * 100).toFixed(1)}%</div>` : ''}
+            </div>
+        `).reverse().join(''); // Show newest first
+        themesContainer.innerHTML = themesHtml;
+
+        // Render line chart on the left side
+        const labels = data.trends.map(t => t.label);
+        const similarityData = data.trends.map(t => t.similarity * 100);
+
+        semanticDriftChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Coerenza Semantica (%)',
+                    data: similarityData,
+                    borderColor: 'rgba(26, 26, 46, 1)',
+                    backgroundColor: 'rgba(26, 26, 46, 0.05)',
+                    borderWidth: 2.5,
+                    pointBackgroundColor: 'rgba(26, 26, 46, 1)',
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    tension: 0.2,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: (ctx) => {
+                                const val = ctx.raw;
+                                return `Coerenza: ${val.toFixed(1)}%`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        ticks: { font: { size: 10 } }
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: 'Indice di Coerenza (%)',
+                            font: { weight: 'bold', size: 10 }
+                        },
+                        beginAtZero: false,
+                        suggestedMin: 80,
+                        suggestedMax: 100,
+                        ticks: { callback: (v) => v + '%' }
+                    }
+                }
+            }
+        });
+    } catch (error) {
+        ctx.canvas.parentElement.innerHTML = '<p class="error" style="text-align: center; padding: 2rem 0;">Errore nel caricamento dell\'analisi dei trend.</p>';
+        themesContainer.innerHTML = '<p class="error">Errore.</p>';
+        console.error('Semantic drift chart error:', error);
+    }
+}
+
 async function loadAllCharts() {
     await Promise.all([
         loadByTypeChart(),
@@ -636,7 +744,8 @@ async function loadAllCharts() {
         loadCapacityByRegion(),
         loadCapacityTable(),
         loadAnomalies(),
-        loadCorrelationChart()
+        loadCorrelationChart(),
+        loadSemanticDriftChart()
     ]);
 }
 

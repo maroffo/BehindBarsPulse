@@ -299,3 +299,171 @@ class AnalyticsService:
             "data_points": sorted(data_points, key=lambda x: x["occupancy_rate"], reverse=True),
             "message": message,
         }
+
+    async def calculate_semantic_trends(
+        self,
+        session: AsyncSession,
+        force_refresh: bool = False,
+    ) -> list[dict[str, Any]]:
+        """Calculate monthly semantic centroids and consecutive drift (cosine distance).
+
+        Uses local JSON file-based caching (data/semantic_trends.json) to store
+        calculated monthly keywords and average embedding centroids, dramatically reducing
+        Gemini API costs.
+
+        Args:
+            session: Active AsyncSession.
+            force_refresh: If True, recalculates all values bypassing cache.
+
+        Returns:
+            List of monthly trend dictionaries with keywords, similarity, and drift.
+        """
+        import json
+        import os
+        from datetime import datetime
+        from pathlib import Path
+        from behind_bars_pulse.config import get_settings
+        from behind_bars_pulse.db.models import Article
+        from behind_bars_pulse.ai.service import AIService
+
+        # Set up cache path inside data/
+        settings = get_settings()
+        cache_dir = Path(settings.templates_dir).parent / "data"
+        cache_path = cache_dir / "semantic_trends.json"
+
+        # Check cache validity (re-use if younger than 24 hours and force_refresh is false)
+        if not force_refresh and cache_path.exists():
+            try:
+                # We check age of file
+                mtime = os.path.getmtime(cache_path)
+                age = datetime.now().timestamp() - mtime
+                if age < 86400:  # 24 hours
+                    with open(cache_path, "r", encoding="utf-8") as f:
+                        cached_data = json.load(f)
+                        log.info("loaded_semantic_trends_from_cache", path=str(cache_path))
+                        # Strip out raw centroid lists for API payload to save bandwidth
+                        return [{k: v for k, v in m.items() if k != "centroid"} for m in cached_data]
+            except Exception as e:
+                log.warning("failed_to_load_semantic_trends_cache", error=str(e))
+
+        log.info("recalculating_semantic_trends")
+
+        # 1. Load old cache to preserve historical months' keywords (avoids redundant Gemini calls)
+        old_cache = {}
+        if cache_path.exists():
+            try:
+                with open(cache_path, "r", encoding="utf-8") as f:
+                    for m in json.load(f):
+                        if "month" in m and "keywords" in m:
+                            old_cache[m["month"]] = m["keywords"]
+            except Exception:
+                pass
+
+        # 2. Query all embedded articles from database
+        result = await session.execute(
+            select(Article.published_date, Article.title, Article.embedding)
+            .where(Article.embedding.isnot(None))
+        )
+        articles_data = result.all()
+
+        if not articles_data:
+            log.warning("no_embedded_articles_found_for_trends")
+            return []
+
+        # 3. Group by month in Python: month_key = "YYYY-MM"
+        monthly_embeddings = defaultdict(list)
+        monthly_titles = defaultdict(list)
+
+        for pub_date, title, embedding in articles_data:
+            if not pub_date or not embedding:
+                continue
+            month_key = f"{pub_date.year}-{pub_date.month:02d}"
+            monthly_embeddings[month_key].append(embedding)
+            monthly_titles[month_key].append(title)
+
+        # 4. Sort months chronologically
+        sorted_months = sorted(monthly_embeddings.keys())
+        if len(sorted_months) == 0:
+            return []
+
+        # 5. Compute centroids for each month
+        monthly_centroids = {}
+        for m in sorted_months:
+            embeddings_list = monthly_embeddings[m]
+            n = len(embeddings_list)
+            dim = len(embeddings_list[0])
+            
+            # Average vector dimensions
+            centroid = [0.0] * dim
+            for emb in embeddings_list:
+                for i in range(dim):
+                    centroid[i] += emb[i]
+            
+            centroid = [val / n for val in centroid]
+            monthly_centroids[m] = centroid
+
+        # 6. Compute drift and generate keywords
+        ai_svc = AIService(settings)
+        trend_records = []
+
+        italian_month_names = {
+            "01": "Gennaio", "02": "Febbraio", "03": "Marzo", "04": "Aprile",
+            "05": "Maggio", "06": "Giugno", "07": "Luglio", "08": "Agosto",
+            "09": "Settembre", "10": "Ottobre", "11": "Novembre", "12": "Dicembre"
+        }
+
+        for idx, m in enumerate(sorted_months):
+            centroid = monthly_centroids[m]
+            
+            # Similarity and drift relative to the previous month
+            if idx == 0:
+                similarity = 1.0
+                drift = 0.0
+            else:
+                prev_m = sorted_months[idx - 1]
+                prev_centroid = monthly_centroids[prev_m]
+                similarity = self._cosine_similarity(centroid, prev_centroid)
+                drift = 1.0 - similarity
+
+            # Resolve monthly human-readable label
+            year_part, month_part = m.split("-")
+            month_name = italian_month_names.get(month_part, month_part)
+            label = f"{month_name} {year_part}"
+
+            # Reuse cached keywords if available, otherwise query Gemini
+            if m in old_cache and not force_refresh:
+                keywords = old_cache[m]
+            else:
+                titles = monthly_titles[m]
+                keywords = ai_svc.generate_monthly_themes(month_label=label, titles=titles)
+
+            trend_records.append({
+                "month": m,
+                "label": label,
+                "article_count": len(monthly_titles[m]),
+                "keywords": keywords,
+                "similarity": round(similarity, 4),
+                "drift": round(drift, 4),
+                "centroid": centroid,  # Saved to cache but stripped in response
+            })
+
+        # Save complete computed records with centroids to local cache file
+        try:
+            os.makedirs(cache_dir, exist_ok=True)
+            with open(cache_path, "w", encoding="utf-8") as f:
+                json.dump(trend_records, f, indent=2, ensure_ascii=False)
+            log.info("saved_semantic_trends_to_cache", path=str(cache_path))
+        except Exception as e:
+            log.error("failed_to_write_semantic_trends_cache", error=str(e))
+
+        # Return stripped records to save bandwidth
+        return [{k: v for k, v in r.items() if k != "centroid"} for r in trend_records]
+
+    def _cosine_similarity(self, v1: list[float], v2: list[float]) -> float:
+        """Calculate cosine similarity between two numeric vectors."""
+        dot = sum(a * b for a, b in zip(v1, v2))
+        norm1 = math.sqrt(sum(a * a for a in v1))
+        norm2 = math.sqrt(sum(b * b for b in v2))
+        if norm1 > 0 and norm2 > 0:
+            return dot / (norm1 * norm2)
+        return 0.0

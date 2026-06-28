@@ -413,3 +413,53 @@ async def api_correlation(
             for dp in correlation["data_points"]
         ],
     )
+
+
+# --- Semantic Trends Models ---
+
+
+class MonthlyTrendItem(BaseModel):
+    """Semantic trend indicators for a single month."""
+
+    month: str
+    label: str
+    article_count: int
+    keywords: list[str]
+    similarity: float
+    drift: float
+
+
+class SemanticDriftResponse(BaseModel):
+    """Response containing chronological list of monthly semantic indicators."""
+
+    trends: list[MonthlyTrendItem]
+
+
+# --- Semantic Trends Endpoints ---
+
+
+@router.get("/stats/api/semantic-drift", response_model=SemanticDriftResponse)
+async def api_semantic_drift(
+    refresh: bool = Query(False, description="Forza il ricalcolo e bypassa la cache"),
+):
+    """Get monthly semantic centroids drift (cosine distance) and keywords."""
+    analytics_svc = AnalyticsService()
+    async with get_session() as session:
+        trends = await analytics_svc.calculate_semantic_trends(
+            session=session,
+            force_refresh=refresh,
+        )
+
+    return SemanticDriftResponse(
+        trends=[
+            MonthlyTrendItem(
+                month=t["month"],
+                label=t["label"],
+                article_count=t["article_count"],
+                keywords=t["keywords"],
+                similarity=t["similarity"],
+                drift=t["drift"],
+            )
+            for t in trends
+        ]
+    )
