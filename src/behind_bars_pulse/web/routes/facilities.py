@@ -66,20 +66,44 @@ async def list_facilities(
         .where(PrisonEvent.facility.isnot(None))
         .group_by(PrisonEvent.facility)
     )
-    incident_counts = {row[0]: int(row[1]) if row[1] is not None else 0 for row in events_res.all() if row[0] is not None}
+    
+    from collections import defaultdict
+    from behind_bars_pulse.utils.facilities import normalize_facility_name
 
-    # Map snapshots to list of dictionaries with combined incident data
-    facility_list = []
+    # Map normalized names to sum of incidents
+    normalized_incident_counts = defaultdict(int)
+    for row in events_res.all():
+        raw_facility = row[0]
+        if raw_facility is not None:
+            canonical = normalize_facility_name(raw_facility) or raw_facility
+            count = int(row[1]) if row[1] is not None else 0
+            normalized_incident_counts[canonical] += count
+
+    # Map snapshots to dictionary and deduplicate by canonical name
+    # We keep the one with the latest snapshot_date for each canonical name
+    deduplicated = {}
     for s in snapshots:
-        facility_list.append({
-            "facility": s.facility,
-            "region": s.region or "Sconosciuta",
-            "inmates": s.inmates,
-            "capacity": s.capacity,
-            "occupancy_rate": s.occupancy_rate,
-            "incident_count": incident_counts.get(s.facility, 0),
-            "snapshot_date": s.snapshot_date,
-        })
+        if not s.facility:
+            continue
+        canonical = normalize_facility_name(s.facility) or s.facility
+        
+        existing = deduplicated.get(canonical)
+        # If no existing, or this snapshot is newer
+        if not existing or (s.snapshot_date and (not existing["snapshot_date"] or s.snapshot_date > existing["snapshot_date"])):
+            deduplicated[canonical] = {
+                "facility": canonical,
+                "region": s.region or "Sconosciuta",
+                "inmates": s.inmates,
+                "capacity": s.capacity,
+                "occupancy_rate": s.occupancy_rate,
+                "incident_count": 0,  # populated next
+                "snapshot_date": s.snapshot_date,
+            }
+
+    # Assign combined incident counts
+    facility_list = list(deduplicated.values())
+    for f in facility_list:
+        f["incident_count"] = normalized_incident_counts.get(f["facility"], 0)
 
     # Sort primarily by incident count or name
     facility_list.sort(key=lambda x: x["incident_count"], reverse=True)

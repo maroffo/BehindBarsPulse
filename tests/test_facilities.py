@@ -163,6 +163,57 @@ def test_list_facilities_route(test_client, mock_db_session):
     assert "Campania" in response.text
 
 
+def test_list_facilities_deduplication(test_client, mock_db_session):
+    """Test that duplicate-looking facility snapshots get canonicalized and deduplicated."""
+    # Mock two snapshots that should map to the same canonical name
+    # e.g. "Roma - Regina Coeli" and "Roma Regina Coeli" (which both normalize to "Roma Regina Coeli")
+    snap1 = FacilitySnapshot(
+        facility="Roma - Regina Coeli",
+        region="Lazio",
+        snapshot_date=date(2026, 2, 1),
+        inmates=1000,
+        capacity=600,
+        occupancy_rate=166.7,
+    )
+    snap2 = FacilitySnapshot(
+        facility="Roma Regina Coeli",
+        region="Lazio",
+        snapshot_date=date(2026, 2, 5),  # More recent date
+        inmates=1100,
+        capacity=600,
+        occupancy_rate=183.3,
+    )
+    
+    mock_snapshots_res = MagicMock()
+    mock_snapshots_res.scalars.return_value.all.return_value = [snap1, snap2]
+    
+    mock_regions_res = MagicMock()
+    mock_regions_res.all.return_value = [("Lazio",)]
+    
+    # Mock events with different raw names that map to the same canonical name
+    mock_events_res = MagicMock()
+    mock_events_res.all.return_value = [
+        ("Roma - Regina Coeli", 2),
+        ("Roma Regina Coeli", 3),
+    ]
+    
+    mock_db_session.execute = AsyncMock()
+    mock_db_session.execute.side_effect = [
+        mock_snapshots_res,
+        mock_regions_res,
+        mock_events_res,
+    ]
+
+    response = test_client.get("/istituti")
+    
+    assert response.status_code == 200
+    # Should only render the canonical Regina Coeli once, with the latest snapshot date's data (183.3%)
+    assert "Regina Coeli" in response.text
+    assert "183.3%" in response.text
+    # And total incidents sum is 2 + 3 = 5
+    assert "5" in response.text
+
+
 def test_view_facility_route(test_client, mock_db_session):
     """Test /istituto/{facility_name} router renders monograph and mentioned articles successfully."""
     from behind_bars_pulse.db.models import Article
