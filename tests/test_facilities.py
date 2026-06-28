@@ -164,7 +164,9 @@ def test_list_facilities_route(test_client, mock_db_session):
 
 
 def test_view_facility_route(test_client, mock_db_session):
-    """Test /istituto/{facility_name} router renders monograph successfully."""
+    """Test /istituto/{facility_name} router renders monograph and mentioned articles successfully."""
+    from behind_bars_pulse.db.models import Article
+
     mock_snapshot = FacilitySnapshot(
         facility="Sollicciano",
         region="Toscana",
@@ -174,6 +176,16 @@ def test_view_facility_route(test_client, mock_db_session):
         occupancy_rate=160.0,
     )
     
+    # Mock related article
+    mock_article = Article(
+        id=5,
+        title="Drammatica situazione a Sollicciano",
+        link="https://example.com/art5",
+        content="La situazione di Sollicciano...",
+        published_date=date.today(),
+        summary="Sintesi degli incidenti",
+    )
+    
     mock_db_session.execute = AsyncMock()
     mock_snapshot_res = MagicMock()
     mock_snapshot_res.scalar_one_or_none.return_value = mock_snapshot
@@ -181,9 +193,13 @@ def test_view_facility_route(test_client, mock_db_session):
     mock_count_res = MagicMock()
     mock_count_res.scalar.return_value = 12
     
+    mock_articles_res = MagicMock()
+    mock_articles_res.scalars.return_value.all.return_value = [mock_article]
+    
     mock_db_session.execute.side_effect = [
         mock_snapshot_res,
         mock_count_res,
+        mock_articles_res,
     ]
     
     with patch.object(FacilityDossierService, "get_or_generate_dossier", AsyncMock(return_value="# Dossier Sollicciano")):
@@ -193,3 +209,9 @@ def test_view_facility_route(test_client, mock_db_session):
         assert "Sollicciano" in response.text
         assert "Toscana" in response.text
         assert "Dossier Sollicciano" in response.text
+        
+        # Verify the related articles are present on page
+        assert "Notizie Recenti che citano questo istituto" in response.text
+        assert "Drammatica situazione a Sollicciano" in response.text
+        assert "Sintesi degli incidenti" in response.text
+        assert "/article/5" in response.text

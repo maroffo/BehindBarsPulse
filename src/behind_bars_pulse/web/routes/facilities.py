@@ -130,6 +130,19 @@ async def view_facility(
         force_refresh=refresh,
     )
 
+    # 4. Fetch all articles mentioning this facility name (case-insensitive)
+    from behind_bars_pulse.db.models import Article
+    articles_res = await session.execute(
+        select(Article)
+        .where(
+            Article.title.ilike(f"%{facility_name}%") | 
+            Article.content.ilike(f"%{facility_name}%")
+        )
+        .order_by(Article.published_date.desc().nulls_last())
+        .limit(20)  # Limit to top 20 recent articles to keep page lightweight
+    )
+    mentioned_articles = articles_res.scalars().all()
+
     return templates.TemplateResponse(
         "facility.html",
         {
@@ -139,5 +152,6 @@ async def view_facility(
             "total_incidents": total_incidents,
             "dossier": dossier_md,
             "refreshed": refresh,
+            "articles": mentioned_articles,
         },
     )
