@@ -66,7 +66,7 @@ async def list_facilities(
         .where(PrisonEvent.facility.isnot(None))
         .group_by(PrisonEvent.facility)
     )
-    incident_counts = {row[0]: int(row[1]) for row in events_res.all() if row[0] is not None}
+    incident_counts = {row[0]: int(row[1]) if row[1] is not None else 0 for row in events_res.all() if row[0] is not None}
 
     # Map snapshots to list of dictionaries with combined incident data
     facility_list = []
