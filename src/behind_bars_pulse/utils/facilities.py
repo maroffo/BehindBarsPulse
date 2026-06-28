@@ -145,6 +145,19 @@ FACILITY_ALIASES: dict[str, list[str]] = {
         "casa circondariale di alessandria",
         "carcere di alessandria",
     ],
+    "Sant'Anna (Modena)": [
+        "sant'anna",
+        "sant’anna",
+        "modena",
+        "casa circondariale di modena",
+        "carcere di modena",
+        "casa circondariale sant'anna",
+        "casa circondariale sant’anna",
+        "sant'anna di modena",
+        "sant’anna di modena",
+        "sant'anna (modena)",
+        "sant’anna (modena)",
+    ],
 }
 
 # Build reverse lookup for fast matching
