@@ -305,15 +305,25 @@ def test_view_facility_redirect_non_canonical(test_client):
     assert response.headers["Location"] == "/istituto/Sollicciano%20%28Firenze%29"
 
 
-def test_normalize_facility_name_sant_anna():
-    """Test that various raw name forms of Sant'Anna map to the same canonical name."""
+def test_normalize_facility_name_aliases():
+    """Test that various raw name forms map to their canonical names."""
     from behind_bars_pulse.utils.facilities import normalize_facility_name
     
-    # All of these should normalize to "Sant'Anna (Modena)"
+    # Modena aliases -> Sant'Anna (Modena)
     assert normalize_facility_name("Sant'Anna") == "Sant'Anna (Modena)"
     assert normalize_facility_name("Sant’anna") == "Sant'Anna (Modena)"
     assert normalize_facility_name("Sant’Anna (Modena)") == "Sant'Anna (Modena)"
     assert normalize_facility_name("casa circondariale di modena") == "Sant'Anna (Modena)"
     assert normalize_facility_name("carcere di modena") == "Sant'Anna (Modena)"
+
+    # Rovigo aliases -> IPM Vivaldi (Rovigo)
+    assert normalize_facility_name("Ipm Antonio Vivaldi (Rovigo)") == "IPM Vivaldi (Rovigo)"
+    assert normalize_facility_name("Ipm Rovigo") == "IPM Vivaldi (Rovigo)"
+    assert normalize_facility_name("Ipm Vivaldi (Rovigo)") == "IPM Vivaldi (Rovigo)"
+
+    # Cagliari aliases -> Cagliari Uta
+    assert normalize_facility_name("Cagliari - Uta") == "Cagliari Uta"
+    assert normalize_facility_name("Cagliari  Uta") == "Cagliari Uta"
+    assert normalize_facility_name("Uta (Cagliari)") == "Cagliari Uta"
 
 

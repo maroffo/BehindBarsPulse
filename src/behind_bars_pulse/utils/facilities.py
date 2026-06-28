@@ -158,6 +158,27 @@ FACILITY_ALIASES: dict[str, list[str]] = {
         "sant'anna (modena)",
         "sant’anna (modena)",
     ],
+    "IPM Vivaldi (Rovigo)": [
+        "ipm antonio vivaldi (rovigo)",
+        "ipm rovigo",
+        "ipm vivaldi (rovigo)",
+        "ipm vivaldi rovigo",
+        "carcere minorile di rovigo",
+        "carcere minorile rovigo",
+        "antonio vivaldi rovigo",
+        "antonio vivaldi (rovigo)",
+    ],
+    "Cagliari Uta": [
+        "cagliari uta",
+        "cagliari - uta",
+        "cagliari  uta",
+        "uta di cagliari",
+        "uta (cagliari)",
+        "carcere di uta",
+        "casa circondariale di cagliari",
+        "casa circondariale cagliari uta",
+        "casa circondariale cagliari - uta",
+    ],
 }
 
 # Build reverse lookup for fast matching
