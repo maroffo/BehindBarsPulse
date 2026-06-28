@@ -1053,15 +1053,20 @@ async def normalize_facilities(
             snap_deletes = []
             existing_snapshots = set()
 
+            # Pass 1: Populate existing_snapshots with all already-canonical snapshots
+            for snap_id, facility, snap_date, source_url in snapshots:
+                normalized = normalize_facility_name(facility) or facility
+                if facility == normalized:
+                    existing_snapshots.add((normalized, str(snap_date), source_url))
+
+            # Pass 2: Process non-canonical snapshots for update or delete
             for snap_id, facility, snap_date, source_url in snapshots:
                 before_counts[facility] += 1
                 normalized = normalize_facility_name(facility) or facility
                 after_counts[normalized] += 1
                 
-                key = (normalized, str(snap_date), source_url)
-                if facility == normalized:
-                    existing_snapshots.add(key)
-                else:
+                if facility != normalized:
+                    key = (normalized, str(snap_date), source_url)
                     if key in existing_snapshots:
                         snap_deletes.append(snap_id)
                     else:
