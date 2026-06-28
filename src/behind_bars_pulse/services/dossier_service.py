@@ -27,8 +27,22 @@ class FacilityDossierService:
         self.ai_service = ai_service or AIService(self.settings)
         self.rag_service = RAGService()
         
-        # Define cache directory inside project data folder
-        self.cache_dir = Path(self.settings.templates_dir).parent / "data" / "dossiers"
+        # Define cache directory inside project data folder, fallback to /tmp on read-only filesystems (like Cloud Run)
+        local_data_dir = Path(self.settings.templates_dir).parent / "data" / "dossiers"
+        try:
+            # Test if writable or create directory
+            os.makedirs(local_data_dir, exist_ok=True)
+            # Try to write a tiny temp file to prove writability
+            test_file = local_data_dir / ".write_test"
+            with open(test_file, "w") as f:
+                f.write("test")
+            test_file.unlink()
+            self.cache_dir = local_data_dir
+        except Exception:
+            # Fallback to writable memory storage on Cloud Run
+            self.cache_dir = Path("/tmp/behind_bars_pulse/dossiers")
+            os.makedirs(self.cache_dir, exist_ok=True)
+            log.info("using_tmp_cache_directory_fallback", path=str(self.cache_dir))
 
     def _get_cache_path(self, facility_name: str) -> Path:
         """Get the filesystem path for a cached dossier."""

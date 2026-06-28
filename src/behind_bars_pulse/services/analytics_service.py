@@ -452,9 +452,22 @@ class AnalyticsService:
         from behind_bars_pulse.db.models import Article
         from behind_bars_pulse.ai.service import AIService
 
-        # Set up cache path inside data/
+        # Set up cache path inside data/, fallback to /tmp on read-only filesystems (like Cloud Run)
         settings = get_settings()
-        cache_dir = Path(settings.templates_dir).parent / "data"
+        local_data_dir = Path(settings.templates_dir).parent / "data"
+        cache_dir = local_data_dir
+        try:
+            os.makedirs(local_data_dir, exist_ok=True)
+            test_file = local_data_dir / ".write_test"
+            with open(test_file, "w") as f:
+                f.write("test")
+            test_file.unlink()
+        except Exception:
+            # Fallback to writable directory on Cloud Run
+            cache_dir = Path("/tmp/behind_bars_pulse")
+            os.makedirs(cache_dir, exist_ok=True)
+            log.info("using_tmp_cache_for_trends", path=str(cache_dir))
+            
         cache_path = cache_dir / "semantic_trends.json"
 
         # Check cache validity (re-use if younger than 24 hours and force_refresh is false)
