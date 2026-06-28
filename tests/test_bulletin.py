@@ -2,6 +2,7 @@
 # ABOUTME: Verifies BulletinGenerator, Pydantic models, and editorial comment extraction.
 
 from datetime import date
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -159,3 +160,82 @@ class TestBulletinContent:
 
         json_data = bulletin.model_dump(mode="json")
         assert json_data["issue_date"] == "2026-02-03"
+
+
+class TestBulletinGeneratorIntegration:
+    """Integration tests for BulletinGenerator advanced features (RAG + Early Warning)."""
+
+    @patch("behind_bars_pulse.bulletin.generator.create_engine")
+    @patch("behind_bars_pulse.bulletin.generator.Session")
+    def test_generate_bulletin_with_early_warning_alerts(
+        self,
+        mock_session_cls: MagicMock,
+        mock_create_engine: MagicMock,
+        mock_settings: Settings,
+    ) -> None:
+        """BulletinGenerator should calculate anomalies and inject active alerts into AI prompt."""
+        from behind_bars_pulse.bulletin.generator import BulletinGenerator
+        from behind_bars_pulse.models import EnrichedArticle
+        
+        generator = BulletinGenerator(mock_settings)
+        generator.ai_service = MagicMock()
+        
+        # Mock the AI service return values to satisfy Pydantic validations
+        from behind_bars_pulse.bulletin.models import BulletinContent
+        mock_bulletin_content = BulletinContent(
+            title="Drammatica situazione carceraria",
+            subtitle="Incidenti in crescita",
+            content="Rapporto sulle carceri italiane.",
+            key_topics=["sovraffollamento"],
+            sources_cited=["Il Dubbio"],
+        )
+        generator.ai_service.generate_bulletin.return_value = mock_bulletin_content
+        generator.ai_service.generate_press_review.return_value = []
+        
+        # 1. Setup mock articles from DB
+        # Article mentions "Sollicciano" in its content
+        mock_article = EnrichedArticle(
+            title="Scontri nel carcere di Sollicciano",
+            link="https://example.com/sollicciano",
+            content="Tensioni e scontri registrati questa notte nell'istituto di Sollicciano a Firenze.",
+            published_date=date(2026, 2, 2),
+        )
+        
+        # Patch load articles from DB
+        generator._load_articles_from_db = MagicMock(return_value={"https://example.com/sollicciano": mock_article})
+        
+        # 2. Patch RAG Service to return standard context
+        mock_rag_context = "### CONTESTO STORICO RAG"
+        
+        # 3. Patch AnalyticsService to return active anomalies in Sollicciano
+        mock_anomalies = [
+            {
+                "facility": "Sollicciano",
+                "region": "Toscana",
+                "active_count": 8,
+                "active_monthly_rate": 8.0,
+                "baseline_monthly_rate": 1.5,
+                "z_score": 3.2,
+                "severity": "Critica",
+                "is_anomaly": True,
+            }
+        ]
+        
+        with (
+            patch("behind_bars_pulse.services.rag_service.RAGService.retrieve_historical_context_sync", return_value=mock_rag_context),
+            patch("behind_bars_pulse.services.analytics_service.AnalyticsService.calculate_facility_anomalies_sync", return_value=mock_anomalies),
+        ):
+            # Run generator
+            generator.generate(issue_date=date(2026, 2, 3))
+            
+            # Verify AI service generate_bulletin was called
+            # and that historical_context contains BOTH the early warning alert AND the RAG context
+            generator.ai_service.generate_bulletin.assert_called_once()
+            call_args = generator.ai_service.generate_bulletin.call_args[1]
+            
+            historical_context_arg = call_args["historical_context"]
+            assert "### 🚨 ALLERTE DI CRISI STATISTICHE ATTIVE (EARLY WARNING)" in historical_context_arg
+            assert "ALLERTA STATISTICA CRITICA per l'istituto 'Sollicciano'" in historical_context_arg
+            assert "Ci sono stati ben 8 incidenti" in historical_context_arg
+            assert "### CONTESTO STORICO RAG" in historical_context_arg
+

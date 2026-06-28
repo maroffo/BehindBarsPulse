@@ -158,6 +158,132 @@ class AnalyticsService:
         anomalies.sort(key=lambda x: x["z_score"], reverse=True)
         return anomalies
 
+    def calculate_facility_anomalies_sync(
+        self,
+        lookback_days: int = 180,
+        active_days: int = 30,
+        z_threshold: float = 1.5,
+        min_active_incidents: int = 2,
+    ) -> list[dict[str, Any]]:
+        """Synchronously identify facilities with an anomalous spike in incidents.
+
+        Perfect for synchronous pipelines like the daily BulletinGenerator.
+        """
+        log.info("calculating_facility_anomalies_sync", lookback_days=lookback_days, active_days=active_days)
+        
+        from behind_bars_pulse.config import get_settings
+        settings = get_settings()
+        if not settings.database_url:
+            log.warning("no_database_url_configured_for_sync_anomalies")
+            return []
+
+        today_date = date.today()
+        active_cutoff = today_date - timedelta(days=active_days)
+        baseline_cutoff = today_date - timedelta(days=lookback_days)
+
+        try:
+            from sqlalchemy import create_engine
+            from sqlalchemy.orm import Session
+            from behind_bars_pulse.config import make_sync_url
+
+            sync_url = make_sync_url(settings.database_url)
+            engine = create_engine(sync_url)
+
+            with Session(engine) as session:
+                result = session.execute(
+                    select(PrisonEvent)
+                    .where(PrisonEvent.event_date >= baseline_cutoff)
+                    .where(PrisonEvent.facility.isnot(None))
+                )
+                events = result.scalars().all()
+
+            if not events:
+                return []
+
+            facility_active_counts = defaultdict(int)
+            facility_baseline_weekly_bins = defaultdict(lambda: defaultdict(int))
+            facility_regions = {}
+
+            for e in events:
+                facility = e.facility
+                if not facility:
+                    continue
+                
+                facility_regions[facility] = e.region or "Sconosciuta"
+                event_date = e.event_date
+                if not event_date:
+                    continue
+
+                count = e.count if e.count is not None else 1
+
+                if event_date >= active_cutoff:
+                    facility_active_counts[facility] += count
+                else:
+                    days_since_cutoff = (event_date - baseline_cutoff).days
+                    week_index = days_since_cutoff // 7
+                    facility_baseline_weekly_bins[facility][week_index] += count
+
+            anomalies = []
+            baseline_weeks_count = (lookback_days - active_days) / 7.0
+
+            for facility, active_count in facility_active_counts.items():
+                if active_count < min_active_incidents:
+                    continue
+
+                bins = facility_baseline_weekly_bins[facility]
+                weekly_counts = []
+                for w in range(int(baseline_weeks_count)):
+                    weekly_counts.append(bins.get(w, 0))
+
+                n = len(weekly_counts)
+                if n < 2:
+                    continue
+
+                baseline_mean = sum(weekly_counts) / n
+                baseline_variance = sum((x - baseline_mean) ** 2 for x in weekly_counts) / (n - 1)
+                baseline_stddev = math.sqrt(baseline_variance)
+
+                active_weekly_rate = active_count / (active_days / 7.0)
+
+                if baseline_stddev > 0:
+                    z_score = (active_weekly_rate - baseline_mean) / baseline_stddev
+                else:
+                    if active_weekly_rate > baseline_mean:
+                        z_score = 3.0
+                    else:
+                        z_score = 0.0
+
+                is_anomaly = z_score >= z_threshold
+
+                active_monthly_rate = active_count * (30.0 / active_days)
+                baseline_monthly_rate = (sum(weekly_counts) / baseline_weeks_count) * (30.0 / 7.0)
+
+                severity = "Bassa"
+                if z_score >= 3.0:
+                    severity = "Critica"
+                elif z_score >= 2.0:
+                    severity = "Alta"
+                elif z_score >= 1.5:
+                    severity = "Media"
+
+                anomalies.append({
+                    "facility": facility,
+                    "region": facility_regions[facility],
+                    "active_count": active_count,
+                    "active_monthly_rate": round(active_monthly_rate, 1),
+                    "baseline_monthly_rate": round(baseline_monthly_rate, 1),
+                    "z_score": round(z_score, 2),
+                    "severity": severity,
+                    "is_anomaly": is_anomaly,
+                })
+
+            anomalies.sort(key=lambda x: x["z_score"], reverse=True)
+            return anomalies
+
+        except Exception as e:
+            log.exception("calculating_facility_anomalies_sync_failed", error=str(e))
+            return []
+
     async def calculate_occupancy_incident_correlation(
         self,
         session: AsyncSession,
